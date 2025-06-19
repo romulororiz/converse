@@ -27,7 +27,7 @@ export default function AppNavigator() {
 						} else if (route.name === 'Discover') {
 							iconName = focused ? 'search' : 'search-outline';
 						} else if (route.name === 'Insights') {
-							iconName = focused ? 'analytics' : 'analytics-outline';
+							iconName = focused ? 'journal' : 'journal-outline';
 						} else if (route.name === 'Preferences') {
 							iconName = focused ? 'settings' : 'settings-outline';
 						}
