@@ -14,13 +14,10 @@ Interactive Library is a revolutionary platform that transforms how you engage w
 
 ### ✨ Key Features
 
-- **🤖 AI-Powered Book Conversations** - Chat with any book as if you're talking to the author
-- **📱 Cross-Platform Experience** - Web app and mobile app with seamless sync
-- **🎨 Beautiful UI/UX** - Inspired by Audible's design with modern, intuitive interface
+- **🤖 AI-Powered Book Conversations** - Chat with any book 
 - **📚 Extensive Book Library** - Access to thousands of books across all genres
 - **💡 Intelligent Insights** - Get personalized recommendations and reading insights
 - **🔍 Deep Analysis** - Explore themes, characters, and plot elements through conversation
-- **📊 Reading Progress** - Track your reading journey and conversation history
 - **🎯 Personalized Experience** - AI learns your preferences and reading style
 
 ## 🏗️ Architecture
@@ -204,10 +201,6 @@ interactive-library/
 └── package.json                 # Root package.json
 ```
 
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
 ### Development Workflow
 
 1. **Fork the repository**
@@ -243,22 +236,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Expo** for the mobile development platform
 - **Turborepo** for the monorepo tooling
 
-## 📞 Support
-
-- **Documentation**: [docs.interactive-library.com](https://docs.interactive-library.com)
-- **Issues**: [GitHub Issues](https://github.com/romulororiz/converse/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/romulororiz/converse/discussions)
-- **Email**: support@interactive-library.com
-
 ## 🚀 Roadmap
 
 - [ ] **Audio narration** for book conversations
 - [ ] **Multi-language support** for international users
-- [ ] **Offline mode** for reading without internet
 - [ ] **Social features** - share insights with friends
-- [ ] **Advanced analytics** - detailed reading insights
-- [ ] **Book clubs** - group reading and discussions
-- [ ] **AI tutor mode** - educational book explanations
+- [ ] **Advanced analytics** - detailed insights
 - [ ] **Voice commands** - hands-free book interactions
 
 ---
