@@ -24,12 +24,6 @@ const categories = [
 	{ id: 6, name: 'Biography', icon: 'person' },
 ];
 
-const recommendedBooks = [
-	{ id: 1, title: 'To Kill a Mockingbird', author: 'Harper Lee', cover: '📗' },
-	{ id: 2, title: 'The Hobbit', author: 'J.R.R. Tolkien', cover: '📘' },
-	{ id: 3, title: 'Jane Eyre', author: 'Charlotte Brontë', cover: '📙' },
-];
-
 export default function HomeScreen({ navigation }: any) {
 	const [featuredBooks, setFeaturedBooks] = useState<Book[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -200,23 +194,6 @@ export default function HomeScreen({ navigation }: any) {
 					style={styles.categoriesContainer}
 				>
 					{categories.map(renderCategoryCard)}
-				</ScrollView>
-			</View>
-
-			{/* Recommended Books */}
-			<View style={styles.section}>
-				<View style={styles.sectionHeader}>
-					<Text style={styles.sectionTitle}>Recommended for You</Text>
-					<TouchableOpacity>
-						<Text style={styles.seeAllText}>See All</Text>
-					</TouchableOpacity>
-				</View>
-				<ScrollView
-					horizontal
-					showsHorizontalScrollIndicator={false}
-					style={styles.carousel}
-				>
-					{recommendedBooks.map(book => renderBookCard(book, 'medium'))}
 				</ScrollView>
 			</View>
 
