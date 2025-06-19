@@ -168,6 +168,8 @@ const styles = StyleSheet.create({
 		flexGrow: 1,
 		padding: 20,
 		paddingTop: 60,
+		justifyContent: 'center',
+		minHeight: '100%',
 	},
 	header: {
 		marginBottom: 40,
