@@ -12,8 +12,18 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
 import { getFeaturedBooks, Book } from '../services/books';
+import { useNavigation } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
+
+type RootStackParamList = {
+	HomeMain: undefined;
+	BooksList: undefined;
+	ChatDetail: { bookId: string };
+	Discover: undefined;
+};
+
+type NavigationProp = any; // Using any for now to avoid type issues
 
 const categories = [
 	{ id: 1, name: 'Fiction', icon: 'book' },
@@ -24,9 +34,10 @@ const categories = [
 	{ id: 6, name: 'Biography', icon: 'person' },
 ];
 
-export default function HomeScreen({ navigation }: any) {
+export default function HomeScreen() {
 	const [featuredBooks, setFeaturedBooks] = useState<Book[]>([]);
 	const [loading, setLoading] = useState(true);
+	const navigation = useNavigation<NavigationProp>();
 
 	useEffect(() => {
 		loadFeaturedBooks();
@@ -44,31 +55,35 @@ export default function HomeScreen({ navigation }: any) {
 		}
 	};
 
-	const renderBookCard = (
-		book: Book,
-		size: 'large' | 'medium' | 'small' = 'medium'
-	) => (
+	const renderBookCard = ({ item }: { item: Book }) => (
 		<TouchableOpacity
-			key={book.id}
-			style={[
-				styles.bookCard,
-				size === 'large' && styles.bookCardLarge,
-				size === 'small' && styles.bookCardSmall,
-			]}
+			style={styles.bookCard}
+			onPress={() => navigation.navigate('ChatDetail', { bookId: item.id })}
 		>
 			<View style={styles.bookCover}>
-				{book.cover_url ? (
-					<Image source={{ uri: book.cover_url }} style={styles.bookImage} />
+				{item.cover_url ? (
+					<Image source={{ uri: item.cover_url }} style={styles.bookImage} />
 				) : (
 					<Text style={styles.bookCoverText}>📚</Text>
 				)}
 			</View>
 			<Text style={styles.bookTitle} numberOfLines={2}>
-				{book.title}
+				{item.title}
 			</Text>
 			<Text style={styles.bookAuthor} numberOfLines={1}>
-				{book.author?.name || 'Unknown Author'}
+				{item.author?.name || 'Unknown Author'}
 			</Text>
+			<TouchableOpacity
+				style={styles.chatButton}
+				onPress={() => navigation.navigate('ChatDetail', { bookId: item.id })}
+			>
+				<Ionicons
+					name='chatbubble-outline'
+					size={16}
+					color={colors.light.primary}
+				/>
+				<Text style={styles.chatButtonText}>Chat</Text>
+			</TouchableOpacity>
 		</TouchableOpacity>
 	);
 
@@ -134,7 +149,7 @@ export default function HomeScreen({ navigation }: any) {
 						showsHorizontalScrollIndicator={false}
 						style={styles.carousel}
 					>
-						{featuredBooks.map(book => renderBookCard(book, 'large'))}
+						{featuredBooks.map(book => renderBookCard({ item: book }))}
 					</ScrollView>
 				)}
 			</View>
@@ -387,5 +402,21 @@ const styles = StyleSheet.create({
 		width: '100%',
 		height: '100%',
 		borderRadius: 8,
+	},
+	chatButton: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'center',
+		backgroundColor: colors.light.primary + '10',
+		paddingVertical: 6,
+		paddingHorizontal: 12,
+		borderRadius: 16,
+		marginTop: 8,
+		gap: 4,
+	},
+	chatButtonText: {
+		fontSize: 12,
+		color: colors.light.primary,
+		fontWeight: '600',
 	},
 });
