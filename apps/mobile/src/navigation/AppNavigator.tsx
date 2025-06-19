@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
 
@@ -9,8 +10,19 @@ import ChatScreen from '../screens/ChatScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
 import InsightsScreen from '../screens/InsightsScreen';
 import PreferencesScreen from '../screens/PreferencesScreen';
+import BooksListScreen from '../screens/BooksListScreen';
 
 const Tab = createBottomTabNavigator();
+const Stack = createStackNavigator();
+
+function HomeStack() {
+	return (
+		<Stack.Navigator screenOptions={{ headerShown: false }}>
+			<Stack.Screen name='HomeMain' component={HomeScreen} />
+			<Stack.Screen name='BooksList' component={BooksListScreen} />
+		</Stack.Navigator>
+	);
+}
 
 export default function AppNavigator() {
 	return (
@@ -46,7 +58,7 @@ export default function AppNavigator() {
 					headerTintColor: colors.light.foreground,
 				})}
 			>
-				<Tab.Screen name='Home' component={HomeScreen} />
+				<Tab.Screen name='Home' component={HomeStack} />
 				<Tab.Screen name='Chat' component={ChatScreen} />
 				<Tab.Screen name='Discover' component={DiscoverScreen} />
 				<Tab.Screen name='Insights' component={InsightsScreen} />

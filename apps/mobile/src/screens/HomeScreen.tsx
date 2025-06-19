@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
 	View,
 	Text,
@@ -6,23 +6,14 @@ import {
 	ScrollView,
 	TouchableOpacity,
 	Dimensions,
+	Image,
+	ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
+import { getFeaturedBooks, Book } from '../services/books';
 
 const { width } = Dimensions.get('window');
-
-// Mock data for demonstration
-const featuredBooks = [
-	{
-		id: 1,
-		title: 'The Great Gatsby',
-		author: 'F. Scott Fitzgerald',
-		cover: '📚',
-	},
-	{ id: 2, title: '1984', author: 'George Orwell', cover: '📖' },
-	{ id: 3, title: 'Pride and Prejudice', author: 'Jane Austen', cover: '📕' },
-];
 
 const categories = [
 	{ id: 1, name: 'Fiction', icon: 'book' },
@@ -40,8 +31,27 @@ const recommendedBooks = [
 ];
 
 export default function HomeScreen({ navigation }: any) {
+	const [featuredBooks, setFeaturedBooks] = useState<Book[]>([]);
+	const [loading, setLoading] = useState(true);
+
+	useEffect(() => {
+		loadFeaturedBooks();
+	}, []);
+
+	const loadFeaturedBooks = async () => {
+		try {
+			setLoading(true);
+			const books = await getFeaturedBooks(6);
+			setFeaturedBooks(books);
+		} catch (error) {
+			console.error('Error loading featured books:', error);
+		} finally {
+			setLoading(false);
+		}
+	};
+
 	const renderBookCard = (
-		book: any,
+		book: Book,
 		size: 'large' | 'medium' | 'small' = 'medium'
 	) => (
 		<TouchableOpacity
@@ -53,7 +63,11 @@ export default function HomeScreen({ navigation }: any) {
 			]}
 		>
 			<View style={styles.bookCover}>
-				<Text style={styles.bookCoverText}>{book.cover}</Text>
+				{book.coverImage ? (
+					<Image source={{ uri: book.coverImage }} style={styles.bookImage} />
+				) : (
+					<Text style={styles.bookCoverText}>📚</Text>
+				)}
 			</View>
 			<Text style={styles.bookTitle} numberOfLines={2}>
 				{book.title}
@@ -111,17 +125,24 @@ export default function HomeScreen({ navigation }: any) {
 			<View style={styles.section}>
 				<View style={styles.sectionHeader}>
 					<Text style={styles.sectionTitle}>Featured Books</Text>
-					<TouchableOpacity>
+					<TouchableOpacity onPress={() => navigation.navigate('BooksList')}>
 						<Text style={styles.seeAllText}>See All</Text>
 					</TouchableOpacity>
 				</View>
-				<ScrollView
-					horizontal
-					showsHorizontalScrollIndicator={false}
-					style={styles.carousel}
-				>
-					{featuredBooks.map(book => renderBookCard(book, 'large'))}
-				</ScrollView>
+				{loading ? (
+					<View style={styles.loadingContainer}>
+						<ActivityIndicator size='large' color={colors.light.primary} />
+						<Text style={styles.loadingText}>Loading books...</Text>
+					</View>
+				) : (
+					<ScrollView
+						horizontal
+						showsHorizontalScrollIndicator={false}
+						style={styles.carousel}
+					>
+						{featuredBooks.map(book => renderBookCard(book, 'large'))}
+					</ScrollView>
+				)}
 			</View>
 
 			{/* Quick Actions */}
@@ -415,5 +436,22 @@ const styles = StyleSheet.create({
 		color: colors.light.accentForeground,
 		fontSize: 12,
 		fontWeight: '500',
+	},
+	loadingContainer: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'center',
+		padding: 20,
+	},
+	loadingText: {
+		fontSize: 16,
+		fontWeight: '500',
+		color: colors.light.primary,
+		marginLeft: 10,
+	},
+	bookImage: {
+		width: '100%',
+		height: '100%',
+		borderRadius: 8,
 	},
 });
