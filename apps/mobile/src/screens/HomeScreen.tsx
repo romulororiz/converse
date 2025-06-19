@@ -11,23 +11,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
-import {
-	getFeaturedBooks,
-	Book,
-	checkAndPopulateDatabase,
-} from '../services/books';
+import { getFeaturedBooks, Book } from '../services/books';
 import { useNavigation } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
-
-type RootStackParamList = {
-	HomeMain: undefined;
-	BooksList: undefined;
-	ChatDetail: { bookId: string };
-	Discover: undefined;
-};
-
-type NavigationProp = any; // Using any for now to avoid type issues
 
 const categories = [
 	{ id: 1, name: 'Fiction', icon: 'book' },
@@ -38,27 +25,27 @@ const categories = [
 	{ id: 6, name: 'Biography', icon: 'person' },
 ];
 
+type NavigationProp = {
+	navigate: (screen: string, params?: any) => void;
+};
+
 export default function HomeScreen() {
 	const [featuredBooks, setFeaturedBooks] = useState<Book[]>([]);
+	const [recommendedBooks, setRecommendedBooks] = useState<Book[]>([]);
 	const [loading, setLoading] = useState(true);
 	const navigation = useNavigation<NavigationProp>();
 
 	useEffect(() => {
-		loadData();
+		loadFeaturedBooks();
 	}, []);
 
-	const loadData = async () => {
+	const loadFeaturedBooks = async () => {
 		try {
 			setLoading(true);
-
-			// Check and populate database if needed
-			await checkAndPopulateDatabase();
-
-			// Load featured books
-			const books = await getFeaturedBooks();
+			const books = await getFeaturedBooks(6);
 			setFeaturedBooks(books);
 		} catch (error) {
-			console.error('Error loading data:', error);
+			console.error('Error loading featured books:', error);
 		} finally {
 			setLoading(false);
 		}
@@ -82,17 +69,6 @@ export default function HomeScreen() {
 			<Text style={styles.bookAuthor} numberOfLines={1}>
 				{item.author?.name || 'Unknown Author'}
 			</Text>
-			<TouchableOpacity
-				style={styles.chatButton}
-				onPress={() => navigation.navigate('ChatDetail', { bookId: item.id })}
-			>
-				<Ionicons
-					name='chatbubble-outline'
-					size={16}
-					color={colors.light.primary}
-				/>
-				<Text style={styles.chatButtonText}>Chat</Text>
-			</TouchableOpacity>
 		</TouchableOpacity>
 	);
 
@@ -276,12 +252,6 @@ const styles = StyleSheet.create({
 		width: 120,
 		marginRight: 16,
 	},
-	bookCardLarge: {
-		width: 140,
-	},
-	bookCardSmall: {
-		width: 100,
-	},
 	bookCover: {
 		width: '100%',
 		height: 160,
@@ -411,21 +381,5 @@ const styles = StyleSheet.create({
 		width: '100%',
 		height: '100%',
 		borderRadius: 8,
-	},
-	chatButton: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		justifyContent: 'center',
-		backgroundColor: colors.light.primary + '10',
-		paddingVertical: 6,
-		paddingHorizontal: 12,
-		borderRadius: 16,
-		marginTop: 8,
-		gap: 4,
-	},
-	chatButtonText: {
-		fontSize: 12,
-		color: colors.light.primary,
-		fontWeight: '600',
 	},
 });

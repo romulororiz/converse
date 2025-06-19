@@ -7,58 +7,59 @@ import {
 	TextInput,
 	TouchableOpacity,
 	Image,
-	ActivityIndicator,
-	Alert,
 	KeyboardAvoidingView,
 	Platform,
+	ActivityIndicator,
+	Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
 import { useAuth } from '../components/AuthProvider';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import {
+	getOrCreateChatSession,
 	getChatMessages,
 	sendMessage,
-	getOrCreateChatSession,
+	getAIResponse,
 } from '../services/chat';
 import { getBookById } from '../services/books';
-import { useRoute, useNavigation } from '@react-navigation/native';
-import { Database } from '../lib/supabase';
 
-type Message = Database['public']['Tables']['messages']['Row'];
-type Book = Database['public']['Tables']['books']['Row'] & {
-	author?: { name: string };
+type Message = {
+	id: string;
+	content: string;
+	role: 'user' | 'assistant';
+	created_at: string;
+	session_id: string;
 };
 
-interface RouteParams {
-	sessionId?: string;
+type RouteParams = {
 	bookId: string;
-}
+};
 
 export default function ChatDetailScreen() {
 	const [messages, setMessages] = useState<Message[]>([]);
 	const [newMessage, setNewMessage] = useState('');
-	const [book, setBook] = useState<Book | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [sending, setSending] = useState(false);
+	const [book, setBook] = useState<any>(null);
 	const [sessionId, setSessionId] = useState<string | null>(null);
 	const { user } = useAuth();
 	const route = useRoute();
 	const navigation = useNavigation();
 	const flatListRef = useRef<FlatList>(null);
-
-	const { sessionId: routeSessionId, bookId } = route.params as RouteParams;
+	const { bookId } = route.params as RouteParams;
 
 	useEffect(() => {
 		if (user?.id && bookId) {
-			loadData();
+			loadChatData();
 		}
 	}, [user?.id, bookId]);
 
-	const loadData = async () => {
+	const loadChatData = async () => {
 		try {
 			setLoading(true);
 
-			// Load book information
+			// Load book data
 			const bookData = await getBookById(bookId);
 			setBook(bookData);
 
@@ -67,8 +68,8 @@ export default function ChatDetailScreen() {
 			setSessionId(session.id);
 
 			// Load messages
-			const messagesData = await getChatMessages(session.id);
-			setMessages(messagesData);
+			const chatMessages = await getChatMessages(session.id);
+			setMessages(chatMessages);
 		} catch (error) {
 			console.error('Error loading chat data:', error);
 			Alert.alert('Error', 'Failed to load conversation');
@@ -84,56 +85,21 @@ export default function ChatDetailScreen() {
 		setNewMessage('');
 		setSending(true);
 
-		// Add user message immediately
-		const tempUserMessage: Message = {
-			id: `temp-${Date.now()}`,
-			session_id: sessionId,
-			content: userMessage,
-			role: 'user',
-			created_at: new Date().toISOString(),
-			metadata: {},
-		};
-
-		setMessages(prev => [...prev, tempUserMessage]);
-
 		try {
-			// Save user message
-			await sendMessage(sessionId, userMessage, 'user');
+			// Add user message immediately
+			const userMsg = await sendMessage(sessionId, userMessage, 'user');
+			setMessages(prev => [...prev, userMsg]);
 
-			// Simulate AI response (you'll need to implement the actual AI integration)
-			const aiResponse = await generateAIResponse(userMessage, messages);
-
-			// Save AI response
-			await sendMessage(sessionId, aiResponse, 'assistant');
-
-			// Reload messages to get the real IDs
-			const updatedMessages = await getChatMessages(sessionId);
-			setMessages(updatedMessages);
+			// Get AI response
+			const aiResponse = await getAIResponse(sessionId, userMessage);
+			const aiMsg = await sendMessage(sessionId, aiResponse, 'assistant');
+			setMessages(prev => [...prev, aiMsg]);
 		} catch (error) {
 			console.error('Error sending message:', error);
 			Alert.alert('Error', 'Failed to send message');
-			// Remove temporary message on error
-			setMessages(prev => prev.filter(msg => !msg.id.startsWith('temp-')));
 		} finally {
 			setSending(false);
 		}
-	};
-
-	const generateAIResponse = async (
-		userMessage: string,
-		conversationHistory: Message[]
-	): Promise<string> => {
-		// This is a placeholder - you'll need to implement the actual AI integration
-		// For now, return a simple response
-		const responses = [
-			"That's an interesting perspective on this book! What specific aspects caught your attention?",
-			"I love how you're engaging with the text. Have you considered the author's background and how it might influence the narrative?",
-			"That's a great question about the book. Let me share some insights about this particular theme...",
-			'Your observation is quite insightful. This book does explore some fascinating themes. What other books have you read that touch on similar topics?',
-			"I appreciate your thoughtful analysis. The author's use of language here is particularly noteworthy. What do you think about the writing style?",
-		];
-
-		return responses[Math.floor(Math.random() * responses.length)];
 	};
 
 	const renderMessage = ({ item, index }: { item: Message; index: number }) => {
@@ -162,12 +128,25 @@ export default function ChatDetailScreen() {
 						{item.content}
 					</Text>
 				</View>
-				<Text style={styles.messageTime}>
-					{new Date(item.created_at).toLocaleTimeString([], {
-						hour: '2-digit',
-						minute: '2-digit',
-					})}
-				</Text>
+			</View>
+		);
+	};
+
+	const renderTypingIndicator = () => {
+		if (!sending) return null;
+
+		return (
+			<View style={[styles.messageContainer, styles.aiMessage]}>
+				<View style={[styles.messageBubble, styles.aiBubble]}>
+					<View style={styles.typingIndicator}>
+						<ActivityIndicator size='small' color={colors.light.foreground} />
+						<Text
+							style={[styles.messageText, styles.aiText, styles.typingText]}
+						>
+							AI is typing...
+						</Text>
+					</View>
+				</View>
 			</View>
 		);
 	};
@@ -237,46 +216,54 @@ export default function ChatDetailScreen() {
 				onContentSizeChange={() =>
 					flatListRef.current?.scrollToEnd({ animated: true })
 				}
-			/>
-
-			{/* Typing indicator */}
-			{sending && (
-				<View style={styles.typingContainer}>
-					<View style={styles.typingBubble}>
-						<Text style={styles.typingText}>AI is typing...</Text>
+				ListEmptyComponent={
+					<View style={styles.emptyContainer}>
+						<Ionicons
+							name='chatbubbles-outline'
+							size={48}
+							color={colors.light.mutedForeground}
+						/>
+						<Text style={styles.emptyTitle}>Start the conversation!</Text>
+						<Text style={styles.emptySubtitle}>
+							Ask questions about this book, discuss themes, or explore its
+							meaning
+						</Text>
 					</View>
-				</View>
-			)}
+				}
+				ListFooterComponent={renderTypingIndicator}
+			/>
 
 			{/* Input */}
 			<View style={styles.inputContainer}>
-				<TextInput
-					style={styles.input}
-					placeholder='Type your message...'
-					placeholderTextColor={colors.light.mutedForeground}
-					value={newMessage}
-					onChangeText={setNewMessage}
-					multiline
-					maxLength={500}
-				/>
-				<TouchableOpacity
-					style={[
-						styles.sendButton,
-						(!newMessage.trim() || sending) && styles.sendButtonDisabled,
-					]}
-					onPress={handleSendMessage}
-					disabled={!newMessage.trim() || sending}
-				>
-					<Ionicons
-						name='send'
-						size={20}
-						color={
-							newMessage.trim() && !sending
-								? colors.light.primaryForeground
-								: colors.light.mutedForeground
-						}
+				<View style={styles.inputWrapper}>
+					<TextInput
+						style={styles.textInput}
+						placeholder='Type your message...'
+						placeholderTextColor={colors.light.mutedForeground}
+						value={newMessage}
+						onChangeText={setNewMessage}
+						multiline
+						maxLength={500}
 					/>
-				</TouchableOpacity>
+					<TouchableOpacity
+						style={[
+							styles.sendButton,
+							(!newMessage.trim() || sending) && styles.sendButtonDisabled,
+						]}
+						onPress={handleSendMessage}
+						disabled={!newMessage.trim() || sending}
+					>
+						<Ionicons
+							name='send'
+							size={20}
+							color={
+								newMessage.trim() && !sending
+									? colors.light.primaryForeground
+									: colors.light.mutedForeground
+							}
+						/>
+					</TouchableOpacity>
+				</View>
 			</View>
 		</KeyboardAvoidingView>
 	);
@@ -296,8 +283,9 @@ const styles = StyleSheet.create({
 	header: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		padding: 16,
 		paddingTop: 60,
+		paddingHorizontal: 16,
+		paddingBottom: 16,
 		backgroundColor: colors.light.card,
 		borderBottomWidth: 1,
 		borderBottomColor: colors.light.border,
@@ -313,7 +301,7 @@ const styles = StyleSheet.create({
 	},
 	bookCover: {
 		width: 40,
-		height: 52,
+		height: 50,
 		borderRadius: 6,
 		overflow: 'hidden',
 		marginRight: 12,
@@ -343,11 +331,11 @@ const styles = StyleSheet.create({
 		color: colors.light.mutedForeground,
 	},
 	messagesList: {
-		padding: 16,
-		paddingBottom: 8,
+		paddingHorizontal: 16,
+		paddingVertical: 16,
 	},
 	messageContainer: {
-		marginBottom: 16,
+		marginBottom: 12,
 	},
 	userMessage: {
 		alignItems: 'flex-end',
@@ -381,59 +369,64 @@ const styles = StyleSheet.create({
 	aiText: {
 		color: colors.light.foreground,
 	},
-	messageTime: {
-		fontSize: 12,
-		color: colors.light.mutedForeground,
-		marginTop: 4,
-		marginHorizontal: 8,
-	},
-	typingContainer: {
-		paddingHorizontal: 16,
-		marginBottom: 8,
-	},
-	typingBubble: {
-		backgroundColor: colors.light.card,
-		paddingHorizontal: 16,
-		paddingVertical: 12,
-		borderRadius: 20,
-		borderBottomLeftRadius: 4,
-		borderWidth: 1,
-		borderColor: colors.light.border,
-		alignSelf: 'flex-start',
+	typingIndicator: {
+		flexDirection: 'row',
+		alignItems: 'center',
 	},
 	typingText: {
-		fontSize: 14,
-		color: colors.light.mutedForeground,
+		marginLeft: 8,
 		fontStyle: 'italic',
 	},
+	emptyContainer: {
+		alignItems: 'center',
+		paddingVertical: 40,
+	},
+	emptyTitle: {
+		fontSize: 18,
+		fontWeight: '600',
+		color: colors.light.foreground,
+		marginTop: 16,
+		marginBottom: 8,
+	},
+	emptySubtitle: {
+		fontSize: 14,
+		color: colors.light.mutedForeground,
+		textAlign: 'center',
+		lineHeight: 20,
+		paddingHorizontal: 32,
+	},
 	inputContainer: {
-		flexDirection: 'row',
-		alignItems: 'flex-end',
-		padding: 16,
+		paddingHorizontal: 16,
+		paddingVertical: 12,
 		backgroundColor: colors.light.card,
 		borderTopWidth: 1,
 		borderTopColor: colors.light.border,
 	},
-	input: {
-		flex: 1,
+	inputWrapper: {
+		flexDirection: 'row',
+		alignItems: 'flex-end',
 		backgroundColor: colors.light.background,
-		borderRadius: 20,
+		borderRadius: 24,
 		paddingHorizontal: 16,
-		paddingVertical: 12,
-		marginRight: 12,
-		fontSize: 16,
-		color: colors.light.foreground,
-		maxHeight: 100,
+		paddingVertical: 8,
 		borderWidth: 1,
 		borderColor: colors.light.border,
 	},
+	textInput: {
+		flex: 1,
+		fontSize: 16,
+		color: colors.light.foreground,
+		maxHeight: 100,
+		paddingVertical: 8,
+	},
 	sendButton: {
+		width: 36,
+		height: 36,
+		borderRadius: 18,
 		backgroundColor: colors.light.primary,
-		width: 40,
-		height: 40,
-		borderRadius: 20,
 		alignItems: 'center',
 		justifyContent: 'center',
+		marginLeft: 8,
 	},
 	sendButtonDisabled: {
 		backgroundColor: colors.light.muted,

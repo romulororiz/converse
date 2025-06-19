@@ -9,7 +9,6 @@ import { ActivityIndicator, View } from 'react-native';
 
 import HomeScreen from '../screens/HomeScreen';
 import ChatsScreen from '../screens/ChatsScreen';
-import ChatDetailScreen from '../screens/ChatDetailScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
 import InsightsScreen from '../screens/InsightsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -17,6 +16,7 @@ import BooksListScreen from '../screens/BooksListScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import SignUpScreen from '../screens/auth/SignUpScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
+import ChatDetailScreen from '../screens/ChatDetailScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -40,6 +40,7 @@ function HomeStack() {
 		<Stack.Navigator screenOptions={{ headerShown: false }}>
 			<Stack.Screen name='HomeMain' component={HomeScreen} />
 			<Stack.Screen name='BooksList' component={BooksListScreen} />
+			<Stack.Screen name='ChatDetail' component={ChatDetailScreen} />
 		</Stack.Navigator>
 	);
 }

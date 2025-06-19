@@ -9,27 +9,38 @@ import {
 	TextInput,
 	ActivityIndicator,
 	Alert,
+	RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
 import { useAuth } from '../components/AuthProvider';
 import { getUserChats, deleteChatSession } from '../services/chat';
 import { useNavigation } from '@react-navigation/native';
-import { Database } from '../lib/supabase';
+import { formatDistanceToNow } from 'date-fns';
 
-type ChatSession = Database['public']['Tables']['chat_sessions']['Row'] & {
+type ChatSession = {
+	id: string;
+	user_id: string;
+	book_id: string;
+	created_at: string;
+	updated_at: string;
 	books?: {
 		title: string;
 		cover_url: string | null;
 	};
 };
 
+type NavigationProp = {
+	navigate: (screen: string, params?: any) => void;
+};
+
 export default function ChatsScreen() {
 	const [chats, setChats] = useState<ChatSession[]>([]);
 	const [loading, setLoading] = useState(true);
+	const [refreshing, setRefreshing] = useState(false);
 	const [searchQuery, setSearchQuery] = useState('');
 	const { user } = useAuth();
-	const navigation = useNavigation();
+	const navigation = useNavigation<NavigationProp>();
 
 	useEffect(() => {
 		if (user?.id) {
@@ -50,7 +61,13 @@ export default function ChatsScreen() {
 		}
 	};
 
-	const handleDeleteChat = async (sessionId: string) => {
+	const onRefresh = async () => {
+		setRefreshing(true);
+		await loadChats();
+		setRefreshing(false);
+	};
+
+	const handleDeleteChat = async (chatId: string) => {
 		Alert.alert(
 			'Delete Conversation',
 			'Are you sure you want to delete this conversation? This action cannot be undone.',
@@ -61,8 +78,8 @@ export default function ChatsScreen() {
 					style: 'destructive',
 					onPress: async () => {
 						try {
-							await deleteChatSession(sessionId);
-							setChats(prev => prev.filter(chat => chat.id !== sessionId));
+							await deleteChatSession(chatId);
+							setChats(prev => prev.filter(chat => chat.id !== chatId));
 						} catch (error) {
 							console.error('Error deleting chat:', error);
 							Alert.alert('Error', 'Failed to delete conversation');
@@ -78,32 +95,13 @@ export default function ChatsScreen() {
 		return title.toLowerCase().includes(searchQuery.toLowerCase());
 	});
 
-	const formatDate = (dateString: string) => {
-		const date = new Date(dateString);
-		const now = new Date();
-		const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-
-		if (diffInHours < 24) {
-			return date.toLocaleTimeString([], {
-				hour: '2-digit',
-				minute: '2-digit',
-			});
-		} else if (diffInHours < 168) {
-			return date.toLocaleDateString([], { weekday: 'short' });
-		} else {
-			return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-		}
-	};
-
 	const renderChatItem = ({ item }: { item: ChatSession }) => (
 		<TouchableOpacity
 			style={styles.chatItem}
 			onPress={() =>
-				navigation.navigate('ChatDetail', {
-					sessionId: item.id,
-					bookId: item.book_id,
-				})
+				navigation.navigate('ChatDetail', { bookId: item.book_id })
 			}
+			onLongPress={() => handleDeleteChat(item.id)}
 		>
 			<View style={styles.chatContent}>
 				<View style={styles.bookCover}>
@@ -122,12 +120,18 @@ export default function ChatsScreen() {
 						</View>
 					)}
 				</View>
+
 				<View style={styles.chatInfo}>
 					<Text style={styles.bookTitle} numberOfLines={1}>
 						{item.books?.title || 'Unknown Book'}
 					</Text>
-					<Text style={styles.chatDate}>{formatDate(item.updated_at)}</Text>
+					<Text style={styles.chatDate}>
+						{formatDistanceToNow(new Date(item.updated_at), {
+							addSuffix: true,
+						})}
+					</Text>
 				</View>
+
 				<TouchableOpacity
 					style={styles.deleteButton}
 					onPress={() => handleDeleteChat(item.id)}
@@ -147,7 +151,7 @@ export default function ChatsScreen() {
 			<View style={styles.centerContainer}>
 				<Ionicons
 					name='chatbubbles-outline'
-					size={48}
+					size={64}
 					color={colors.light.mutedForeground}
 				/>
 				<Text style={styles.centerTitle}>Please sign in</Text>
@@ -193,12 +197,16 @@ export default function ChatsScreen() {
 				<View style={styles.centerContainer}>
 					<Ionicons
 						name='chatbubbles-outline'
-						size={48}
+						size={64}
 						color={colors.light.mutedForeground}
 					/>
-					<Text style={styles.centerTitle}>No conversations yet</Text>
+					<Text style={styles.centerTitle}>
+						{searchQuery ? 'No conversations found' : 'No conversations yet'}
+					</Text>
 					<Text style={styles.centerSubtitle}>
-						Start a new conversation by selecting a book from your library
+						{searchQuery
+							? 'Try adjusting your search terms'
+							: 'Start a new conversation by selecting a book from your library'}
 					</Text>
 				</View>
 			) : (
@@ -207,6 +215,9 @@ export default function ChatsScreen() {
 					renderItem={renderChatItem}
 					keyExtractor={item => item.id}
 					contentContainerStyle={styles.chatList}
+					refreshControl={
+						<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+					}
 					showsVerticalScrollIndicator={false}
 				/>
 			)}
@@ -218,10 +229,11 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 		backgroundColor: colors.light.background,
+		paddingTop: 60,
 	},
 	header: {
 		padding: 20,
-		paddingTop: 60,
+		paddingBottom: 16,
 	},
 	title: {
 		fontSize: 28,
@@ -249,7 +261,7 @@ const styles = StyleSheet.create({
 	},
 	searchInput: {
 		flex: 1,
-		height: 50,
+		height: 48,
 		color: colors.light.foreground,
 		fontSize: 16,
 	},
@@ -269,8 +281,8 @@ const styles = StyleSheet.create({
 		padding: 16,
 	},
 	bookCover: {
-		width: 50,
-		height: 65,
+		width: 60,
+		height: 80,
 		borderRadius: 8,
 		overflow: 'hidden',
 		marginRight: 16,
