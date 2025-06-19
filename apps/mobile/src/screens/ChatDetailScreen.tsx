@@ -11,11 +11,20 @@ import {
 	Platform,
 	ActivityIndicator,
 	Alert,
+	SafeAreaView,
+	Keyboard,
+	Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
 import { useAuth } from '../components/AuthProvider';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import {
+	GestureHandlerRootView,
+	PanGestureHandler,
+	PanGestureHandlerGestureEvent,
+} from 'react-native-gesture-handler';
 import {
 	getOrCreateChatSession,
 	getChatMessages,
@@ -23,31 +32,30 @@ import {
 	getAIResponse,
 } from '../services/chat';
 import { getBookById } from '../services/books';
+import type { Book, ChatMessage } from '../types/supabase';
 
-type Message = {
-	id: string;
-	content: string;
-	role: 'user' | 'assistant';
-	created_at: string;
-	session_id: string;
+type RootStackParamList = {
+	ChatDetail: { bookId: string };
 };
 
-type RouteParams = {
-	bookId: string;
-};
+type ChatDetailScreenNavigationProp = NativeStackNavigationProp<
+	RootStackParamList,
+	'ChatDetail'
+>;
+type ChatDetailScreenRouteProp = RouteProp<RootStackParamList, 'ChatDetail'>;
 
 export default function ChatDetailScreen() {
-	const [messages, setMessages] = useState<Message[]>([]);
+	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [newMessage, setNewMessage] = useState('');
 	const [loading, setLoading] = useState(true);
 	const [sending, setSending] = useState(false);
-	const [book, setBook] = useState<any>(null);
+	const [book, setBook] = useState<Book | null>(null);
 	const [sessionId, setSessionId] = useState<string | null>(null);
 	const { user } = useAuth();
-	const route = useRoute();
-	const navigation = useNavigation();
-	const flatListRef = useRef<FlatList>(null);
-	const { bookId } = route.params as RouteParams;
+	const route = useRoute<ChatDetailScreenRouteProp>();
+	const navigation = useNavigation<ChatDetailScreenNavigationProp>();
+	const flatListRef = useRef<FlatList<ChatMessage>>(null);
+	const { bookId } = route.params;
 
 	useEffect(() => {
 		if (user?.id && bookId) {
@@ -61,7 +69,13 @@ export default function ChatDetailScreen() {
 
 			// Load book data
 			const bookData = await getBookById(bookId);
-			setBook(bookData);
+			if (bookData) {
+				setBook(bookData);
+			} else {
+				Alert.alert('Error', 'Book not found');
+				navigation.goBack();
+				return;
+			}
 
 			// Get or create chat session
 			const session = await getOrCreateChatSession(user!.id, bookId);
@@ -69,7 +83,7 @@ export default function ChatDetailScreen() {
 
 			// Load messages
 			const chatMessages = await getChatMessages(session.id);
-			setMessages(chatMessages);
+			setMessages(chatMessages as ChatMessage[]);
 		} catch (error) {
 			console.error('Error loading chat data:', error);
 			Alert.alert('Error', 'Failed to load conversation');
@@ -88,12 +102,12 @@ export default function ChatDetailScreen() {
 		try {
 			// Add user message immediately
 			const userMsg = await sendMessage(sessionId, userMessage, 'user');
-			setMessages(prev => [...prev, userMsg]);
+			setMessages(prev => [...prev, userMsg as ChatMessage]);
 
 			// Get AI response
 			const aiResponse = await getAIResponse(sessionId, userMessage);
 			const aiMsg = await sendMessage(sessionId, aiResponse, 'assistant');
-			setMessages(prev => [...prev, aiMsg]);
+			setMessages(prev => [...prev, aiMsg as ChatMessage]);
 		} catch (error) {
 			console.error('Error sending message:', error);
 			Alert.alert('Error', 'Failed to send message');
@@ -102,9 +116,8 @@ export default function ChatDetailScreen() {
 		}
 	};
 
-	const renderMessage = ({ item, index }: { item: Message; index: number }) => {
+	const renderMessage = ({ item }: { item: ChatMessage; index: number }) => {
 		const isUser = item.role === 'user';
-		const isLastMessage = index === messages.length - 1;
 
 		return (
 			<View
@@ -151,125 +164,150 @@ export default function ChatDetailScreen() {
 		);
 	};
 
+	const handleGesture = (event: PanGestureHandlerGestureEvent) => {
+		const { translationY } = event.nativeEvent;
+
+		if (translationY > 50) {
+			// If user has dragged down more than 50 units
+			Keyboard.dismiss();
+		}
+	};
+
 	if (loading) {
 		return (
-			<View style={styles.loadingContainer}>
+			<SafeAreaView style={styles.loadingContainer}>
 				<ActivityIndicator size='large' color={colors.light.primary} />
-			</View>
+			</SafeAreaView>
 		);
 	}
 
 	return (
-		<KeyboardAvoidingView
-			behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-			style={styles.container}
-		>
-			{/* Header */}
-			<View style={styles.header}>
-				<TouchableOpacity
-					style={styles.backButton}
-					onPress={() => navigation.goBack()}
+		<GestureHandlerRootView style={styles.safeArea}>
+			<SafeAreaView style={styles.safeArea}>
+				<KeyboardAvoidingView
+					behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+					style={styles.container}
+					keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
 				>
-					<Ionicons
-						name='arrow-back'
-						size={24}
-						color={colors.light.foreground}
-					/>
-				</TouchableOpacity>
-
-				<View style={styles.bookInfo}>
-					<View style={styles.bookCover}>
-						{book?.cover_url ? (
-							<Image
-								source={{ uri: book.cover_url }}
-								style={styles.bookImage}
+					{/* Header */}
+					<View style={styles.header}>
+						<TouchableOpacity
+							style={styles.backButton}
+							onPress={() => navigation.goBack()}
+						>
+							<Ionicons
+								name='arrow-back'
+								size={24}
+								color={colors.light.foreground}
 							/>
-						) : (
-							<View style={styles.bookPlaceholder}>
-								<Ionicons
-									name='book-outline'
-									size={24}
-									color={colors.light.mutedForeground}
-								/>
+						</TouchableOpacity>
+
+						<View style={styles.bookInfo}>
+							<View style={styles.bookCover}>
+								{book?.cover_url ? (
+									<Image
+										source={{ uri: book.cover_url }}
+										style={styles.bookImage}
+									/>
+								) : (
+									<View style={styles.bookPlaceholder}>
+										<Ionicons
+											name='book-outline'
+											size={24}
+											color={colors.light.mutedForeground}
+										/>
+									</View>
+								)}
 							</View>
-						)}
+							<View style={styles.bookDetails}>
+								<Text style={styles.bookTitle} numberOfLines={1}>
+									{book?.title || 'Unknown Book'}
+								</Text>
+								<Text style={styles.bookAuthor} numberOfLines={1}>
+									{book?.author?.name || 'Unknown Author'}
+								</Text>
+							</View>
+						</View>
 					</View>
-					<View style={styles.bookDetails}>
-						<Text style={styles.bookTitle} numberOfLines={1}>
-							{book?.title || 'Unknown Book'}
-						</Text>
-						<Text style={styles.bookAuthor} numberOfLines={1}>
-							{book?.author?.name || 'Unknown Author'}
-						</Text>
-					</View>
-				</View>
-			</View>
 
-			{/* Messages */}
-			<FlatList
-				ref={flatListRef}
-				data={messages}
-				renderItem={renderMessage}
-				keyExtractor={item => item.id}
-				contentContainerStyle={styles.messagesList}
-				showsVerticalScrollIndicator={false}
-				onContentSizeChange={() =>
-					flatListRef.current?.scrollToEnd({ animated: true })
-				}
-				ListEmptyComponent={
-					<View style={styles.emptyContainer}>
-						<Ionicons
-							name='chatbubbles-outline'
-							size={48}
-							color={colors.light.mutedForeground}
-						/>
-						<Text style={styles.emptyTitle}>Start the conversation!</Text>
-						<Text style={styles.emptySubtitle}>
-							Ask questions about this book, discuss themes, or explore its
-							meaning
-						</Text>
-					</View>
-				}
-				ListFooterComponent={renderTypingIndicator}
-			/>
-
-			{/* Input */}
-			<View style={styles.inputContainer}>
-				<View style={styles.inputWrapper}>
-					<TextInput
-						style={styles.textInput}
-						placeholder='Type your message...'
-						placeholderTextColor={colors.light.mutedForeground}
-						value={newMessage}
-						onChangeText={setNewMessage}
-						multiline
-						maxLength={500}
-					/>
-					<TouchableOpacity
-						style={[
-							styles.sendButton,
-							(!newMessage.trim() || sending) && styles.sendButtonDisabled,
-						]}
-						onPress={handleSendMessage}
-						disabled={!newMessage.trim() || sending}
-					>
-						<Ionicons
-							name='send'
-							size={20}
-							color={
-								newMessage.trim() && !sending
-									? colors.light.primaryForeground
-									: colors.light.mutedForeground
+					{/* Messages */}
+					<View style={styles.messagesContainer}>
+						<FlatList
+							ref={flatListRef}
+							data={messages}
+							renderItem={renderMessage}
+							keyExtractor={item => item.id}
+							contentContainerStyle={styles.messagesList}
+							showsVerticalScrollIndicator={false}
+							onContentSizeChange={() =>
+								flatListRef.current?.scrollToEnd({ animated: true })
 							}
+							ListEmptyComponent={
+								<View style={styles.emptyContainer}>
+									<Ionicons
+										name='chatbubbles-outline'
+										size={48}
+										color={colors.light.mutedForeground}
+									/>
+									<Text style={styles.emptyTitle}>Start the conversation!</Text>
+									<Text style={styles.emptySubtitle}>
+										Ask questions about this book, discuss themes, or explore
+										its meaning
+									</Text>
+								</View>
+							}
+							ListFooterComponent={renderTypingIndicator}
 						/>
-					</TouchableOpacity>
-				</View>
-			</View>
-		</KeyboardAvoidingView>
+					</View>
+
+					{/* Input with Gesture Handler */}
+					<PanGestureHandler onGestureEvent={handleGesture}>
+						<View style={styles.inputContainer}>
+							<View style={styles.gestureIndicator} />
+							<View style={styles.inputWrapper}>
+								<TextInput
+									style={styles.textInput}
+									placeholder='Type your message...'
+									placeholderTextColor={colors.light.mutedForeground}
+									value={newMessage}
+									onChangeText={setNewMessage}
+									multiline
+									maxLength={500}
+									onSubmitEditing={Keyboard.dismiss}
+								/>
+								<TouchableOpacity
+									style={[
+										styles.sendButton,
+										(!newMessage.trim() || sending) &&
+											styles.sendButtonDisabled,
+									]}
+									onPress={handleSendMessage}
+									disabled={!newMessage.trim() || sending}
+								>
+									<Ionicons
+										name='send'
+										size={20}
+										color={
+											newMessage.trim() && !sending
+												? colors.light.primaryForeground
+												: colors.light.mutedForeground
+										}
+									/>
+								</TouchableOpacity>
+							</View>
+						</View>
+					</PanGestureHandler>
+				</KeyboardAvoidingView>
+			</SafeAreaView>
+		</GestureHandlerRootView>
 	);
 }
 
 const styles = StyleSheet.create({
+	safeArea: {
+		flex: 1,
+		backgroundColor: colors.light.background,
+	},
 	container: {
 		flex: 1,
 		backgroundColor: colors.light.background,
@@ -283,12 +321,16 @@ const styles = StyleSheet.create({
 	header: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		paddingTop: 60,
+		paddingTop: Platform.OS === 'ios' ? 0 : 40,
 		paddingHorizontal: 16,
 		paddingBottom: 16,
 		backgroundColor: colors.light.card,
 		borderBottomWidth: 1,
 		borderBottomColor: colors.light.border,
+	},
+	messagesContainer: {
+		flex: 1,
+		backgroundColor: colors.light.background,
 	},
 	backButton: {
 		marginRight: 16,
@@ -333,6 +375,7 @@ const styles = StyleSheet.create({
 	messagesList: {
 		paddingHorizontal: 16,
 		paddingVertical: 16,
+		flexGrow: 1,
 	},
 	messageContainer: {
 		marginBottom: 12,
@@ -402,6 +445,15 @@ const styles = StyleSheet.create({
 		borderTopWidth: 1,
 		borderTopColor: colors.light.border,
 	},
+	gestureIndicator: {
+		width: 40,
+		height: 4,
+		borderRadius: 2,
+		backgroundColor: colors.light.mutedForeground,
+		opacity: 0.2,
+		alignSelf: 'center',
+		marginBottom: 8,
+	},
 	inputWrapper: {
 		flexDirection: 'row',
 		alignItems: 'flex-end',
@@ -411,13 +463,16 @@ const styles = StyleSheet.create({
 		paddingVertical: 8,
 		borderWidth: 1,
 		borderColor: colors.light.border,
+		minHeight: 50,
+		maxHeight: 120,
 	},
 	textInput: {
 		flex: 1,
 		fontSize: 16,
 		color: colors.light.foreground,
 		maxHeight: 100,
-		paddingVertical: 8,
+		paddingVertical: Platform.OS === 'ios' ? 8 : 4,
+		paddingRight: 8,
 	},
 	sendButton: {
 		width: 36,

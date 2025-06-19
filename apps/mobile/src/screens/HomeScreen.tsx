@@ -134,7 +134,9 @@ export default function HomeScreen() {
 						showsHorizontalScrollIndicator={false}
 						style={styles.carousel}
 					>
-						{featuredBooks.map(book => renderBookCard({ item: book }))}
+						{featuredBooks.map(book => (
+							<View key={book.id}>{renderBookCard({ item: book })}</View>
+						))}
 					</ScrollView>
 				)}
 			</View>
