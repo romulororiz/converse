@@ -15,8 +15,8 @@ export async function getFeaturedBooks(limit: number = 6): Promise<Book[]> {
 			.select(
 				`
 				*,
-				book_authors (
-					author: authors (*)
+				book_authors!inner (
+					authors (*)
 				)
 			`
 			)
@@ -32,7 +32,7 @@ export async function getFeaturedBooks(limit: number = 6): Promise<Book[]> {
 		const books =
 			data?.map(book => ({
 				...book,
-				author: book.book_authors?.[0]?.author,
+				author: book.book_authors?.[0]?.authors,
 			})) || [];
 
 		return books;
@@ -49,8 +49,8 @@ export async function getAllBooks(): Promise<Book[]> {
 			.select(
 				`
 				*,
-				book_authors (
-					author: authors (*)
+				book_authors!inner (
+					authors (*)
 				)
 			`
 			)
@@ -65,7 +65,7 @@ export async function getAllBooks(): Promise<Book[]> {
 		const books =
 			data?.map(book => ({
 				...book,
-				author: book.book_authors?.[0]?.author,
+				author: book.book_authors?.[0]?.authors,
 			})) || [];
 
 		return books;
@@ -82,8 +82,8 @@ export async function getBooksByCategory(category: string): Promise<Book[]> {
 			.select(
 				`
 				*,
-				book_authors (
-					author: authors (*)
+				book_authors!inner (
+					authors (*)
 				)
 			`
 			)
@@ -99,7 +99,7 @@ export async function getBooksByCategory(category: string): Promise<Book[]> {
 		const books =
 			data?.map(book => ({
 				...book,
-				author: book.book_authors?.[0]?.author,
+				author: book.book_authors?.[0]?.authors,
 			})) || [];
 
 		return books;
@@ -116,8 +116,8 @@ export async function searchBooks(query: string): Promise<Book[]> {
 			.select(
 				`
 				*,
-				book_authors (
-					author: authors (*)
+				book_authors!inner (
+					authors (*)
 				)
 			`
 			)
@@ -134,8 +134,8 @@ export async function searchBooks(query: string): Promise<Book[]> {
 			.from('authors')
 			.select(
 				`
-				books:book_authors (
-					book:books (*)
+				book_authors!inner (
+					books (*)
 				)
 			`
 			)
@@ -150,8 +150,8 @@ export async function searchBooks(query: string): Promise<Book[]> {
 		const authorBooks =
 			authorData
 				?.flatMap(author =>
-					author.books?.map(ba => ({
-						...ba.book,
+					author.book_authors?.map(ba => ({
+						...ba.books,
 						author: author,
 					}))
 				)
@@ -160,7 +160,7 @@ export async function searchBooks(query: string): Promise<Book[]> {
 		const books = [
 			...(bookData || []).map(book => ({
 				...book,
-				author: book.book_authors?.[0]?.author,
+				author: book.book_authors?.[0]?.authors,
 			})),
 			...authorBooks,
 		];
@@ -184,8 +184,8 @@ export async function getBookById(bookId: string): Promise<Book> {
 			.select(
 				`
 				*,
-				book_authors (
-					author: authors (*)
+				book_authors!inner (
+					authors (*)
 				)
 			`
 			)
@@ -200,7 +200,7 @@ export async function getBookById(bookId: string): Promise<Book> {
 		// Transform the data to match our Book interface
 		return {
 			...data,
-			author: data.book_authors?.[0]?.author || null,
+			author: data.book_authors?.[0]?.authors || null,
 		};
 	} catch (error) {
 		console.error('Error fetching book:', error);
