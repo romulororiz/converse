@@ -2,6 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '../utils/colors';
 
 import HomeScreen from '../screens/HomeScreen';
 import ChatScreen from '../screens/ChatScreen';
@@ -33,8 +34,16 @@ export default function AppNavigator() {
 
 						return <Ionicons name={iconName} size={size} color={color} />;
 					},
-					tabBarActiveTintColor: '#007AFF',
-					tabBarInactiveTintColor: 'gray',
+					tabBarActiveTintColor: colors.light.primary,
+					tabBarInactiveTintColor: colors.light.mutedForeground,
+					tabBarStyle: {
+						backgroundColor: colors.light.card,
+						borderTopColor: colors.light.border,
+					},
+					headerStyle: {
+						backgroundColor: colors.light.card,
+					},
+					headerTintColor: colors.light.foreground,
 				})}
 			>
 				<Tab.Screen name='Home' component={HomeScreen} />

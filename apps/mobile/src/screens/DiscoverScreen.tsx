@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { colors } from '../utils/colors';
 
 export default function DiscoverScreen() {
 	return (
@@ -15,15 +16,16 @@ const styles = StyleSheet.create({
 		flex: 1,
 		justifyContent: 'center',
 		alignItems: 'center',
-		backgroundColor: '#fff',
+		backgroundColor: colors.light.background,
 	},
 	title: {
 		fontSize: 24,
 		fontWeight: 'bold',
 		marginBottom: 10,
+		color: colors.light.foreground,
 	},
 	subtitle: {
 		fontSize: 16,
-		color: '#666',
+		color: colors.light.mutedForeground,
 	},
 });
