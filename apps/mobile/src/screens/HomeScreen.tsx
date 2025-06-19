@@ -146,11 +146,7 @@ export default function HomeScreen({ navigation }: any) {
 						onPress={() => navigation.navigate('Insights')}
 					>
 						<View style={styles.actionIcon}>
-							<Ionicons
-								name='analytics'
-								size={24}
-								color={colors.light.primary}
-							/>
+							<Ionicons name='journal' size={24} color={colors.light.primary} />
 						</View>
 						<Text style={styles.actionText}>View Insights</Text>
 					</TouchableOpacity>
