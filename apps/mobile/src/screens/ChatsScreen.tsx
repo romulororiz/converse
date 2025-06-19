@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors } from '../utils/colors';
 
-export default function ChatScreen() {
+export default function ChatsScreen() {
 	return (
 		<View style={styles.container}>
 			<Text style={styles.title}>Chat</Text>

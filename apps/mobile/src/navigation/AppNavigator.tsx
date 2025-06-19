@@ -8,7 +8,7 @@ import { useAuth } from '../components/AuthProvider';
 import { ActivityIndicator, View } from 'react-native';
 
 import HomeScreen from '../screens/HomeScreen';
-import ChatScreen from '../screens/ChatScreen';
+import ChatsScreen from '../screens/ChatsScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
 import InsightsScreen from '../screens/InsightsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -52,7 +52,7 @@ function TabNavigator() {
 
 					if (route.name === 'Home') {
 						iconName = focused ? 'home' : 'home-outline';
-					} else if (route.name === 'Chat') {
+					} else if (route.name === 'Chats') {
 						iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
 					} else if (route.name === 'Discover') {
 						iconName = focused ? 'search' : 'search-outline';
@@ -77,7 +77,7 @@ function TabNavigator() {
 			})}
 		>
 			<Tab.Screen name='Home' component={HomeStack} />
-			<Tab.Screen name='Chat' component={ChatScreen} />
+			<Tab.Screen name='Chats' component={ChatsScreen} />
 			<Tab.Screen name='Discover' component={DiscoverScreen} />
 			<Tab.Screen name='Insights' component={InsightsScreen} />
 			<Tab.Screen name='Profile' component={ProfileScreen} />
