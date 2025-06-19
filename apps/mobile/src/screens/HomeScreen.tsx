@@ -203,7 +203,7 @@ export default function HomeScreen({ navigation }: any) {
 			<View style={styles.section}>
 				<Text style={styles.sectionTitle}>Continue Reading</Text>
 				<View style={styles.continueReadingCard}>
-					<View style={styles.bookCover}>
+					<View style={styles.continueReadingCover}>
 						<Text style={styles.bookCoverText}>📖</Text>
 					</View>
 					<View style={styles.continueReadingInfo}>
@@ -373,9 +373,17 @@ const styles = StyleSheet.create({
 		padding: 16,
 		borderRadius: 12,
 	},
+	continueReadingCover: {
+		width: 80,
+		height: 120,
+		backgroundColor: colors.light.secondary,
+		borderRadius: 8,
+		alignItems: 'center',
+		justifyContent: 'center',
+		marginRight: 16,
+	},
 	continueReadingInfo: {
 		flex: 1,
-		marginLeft: 16,
 		justifyContent: 'space-between',
 	},
 	progressContainer: {
