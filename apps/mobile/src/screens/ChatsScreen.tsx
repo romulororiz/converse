@@ -14,7 +14,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
 import { useAuth } from '../components/AuthProvider';
 import { getUserChats, deleteChatSession } from '../services/chat';
-import { getChatSessions } from '../services/api';
 import { useNavigation } from '@react-navigation/native';
 import { Database } from '../lib/supabase';
 
@@ -30,7 +29,7 @@ export default function ChatsScreen() {
 	const [loading, setLoading] = useState(true);
 	const [searchQuery, setSearchQuery] = useState('');
 	const { user } = useAuth();
-	const navigation = useNavigation<any>();
+	const navigation = useNavigation();
 
 	useEffect(() => {
 		if (user?.id) {
@@ -41,7 +40,7 @@ export default function ChatsScreen() {
 	const loadChats = async () => {
 		try {
 			setLoading(true);
-			const chatSessions = await getChatSessions();
+			const chatSessions = await getUserChats(user!.id);
 			setChats(chatSessions);
 		} catch (error) {
 			console.error('Error loading chats:', error);

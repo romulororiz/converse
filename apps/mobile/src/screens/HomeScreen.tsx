@@ -11,7 +11,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
-import { getFeaturedBooks, Book } from '../services/books';
+import {
+	getFeaturedBooks,
+	Book,
+	checkAndPopulateDatabase,
+} from '../services/books';
 import { useNavigation } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
@@ -40,17 +44,21 @@ export default function HomeScreen() {
 	const navigation = useNavigation<NavigationProp>();
 
 	useEffect(() => {
-		loadFeaturedBooks();
+		loadData();
 	}, []);
 
-	const loadFeaturedBooks = async () => {
+	const loadData = async () => {
 		try {
 			setLoading(true);
-			const books = await getFeaturedBooks(6);
-			console.log('Loaded featured books:', books);
+
+			// Check and populate database if needed
+			await checkAndPopulateDatabase();
+
+			// Load featured books
+			const books = await getFeaturedBooks();
 			setFeaturedBooks(books);
 		} catch (error) {
-			console.error('Error loading featured books:', error);
+			console.error('Error loading data:', error);
 		} finally {
 			setLoading(false);
 		}
@@ -144,7 +152,7 @@ export default function HomeScreen() {
 						<ActivityIndicator size='large' color={colors.light.primary} />
 						<Text style={styles.loadingText}>Loading books...</Text>
 					</View>
-				) : featuredBooks.length > 0 ? (
+				) : (
 					<ScrollView
 						horizontal
 						showsHorizontalScrollIndicator={false}
@@ -152,12 +160,6 @@ export default function HomeScreen() {
 					>
 						{featuredBooks.map(book => renderBookCard({ item: book }))}
 					</ScrollView>
-				) : (
-					<View style={styles.emptyContainer}>
-						<Ionicons name="book-outline" size={48} color={colors.light.mutedForeground} />
-						<Text style={styles.emptyTitle}>No books available</Text>
-						<Text style={styles.emptySubtitle}>Check back later for new books</Text>
-					</View>
 				)}
 			</View>
 
@@ -425,21 +427,5 @@ const styles = StyleSheet.create({
 		fontSize: 12,
 		color: colors.light.primary,
 		fontWeight: '600',
-	},
-	emptyContainer: {
-		flex: 1,
-		justifyContent: 'center',
-		alignItems: 'center',
-	},
-	emptyTitle: {
-		fontSize: 20,
-		fontWeight: 'bold',
-		color: colors.light.foreground,
-		marginTop: 20,
-	},
-	emptySubtitle: {
-		fontSize: 16,
-		color: colors.light.mutedForeground,
-		marginTop: 10,
 	},
 });

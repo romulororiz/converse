@@ -21,10 +21,6 @@ import {
 	getOrCreateChatSession,
 } from '../services/chat';
 import { getBookById } from '../services/books';
-import {
-	getChatMessages as getChatMessagesAPI,
-	sendChatMessage,
-} from '../services/api';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Database } from '../lib/supabase';
 
@@ -70,8 +66,8 @@ export default function ChatDetailScreen() {
 			const session = await getOrCreateChatSession(user!.id, bookId);
 			setSessionId(session.id);
 
-			// Load messages using the API
-			const messagesData = await getChatMessagesAPI(bookId);
+			// Load messages
+			const messagesData = await getChatMessages(session.id);
 			setMessages(messagesData);
 		} catch (error) {
 			console.error('Error loading chat data:', error);
@@ -101,14 +97,18 @@ export default function ChatDetailScreen() {
 		setMessages(prev => [...prev, tempUserMessage]);
 
 		try {
-			// Send message using the API (this will handle both user and AI messages)
-			const response = await sendChatMessage(bookId, userMessage);
+			// Save user message
+			await sendMessage(sessionId, userMessage, 'user');
 
-			// Replace temporary message with real messages from API
-			setMessages(prev => [
-				...prev.filter(msg => !msg.id.startsWith('temp-')),
-				...response,
-			]);
+			// Simulate AI response (you'll need to implement the actual AI integration)
+			const aiResponse = await generateAIResponse(userMessage, messages);
+
+			// Save AI response
+			await sendMessage(sessionId, aiResponse, 'assistant');
+
+			// Reload messages to get the real IDs
+			const updatedMessages = await getChatMessages(sessionId);
+			setMessages(updatedMessages);
 		} catch (error) {
 			console.error('Error sending message:', error);
 			Alert.alert('Error', 'Failed to send message');
@@ -117,6 +117,23 @@ export default function ChatDetailScreen() {
 		} finally {
 			setSending(false);
 		}
+	};
+
+	const generateAIResponse = async (
+		userMessage: string,
+		conversationHistory: Message[]
+	): Promise<string> => {
+		// This is a placeholder - you'll need to implement the actual AI integration
+		// For now, return a simple response
+		const responses = [
+			"That's an interesting perspective on this book! What specific aspects caught your attention?",
+			"I love how you're engaging with the text. Have you considered the author's background and how it might influence the narrative?",
+			"That's a great question about the book. Let me share some insights about this particular theme...",
+			'Your observation is quite insightful. This book does explore some fascinating themes. What other books have you read that touch on similar topics?',
+			"I appreciate your thoughtful analysis. The author's use of language here is particularly noteworthy. What do you think about the writing style?",
+		];
+
+		return responses[Math.floor(Math.random() * responses.length)];
 	};
 
 	const renderMessage = ({ item, index }: { item: Message; index: number }) => {
