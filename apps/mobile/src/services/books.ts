@@ -10,12 +10,15 @@ export interface Book extends BookRow {
 
 export async function getFeaturedBooks(limit: number = 6): Promise<Book[]> {
 	try {
+		console.log('Fetching featured books...');
+		console.log('Supabase client:', supabase);
+
 		const { data, error } = await supabase
 			.from('books')
 			.select(
 				`
 				*,
-				book_authors!inner (
+				book_authors (
 					authors (*)
 				)
 			`
@@ -28,6 +31,9 @@ export async function getFeaturedBooks(limit: number = 6): Promise<Book[]> {
 			return [];
 		}
 
+		console.log('Raw books data:', data);
+		console.log('Number of books found:', data?.length || 0);
+
 		// Transform the data to match our Book interface
 		const books =
 			data?.map(book => ({
@@ -35,6 +41,7 @@ export async function getFeaturedBooks(limit: number = 6): Promise<Book[]> {
 				author: book.book_authors?.[0]?.authors,
 			})) || [];
 
+		console.log('Transformed books:', books);
 		return books;
 	} catch (error) {
 		console.error('Error fetching featured books:', error);
@@ -205,5 +212,22 @@ export async function getBookById(bookId: string): Promise<Book> {
 	} catch (error) {
 		console.error('Error fetching book:', error);
 		throw error;
+	}
+}
+
+export async function checkBooksExist(): Promise<boolean> {
+	try {
+		const { data, error } = await supabase.from('books').select('id').limit(1);
+
+		if (error) {
+			console.error('Error checking books:', error);
+			return false;
+		}
+
+		console.log('Books exist check:', data);
+		return data && data.length > 0;
+	} catch (error) {
+		console.error('Error checking books:', error);
+		return false;
 	}
 }

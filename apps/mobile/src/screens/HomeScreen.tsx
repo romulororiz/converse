@@ -47,6 +47,7 @@ export default function HomeScreen() {
 		try {
 			setLoading(true);
 			const books = await getFeaturedBooks(6);
+			console.log('Loaded featured books:', books);
 			setFeaturedBooks(books);
 		} catch (error) {
 			console.error('Error loading featured books:', error);
@@ -143,7 +144,7 @@ export default function HomeScreen() {
 						<ActivityIndicator size='large' color={colors.light.primary} />
 						<Text style={styles.loadingText}>Loading books...</Text>
 					</View>
-				) : (
+				) : featuredBooks.length > 0 ? (
 					<ScrollView
 						horizontal
 						showsHorizontalScrollIndicator={false}
@@ -151,6 +152,12 @@ export default function HomeScreen() {
 					>
 						{featuredBooks.map(book => renderBookCard({ item: book }))}
 					</ScrollView>
+				) : (
+					<View style={styles.emptyContainer}>
+						<Ionicons name="book-outline" size={48} color={colors.light.mutedForeground} />
+						<Text style={styles.emptyTitle}>No books available</Text>
+						<Text style={styles.emptySubtitle}>Check back later for new books</Text>
+					</View>
 				)}
 			</View>
 
@@ -418,5 +425,21 @@ const styles = StyleSheet.create({
 		fontSize: 12,
 		color: colors.light.primary,
 		fontWeight: '600',
+	},
+	emptyContainer: {
+		flex: 1,
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	emptyTitle: {
+		fontSize: 20,
+		fontWeight: 'bold',
+		color: colors.light.foreground,
+		marginTop: 20,
+	},
+	emptySubtitle: {
+		fontSize: 16,
+		color: colors.light.mutedForeground,
+		marginTop: 10,
 	},
 });
