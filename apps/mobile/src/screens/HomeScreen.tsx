@@ -57,8 +57,8 @@ export default function HomeScreen({ navigation }: any) {
 			]}
 		>
 			<View style={styles.bookCover}>
-				{book.coverImage ? (
-					<Image source={{ uri: book.coverImage }} style={styles.bookImage} />
+				{book.cover_url ? (
+					<Image source={{ uri: book.cover_url }} style={styles.bookImage} />
 				) : (
 					<Text style={styles.bookCoverText}>📚</Text>
 				)}
@@ -67,7 +67,7 @@ export default function HomeScreen({ navigation }: any) {
 				{book.title}
 			</Text>
 			<Text style={styles.bookAuthor} numberOfLines={1}>
-				{book.author}
+				{book.author?.name || 'Unknown Author'}
 			</Text>
 		</TouchableOpacity>
 	);
@@ -137,52 +137,6 @@ export default function HomeScreen({ navigation }: any) {
 						{featuredBooks.map(book => renderBookCard(book, 'large'))}
 					</ScrollView>
 				)}
-			</View>
-
-			{/* Quick Actions */}
-			<View style={styles.section}>
-				<Text style={styles.sectionTitle}>Quick Actions</Text>
-				<View style={styles.quickActions}>
-					<TouchableOpacity
-						style={styles.actionButton}
-						onPress={() => navigation.navigate('Chat')}
-					>
-						<View style={styles.actionIcon}>
-							<Ionicons
-								name='chatbubbles'
-								size={24}
-								color={colors.light.primary}
-							/>
-						</View>
-						<Text style={styles.actionText}>Start Chat</Text>
-					</TouchableOpacity>
-					<TouchableOpacity
-						style={styles.actionButton}
-						onPress={() => navigation.navigate('Insights')}
-					>
-						<View style={styles.actionIcon}>
-							<Ionicons
-								name='analytics'
-								size={24}
-								color={colors.light.primary}
-							/>
-						</View>
-						<Text style={styles.actionText}>View Insights</Text>
-					</TouchableOpacity>
-					<TouchableOpacity
-						style={styles.actionButton}
-						onPress={() => navigation.navigate('Preferences')}
-					>
-						<View style={styles.actionIcon}>
-							<Ionicons
-								name='settings'
-								size={24}
-								color={colors.light.primary}
-							/>
-						</View>
-						<Text style={styles.actionText}>Settings</Text>
-					</TouchableOpacity>
-				</View>
 			</View>
 
 			{/* Categories */}
@@ -269,6 +223,7 @@ const styles = StyleSheet.create({
 	},
 	section: {
 		padding: 20,
+		overflow: 'visible',
 	},
 	sectionHeader: {
 		flexDirection: 'row',
@@ -290,6 +245,8 @@ const styles = StyleSheet.create({
 	carousel: {
 		marginLeft: -20,
 		paddingLeft: 20,
+		paddingRight: 0,
+		marginRight: -20,
 	},
 	bookCard: {
 		width: 120,

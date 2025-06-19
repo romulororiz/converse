@@ -1,41 +1,38 @@
 import { supabase } from '../lib/supabase';
+import { Database } from '../lib/supabase';
 
-export interface Book {
-	id: string;
-	title: string;
-	author: string;
-	description: string;
-	coverImage: string;
-	topics: string[];
-	rating: number;
-	year: number;
-	pages: number;
-	language: string;
-	isbn: string;
-	publisher: string;
-	price: number;
-	currency: string;
-	availableFormats: string[];
-	bestseller: boolean;
-	awards?: string[];
-	quotes?: string[];
+type BookRow = Database['public']['Tables']['books']['Row'];
+type AuthorRow = Database['public']['Tables']['authors']['Row'];
+
+export interface Book extends BookRow {
+	author?: AuthorRow;
 }
 
 export async function getFeaturedBooks(limit: number = 6): Promise<Book[]> {
 	try {
 		const { data, error } = await supabase
 			.from('books')
-			.select('*')
-			.eq('bestseller', true)
+			.select(`
+				*,
+				book_authors (
+					author: authors (*)
+				)
+			`)
 			.limit(limit)
-			.order('rating', { ascending: false });
+			.order('created_at', { ascending: false });
 
 		if (error) {
 			console.error('Error fetching featured books:', error);
 			return [];
 		}
 
-		return data || [];
+		// Transform the data to match our Book interface
+		const books = data?.map(book => ({
+			...book,
+			author: book.book_authors?.[0]?.author
+		})) || [];
+
+		return books;
 	} catch (error) {
 		console.error('Error fetching featured books:', error);
 		return [];
@@ -46,7 +43,12 @@ export async function getAllBooks(): Promise<Book[]> {
 	try {
 		const { data, error } = await supabase
 			.from('books')
-			.select('*')
+			.select(`
+				*,
+				book_authors (
+					author: authors (*)
+				)
+			`)
 			.order('title', { ascending: true });
 
 		if (error) {
@@ -54,7 +56,13 @@ export async function getAllBooks(): Promise<Book[]> {
 			return [];
 		}
 
-		return data || [];
+		// Transform the data to match our Book interface
+		const books = data?.map(book => ({
+			...book,
+			author: book.book_authors?.[0]?.author
+		})) || [];
+
+		return books;
 	} catch (error) {
 		console.error('Error fetching all books:', error);
 		return [];
@@ -65,16 +73,27 @@ export async function getBooksByCategory(category: string): Promise<Book[]> {
 	try {
 		const { data, error } = await supabase
 			.from('books')
-			.select('*')
-			.contains('topics', [category])
-			.order('rating', { ascending: false });
+			.select(`
+				*,
+				book_authors (
+					author: authors (*)
+				)
+			`)
+			.contains('metadata->>categories', [category])
+			.order('created_at', { ascending: false });
 
 		if (error) {
 			console.error('Error fetching books by category:', error);
 			return [];
 		}
 
-		return data || [];
+		// Transform the data to match our Book interface
+		const books = data?.map(book => ({
+			...book,
+			author: book.book_authors?.[0]?.author
+		})) || [];
+
+		return books;
 	} catch (error) {
 		console.error('Error fetching books by category:', error);
 		return [];
@@ -83,18 +102,54 @@ export async function getBooksByCategory(category: string): Promise<Book[]> {
 
 export async function searchBooks(query: string): Promise<Book[]> {
 	try {
-		const { data, error } = await supabase
+		const { data: bookData, error: bookError } = await supabase
 			.from('books')
-			.select('*')
-			.or(`title.ilike.%${query}%,author.ilike.%${query}%`)
-			.order('rating', { ascending: false });
+			.select(`
+				*,
+				book_authors (
+					author: authors (*)
+				)
+			`)
+			.or(`title.ilike.%${query}%`)
+			.order('created_at', { ascending: false });
 
-		if (error) {
-			console.error('Error searching books:', error);
+		if (bookError) {
+			console.error('Error searching books:', bookError);
 			return [];
 		}
 
-		return data || [];
+		// Also search in authors
+		const { data: authorData, error: authorError } = await supabase
+			.from('authors')
+			.select(`
+				books:book_authors (
+					book:books (*)
+				)
+			`)
+			.ilike('name', `%${query}%`);
+
+		if (authorError) {
+			console.error('Error searching authors:', authorError);
+			return [];
+		}
+
+		// Combine and deduplicate results
+		const authorBooks = authorData?.flatMap(author => 
+			author.books?.map(ba => ({
+				...ba.book,
+				author: author
+			}))
+		).filter(Boolean) || [];
+
+		const books = [...(bookData || []).map(book => ({
+			...book,
+			author: book.book_authors?.[0]?.author
+		})), ...authorBooks];
+
+		// Remove duplicates
+		const uniqueBooks = Array.from(new Map(books.map(book => [book.id, book])).values());
+
+		return uniqueBooks;
 	} catch (error) {
 		console.error('Error searching books:', error);
 		return [];

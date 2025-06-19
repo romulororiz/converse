@@ -61,8 +61,8 @@ export default function BooksListScreen({ navigation }: any) {
 	const renderBookItem = ({ item }: { item: Book }) => (
 		<TouchableOpacity style={styles.bookItem}>
 			<View style={styles.bookCover}>
-				{item.coverImage ? (
-					<Image source={{ uri: item.coverImage }} style={styles.bookImage} />
+				{item.cover_url ? (
+					<Image source={{ uri: item.cover_url }} style={styles.bookImage} />
 				) : (
 					<View style={styles.bookPlaceholder}>
 						<Text style={styles.bookPlaceholderText}>📚</Text>
@@ -74,14 +74,18 @@ export default function BooksListScreen({ navigation }: any) {
 					{item.title}
 				</Text>
 				<Text style={styles.bookAuthor} numberOfLines={1}>
-					{item.author}
+					{item.author?.name || 'Unknown Author'}
 				</Text>
 				<View style={styles.bookMeta}>
 					<View style={styles.ratingContainer}>
 						<Ionicons name='star' size={12} color={colors.light.primary} />
-						<Text style={styles.ratingText}>{item.rating}</Text>
+						<Text style={styles.ratingText}>
+							{(item.metadata as any)?.rating || 'N/A'}
+						</Text>
 					</View>
-					<Text style={styles.yearText}>{item.year}</Text>
+					<Text style={styles.yearText}>
+						{(item.metadata as any)?.year || 'N/A'}
+					</Text>
 				</View>
 				<Text style={styles.bookDescription} numberOfLines={2}>
 					{item.description}
