@@ -1,6 +1,11 @@
-import React from 'react';
+import 'react-native-url-polyfill/auto';
+import { AuthProvider } from './src/components/AuthProvider';
 import AppNavigator from './src/navigation/AppNavigator';
 
 export default function App() {
-	return <AppNavigator />;
+	return (
+		<AuthProvider>
+			<AppNavigator />
+		</AuthProvider>
+	);
 }
