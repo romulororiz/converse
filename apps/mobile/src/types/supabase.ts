@@ -50,3 +50,4 @@ export type ChatSession = {
 	created_at: string;
 	updated_at: string;
 };
+ 
