@@ -1,12 +1,11 @@
 import { supabase } from '../lib/supabase';
 import { Database } from '../lib/supabase';
+import { Book } from '../types/supabase';
 
 type BookRow = Database['public']['Tables']['books']['Row'];
 type AuthorRow = Database['public']['Tables']['authors']['Row'];
 
-export interface Book extends BookRow {
-	author?: AuthorRow;
-}
+
 
 export async function getFeaturedBooks(limit: number = 6): Promise<Book[]> {
 	try {
@@ -14,28 +13,21 @@ export async function getFeaturedBooks(limit: number = 6): Promise<Book[]> {
 			.from('books')
 			.select(
 				`
-				*,
-				book_authors (
-					author: authors (*)
-				)
+				*
 			`
 			)
 			.limit(limit)
 			.order('created_at', { ascending: false });
+
+		console.log('data', data);
 
 		if (error) {
 			console.error('Error fetching featured books:', error);
 			return [];
 		}
 
-		// Transform the data to match our Book interface
-		const books =
-			data?.map(book => ({
-				...book,
-				author: book.book_authors?.[0]?.author,
-			})) || [];
+		return data;
 
-		return books;
 	} catch (error) {
 		console.error('Error fetching featured books:', error);
 		return [];
@@ -48,10 +40,7 @@ export async function getAllBooks(): Promise<Book[]> {
 			.from('books')
 			.select(
 				`
-				*,
-				book_authors (
-					author: authors (*)
-				)
+				*
 			`
 			)
 			.order('title', { ascending: true });
@@ -81,10 +70,7 @@ export async function getBooksByCategory(category: string): Promise<Book[]> {
 			.from('books')
 			.select(
 				`
-				*,
-				book_authors (
-					author: authors (*)
-				)
+				*
 			`
 			)
 			.contains('metadata->>categories', [category])
@@ -115,10 +101,7 @@ export async function searchBooks(query: string): Promise<Book[]> {
 			.from('books')
 			.select(
 				`
-				*,
-				book_authors (
-					author: authors (*)
-				)
+				*
 			`
 			)
 			.or(`title.ilike.%${query}%`)
@@ -134,8 +117,8 @@ export async function searchBooks(query: string): Promise<Book[]> {
 			.from('authors')
 			.select(
 				`
-				books:book_authors (
-					book:books (*)
+				books (
+					*
 				)
 			`
 			)
@@ -183,10 +166,7 @@ export async function getBookById(bookId: string): Promise<Book | null> {
 			.from('books')
 			.select(
 				`
-				*,
-				book_authors (
-					author: authors (*)
-				)
+				*
 			`
 			)
 			.eq('id', bookId)

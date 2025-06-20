@@ -11,8 +11,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
-import { getFeaturedBooks, Book } from '../services/books';
+import { getFeaturedBooks } from '../services/books';
 import { useNavigation } from '@react-navigation/native';
+import { Book } from '../types/supabase';
 
 const { width } = Dimensions.get('window');
 
@@ -34,6 +35,8 @@ export default function HomeScreen() {
 	const [recommendedBooks, setRecommendedBooks] = useState<Book[]>([]);
 	const [loading, setLoading] = useState(true);
 	const navigation = useNavigation<NavigationProp>();
+
+	console.log('featuredBooks', featuredBooks);
 
 	useEffect(() => {
 		loadFeaturedBooks();
@@ -67,7 +70,7 @@ export default function HomeScreen() {
 				{item.title}
 			</Text>
 			<Text style={styles.bookAuthor} numberOfLines={1}>
-				{item.author?.name || 'Unknown Author'}
+				{item?.author || 'Unknown Author'}
 			</Text>
 		</TouchableOpacity>
 	);
@@ -271,6 +274,8 @@ const styles = StyleSheet.create({
 		fontWeight: '600',
 		color: colors.light.foreground,
 		marginBottom: 4,
+		height: 40,
+		width: 90,
 	},
 	bookAuthor: {
 		fontSize: 12,

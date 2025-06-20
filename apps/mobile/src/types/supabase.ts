@@ -27,7 +27,7 @@ export type Book = {
 	metadata?: Json | null;
 	created_at: string;
 	updated_at: string;
-	author?: Author | null;
+	author: string;
 	slug?: string | null;
 	book_authors?: { author: Author }[];
 };
