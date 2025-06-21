@@ -5,8 +5,6 @@ import { Book } from '../types/supabase';
 type BookRow = Database['public']['Tables']['books']['Row'];
 type AuthorRow = Database['public']['Tables']['authors']['Row'];
 
-
-
 export async function getFeaturedBooks(limit: number = 6): Promise<Book[]> {
 	try {
 		const { data, error } = await supabase
@@ -19,15 +17,12 @@ export async function getFeaturedBooks(limit: number = 6): Promise<Book[]> {
 			.limit(limit)
 			.order('created_at', { ascending: false });
 
-		console.log('data', data);
-
 		if (error) {
 			console.error('Error fetching featured books:', error);
 			return [];
 		}
 
 		return data;
-
 	} catch (error) {
 		console.error('Error fetching featured books:', error);
 		return [];
@@ -50,14 +45,7 @@ export async function getAllBooks(): Promise<Book[]> {
 			return [];
 		}
 
-		// Transform the data to match our Book interface
-		const books =
-			data?.map(book => ({
-				...book,
-				author: book.book_authors?.[0]?.author,
-			})) || [];
-
-		return books;
+		return data;
 	} catch (error) {
 		console.error('Error fetching all books:', error);
 		return [];
@@ -81,14 +69,7 @@ export async function getBooksByCategory(category: string): Promise<Book[]> {
 			return [];
 		}
 
-		// Transform the data to match our Book interface
-		const books =
-			data?.map(book => ({
-				...book,
-				author: book.book_authors?.[0]?.author,
-			})) || [];
-
-		return books;
+		return data;
 	} catch (error) {
 		console.error('Error fetching books by category:', error);
 		return [];
@@ -97,60 +78,54 @@ export async function getBooksByCategory(category: string): Promise<Book[]> {
 
 export async function searchBooks(query: string): Promise<Book[]> {
 	try {
-		const { data: bookData, error: bookError } = await supabase
+		// Search books by title or direct author field
+		const { data: directBooks, error: directError } = await supabase
 			.from('books')
-			.select(
-				`
-				*
-			`
-			)
-			.or(`title.ilike.%${query}%`)
+			.select('*')
+			.or(`title.ilike.%${query}%,author.ilike.%${query}%`)
 			.order('created_at', { ascending: false });
 
-		if (bookError) {
-			console.error('Error searching books:', bookError);
-			return [];
+		if (directError) {
+			console.error('Error searching books directly:', directError);
 		}
 
-		// Also search in authors
-		const { data: authorData, error: authorError } = await supabase
-			.from('authors')
+		// Search books through the book_authors relationship
+		const { data: authorBooks, error: authorError } = await supabase
+			.from('book_authors')
 			.select(
 				`
-				books (
-					*
-				)
+				books (*),
+				authors (*)
 			`
 			)
-			.ilike('name', `%${query}%`);
+			.or(`authors.full_name.ilike.%${query}%`);
 
 		if (authorError) {
-			console.error('Error searching authors:', authorError);
-			return [];
+			console.error('Error searching books by authors:', authorError);
 		}
 
-		// Combine and deduplicate results
-		const authorBooks =
-			authorData
-				?.flatMap(author =>
-					author.books?.map(ba => ({
-						...ba.book,
-						author: author,
-					}))
-				)
-				.filter(Boolean) || [];
+		// Combine results
+		const allBooks: Book[] = [];
 
-		const books = [
-			...(bookData || []).map(book => ({
-				...book,
-				author: book.book_authors?.[0]?.author,
-			})),
-			...authorBooks,
-		];
+		// Add direct search results
+		if (directBooks) {
+			allBooks.push(...directBooks);
+		}
 
-		// Remove duplicates
-		const uniqueBooks = Array.from(
-			new Map(books.map(book => [book.id, book])).values()
+		// Add books found through author relationships
+		if (authorBooks) {
+			const booksFromAuthors = authorBooks
+				.map((item: any) => item.books)
+				.filter((book: any) => book !== null) as Book[];
+			allBooks.push(...booksFromAuthors);
+		}
+
+		// Remove duplicates based on book ID and sort by created_at
+		const uniqueBooks = [
+			...new Map(allBooks.map(item => [item.id, item])).values(),
+		].sort(
+			(a, b) =>
+				new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
 		);
 
 		return uniqueBooks;
@@ -177,11 +152,7 @@ export async function getBookById(bookId: string): Promise<Book | null> {
 			return null;
 		}
 
-		// Transform the data to match our Book interface
-		return {
-			...data,
-			author: data.book_authors?.[0]?.author || null,
-		};
+		return data;
 	} catch (error) {
 		console.error('Error in getBookById:', error);
 		return null;

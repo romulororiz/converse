@@ -8,15 +8,17 @@ import {
 	Image,
 	TextInput,
 	ActivityIndicator,
-	Alert,
 	RefreshControl,
+	SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
+import { showAlert } from '../utils/alert';
 import { useAuth } from '../components/AuthProvider';
 import { getUserChats, deleteChatSession } from '../services/chat';
 import { useNavigation } from '@react-navigation/native';
 import { formatDistanceToNow } from 'date-fns';
+import { BookCover } from '../components/BookCover';
 
 type ChatSession = {
 	id: string;
@@ -55,7 +57,7 @@ export default function ChatsScreen() {
 			setChats(chatSessions);
 		} catch (error) {
 			console.error('Error loading chats:', error);
-			Alert.alert('Error', 'Failed to load conversations');
+			showAlert('Error', 'Failed to load conversations');
 		} finally {
 			setLoading(false);
 		}
@@ -68,7 +70,7 @@ export default function ChatsScreen() {
 	};
 
 	const handleDeleteChat = async (chatId: string) => {
-		Alert.alert(
+		showAlert(
 			'Delete Conversation',
 			'Are you sure you want to delete this conversation? This action cannot be undone.',
 			[
@@ -78,11 +80,12 @@ export default function ChatsScreen() {
 					style: 'destructive',
 					onPress: async () => {
 						try {
+							console.log('Deleting chat:', chatId);
 							await deleteChatSession(chatId);
 							setChats(prev => prev.filter(chat => chat.id !== chatId));
 						} catch (error) {
 							console.error('Error deleting chat:', error);
-							Alert.alert('Error', 'Failed to delete conversation');
+							showAlert('Error', 'Failed to delete conversation');
 						}
 					},
 				},
@@ -104,22 +107,12 @@ export default function ChatsScreen() {
 			onLongPress={() => handleDeleteChat(item.id)}
 		>
 			<View style={styles.chatContent}>
-				<View style={styles.bookCover}>
-					{item.books?.cover_url ? (
-						<Image
-							source={{ uri: item.books.cover_url }}
-							style={styles.bookImage}
-						/>
-					) : (
-						<View style={styles.bookPlaceholder}>
-							<Ionicons
-								name='book-outline'
-								size={24}
-								color={colors.light.mutedForeground}
-							/>
-						</View>
-					)}
-				</View>
+				<BookCover
+					uri={item.books?.cover_url}
+					style={styles.bookCover}
+					placeholderIcon='book-outline'
+					placeholderSize={24}
+				/>
 
 				<View style={styles.chatInfo}>
 					<Text style={styles.bookTitle} numberOfLines={1}>
@@ -134,7 +127,10 @@ export default function ChatsScreen() {
 
 				<TouchableOpacity
 					style={styles.deleteButton}
-					onPress={() => handleDeleteChat(item.id)}
+					onPress={() => {
+						console.log('Trash button pressed for chat:', item.id);
+						handleDeleteChat(item.id);
+					}}
 				>
 					<Ionicons
 						name='trash-outline'
@@ -171,7 +167,7 @@ export default function ChatsScreen() {
 	}
 
 	return (
-		<View style={styles.container}>
+		<SafeAreaView style={styles.container}>
 			<View style={styles.header}>
 				<Text style={styles.title}>Your Conversations</Text>
 				<Text style={styles.subtitle}>Continue your literary journey</Text>
@@ -221,7 +217,7 @@ export default function ChatsScreen() {
 					showsVerticalScrollIndicator={false}
 				/>
 			)}
-		</View>
+		</SafeAreaView>
 	);
 }
 
@@ -229,10 +225,10 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 		backgroundColor: colors.light.background,
-		paddingTop: 60,
 	},
 	header: {
 		padding: 20,
+		paddingTop: 20,
 		paddingBottom: 16,
 	},
 	title: {
@@ -274,6 +270,10 @@ const styles = StyleSheet.create({
 		marginBottom: 12,
 		borderWidth: 1,
 		borderColor: colors.light.border,
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.15,
+		shadowRadius: 3.84,
+		elevation: 5,
 	},
 	chatContent: {
 		flexDirection: 'row',

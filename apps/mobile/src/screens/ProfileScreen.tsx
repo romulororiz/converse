@@ -9,6 +9,7 @@ import {
 	Switch,
 	Alert,
 	ActivityIndicator,
+	SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
@@ -102,187 +103,192 @@ export default function ProfileScreen() {
 	}
 
 	return (
-		<ScrollView style={styles.container}>
-			<View style={styles.header}>
-				<View style={styles.profileSection}>
-					<View style={styles.avatarContainer}>
-						{profile?.avatar_url ? (
-							<Image
-								source={{ uri: profile.avatar_url }}
-								style={styles.avatar}
-							/>
-						) : (
-							<View style={styles.avatarPlaceholder}>
-								<Text style={styles.avatarText}>
-									{profile?.full_name?.[0]?.toUpperCase() || '?'}
-								</Text>
-							</View>
-						)}
-						<TouchableOpacity style={styles.editAvatarButton}>
+		<SafeAreaView style={styles.safeArea}>
+			<ScrollView style={styles.container}>
+				<View style={styles.header}>
+					<View style={styles.profileSection}>
+						<View style={styles.avatarContainer}>
+							{profile?.avatar_url ? (
+								<Image
+									source={{ uri: profile.avatar_url }}
+									style={styles.avatar}
+								/>
+							) : (
+								<View style={styles.avatarPlaceholder}>
+									<Text style={styles.avatarText}>
+										{profile?.full_name?.[0]?.toUpperCase() || '?'}
+									</Text>
+								</View>
+							)}
+							<TouchableOpacity style={styles.editAvatarButton}>
+								<Ionicons
+									name='camera-outline'
+									size={20}
+									color={colors.light.primaryForeground}
+								/>
+							</TouchableOpacity>
+						</View>
+						<Text style={styles.name}>{profile?.full_name || 'Anonymous'}</Text>
+						<Text style={styles.email}>{profile?.email}</Text>
+					</View>
+				</View>
+
+				<View style={styles.section}>
+					<Text style={styles.sectionTitle}>Reading Preferences</Text>
+					<View style={styles.preferenceItem}>
+						<View style={styles.preferenceInfo}>
 							<Ionicons
-								name='camera-outline'
-								size={20}
-								color={colors.light.primaryForeground}
+								name='notifications-outline'
+								size={24}
+								color={colors.light.foreground}
 							/>
-						</TouchableOpacity>
-					</View>
-					<Text style={styles.name}>{profile?.full_name || 'Anonymous'}</Text>
-					<Text style={styles.email}>{profile?.email}</Text>
-				</View>
-			</View>
-
-			<View style={styles.section}>
-				<Text style={styles.sectionTitle}>Reading Preferences</Text>
-				<View style={styles.preferenceItem}>
-					<View style={styles.preferenceInfo}>
-						<Ionicons
-							name='notifications-outline'
-							size={24}
-							color={colors.light.foreground}
+							<Text style={styles.preferenceText}>Push Notifications</Text>
+						</View>
+						<Switch
+							value={preferences.notifications}
+							onValueChange={value =>
+								handlePreferenceChange('notifications', value)
+							}
+							trackColor={{
+								false: colors.light.border,
+								true: colors.light.primary,
+							}}
 						/>
-						<Text style={styles.preferenceText}>Push Notifications</Text>
 					</View>
-					<Switch
-						value={preferences.notifications}
-						onValueChange={value =>
-							handlePreferenceChange('notifications', value)
-						}
-						trackColor={{
-							false: colors.light.border,
-							true: colors.light.primary,
-						}}
-					/>
+
+					<View style={styles.preferenceItem}>
+						<View style={styles.preferenceInfo}>
+							<Ionicons
+								name='moon-outline'
+								size={24}
+								color={colors.light.foreground}
+							/>
+							<Text style={styles.preferenceText}>Dark Mode</Text>
+						</View>
+						<Switch
+							value={preferences.darkMode}
+							onValueChange={value => handlePreferenceChange('darkMode', value)}
+							trackColor={{
+								false: colors.light.border,
+								true: colors.light.primary,
+							}}
+						/>
+					</View>
+
+					<View style={styles.preferenceItem}>
+						<View style={styles.preferenceInfo}>
+							<Ionicons
+								name='mail-outline'
+								size={24}
+								color={colors.light.foreground}
+							/>
+							<Text style={styles.preferenceText}>Email Updates</Text>
+						</View>
+						<Switch
+							value={preferences.emailUpdates}
+							onValueChange={value =>
+								handlePreferenceChange('emailUpdates', value)
+							}
+							trackColor={{
+								false: colors.light.border,
+								true: colors.light.primary,
+							}}
+						/>
+					</View>
+
+					<View style={styles.preferenceItem}>
+						<View style={styles.preferenceInfo}>
+							<Ionicons
+								name='trophy-outline'
+								size={24}
+								color={colors.light.foreground}
+							/>
+							<Text style={styles.preferenceText}>Reading Goals</Text>
+						</View>
+						<Switch
+							value={preferences.readingGoals}
+							onValueChange={value =>
+								handlePreferenceChange('readingGoals', value)
+							}
+							trackColor={{
+								false: colors.light.border,
+								true: colors.light.primary,
+							}}
+						/>
+					</View>
 				</View>
 
-				<View style={styles.preferenceItem}>
-					<View style={styles.preferenceInfo}>
+				<View style={styles.section}>
+					<Text style={styles.sectionTitle}>Account</Text>
+					<TouchableOpacity style={styles.menuItem}>
+						<View style={styles.menuInfo}>
+							<Ionicons
+								name='person-outline'
+								size={24}
+								color={colors.light.foreground}
+							/>
+							<Text style={styles.menuText}>Edit Profile</Text>
+						</View>
 						<Ionicons
-							name='moon-outline'
+							name='chevron-forward'
 							size={24}
-							color={colors.light.foreground}
+							color={colors.light.mutedForeground}
 						/>
-						<Text style={styles.preferenceText}>Dark Mode</Text>
-					</View>
-					<Switch
-						value={preferences.darkMode}
-						onValueChange={value => handlePreferenceChange('darkMode', value)}
-						trackColor={{
-							false: colors.light.border,
-							true: colors.light.primary,
-						}}
-					/>
+					</TouchableOpacity>
+
+					<TouchableOpacity style={styles.menuItem}>
+						<View style={styles.menuInfo}>
+							<Ionicons
+								name='key-outline'
+								size={24}
+								color={colors.light.foreground}
+							/>
+							<Text style={styles.menuText}>Change Password</Text>
+						</View>
+						<Ionicons
+							name='chevron-forward'
+							size={24}
+							color={colors.light.mutedForeground}
+						/>
+					</TouchableOpacity>
+
+					<TouchableOpacity style={styles.menuItem}>
+						<View style={styles.menuInfo}>
+							<Ionicons
+								name='shield-outline'
+								size={24}
+								color={colors.light.foreground}
+							/>
+							<Text style={styles.menuText}>Privacy Settings</Text>
+						</View>
+						<Ionicons
+							name='chevron-forward'
+							size={24}
+							color={colors.light.mutedForeground}
+						/>
+					</TouchableOpacity>
 				</View>
 
-				<View style={styles.preferenceItem}>
-					<View style={styles.preferenceInfo}>
-						<Ionicons
-							name='mail-outline'
-							size={24}
-							color={colors.light.foreground}
-						/>
-						<Text style={styles.preferenceText}>Email Updates</Text>
-					</View>
-					<Switch
-						value={preferences.emailUpdates}
-						onValueChange={value =>
-							handlePreferenceChange('emailUpdates', value)
-						}
-						trackColor={{
-							false: colors.light.border,
-							true: colors.light.primary,
-						}}
-					/>
-				</View>
-
-				<View style={styles.preferenceItem}>
-					<View style={styles.preferenceInfo}>
-						<Ionicons
-							name='trophy-outline'
-							size={24}
-							color={colors.light.foreground}
-						/>
-						<Text style={styles.preferenceText}>Reading Goals</Text>
-					</View>
-					<Switch
-						value={preferences.readingGoals}
-						onValueChange={value =>
-							handlePreferenceChange('readingGoals', value)
-						}
-						trackColor={{
-							false: colors.light.border,
-							true: colors.light.primary,
-						}}
-					/>
-				</View>
-			</View>
-
-			<View style={styles.section}>
-				<Text style={styles.sectionTitle}>Account</Text>
-				<TouchableOpacity style={styles.menuItem}>
-					<View style={styles.menuInfo}>
-						<Ionicons
-							name='person-outline'
-							size={24}
-							color={colors.light.foreground}
-						/>
-						<Text style={styles.menuText}>Edit Profile</Text>
-					</View>
+				<TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
 					<Ionicons
-						name='chevron-forward'
+						name='log-out-outline'
 						size={24}
-						color={colors.light.mutedForeground}
+						color={colors.light.destructive}
 					/>
+					<Text style={styles.signOutText}>Sign Out</Text>
 				</TouchableOpacity>
-
-				<TouchableOpacity style={styles.menuItem}>
-					<View style={styles.menuInfo}>
-						<Ionicons
-							name='key-outline'
-							size={24}
-							color={colors.light.foreground}
-						/>
-						<Text style={styles.menuText}>Change Password</Text>
-					</View>
-					<Ionicons
-						name='chevron-forward'
-						size={24}
-						color={colors.light.mutedForeground}
-					/>
-				</TouchableOpacity>
-
-				<TouchableOpacity style={styles.menuItem}>
-					<View style={styles.menuInfo}>
-						<Ionicons
-							name='shield-outline'
-							size={24}
-							color={colors.light.foreground}
-						/>
-						<Text style={styles.menuText}>Privacy Settings</Text>
-					</View>
-					<Ionicons
-						name='chevron-forward'
-						size={24}
-						color={colors.light.mutedForeground}
-					/>
-				</TouchableOpacity>
-			</View>
-
-			<TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-				<Ionicons
-					name='log-out-outline'
-					size={24}
-					color={colors.light.destructive}
-				/>
-				<Text style={styles.signOutText}>Sign Out</Text>
-			</TouchableOpacity>
-		</ScrollView>
+			</ScrollView>
+		</SafeAreaView>
 	);
 }
 
 const styles = StyleSheet.create({
-	container: {
+	safeArea: {
 		flex: 1,
 		backgroundColor: colors.light.background,
+	},
+	container: {
+		flex: 1,
 	},
 	loadingContainer: {
 		flex: 1,
@@ -293,7 +299,7 @@ const styles = StyleSheet.create({
 	header: {
 		backgroundColor: colors.light.card,
 		padding: 20,
-		paddingTop: 60,
+		paddingTop: 20,
 	},
 	profileSection: {
 		alignItems: 'center',
@@ -402,3 +408,4 @@ const styles = StyleSheet.create({
 		fontWeight: '600',
 	},
 });
+ 

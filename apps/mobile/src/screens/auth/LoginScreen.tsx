@@ -56,9 +56,9 @@ export default function LoginScreen() {
 				keyboardShouldPersistTaps='handled'
 			>
 				<View style={styles.header}>
-					<Text style={styles.title}>Welcome Back</Text>
+					<Text style={styles.title}>Welcome</Text>
 					<Text style={styles.subtitle}>
-						Sign in to continue your reading journey
+						Sign in to continue your chat journey
 					</Text>
 				</View>
 
