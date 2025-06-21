@@ -5,7 +5,8 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
 import { useAuth } from '../components/AuthProvider';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import HomeScreen from '../screens/HomeScreen';
 import ChatsScreen from '../screens/ChatsScreen';
@@ -13,6 +14,7 @@ import DiscoverScreen from '../screens/DiscoverScreen';
 import InsightsScreen from '../screens/InsightsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import BooksListScreen from '../screens/BooksListScreen';
+import CategoriesScreen from '../screens/CategoriesScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import SignUpScreen from '../screens/auth/SignUpScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
@@ -40,6 +42,7 @@ function HomeStack() {
 		<Stack.Navigator screenOptions={{ headerShown: false }}>
 			<Stack.Screen name='HomeMain' component={HomeScreen} />
 			<Stack.Screen name='BooksList' component={BooksListScreen} />
+			<Stack.Screen name='Categories' component={CategoriesScreen} />
 			<Stack.Screen name='ChatDetail' component={ChatDetailScreen} />
 		</Stack.Navigator>
 	);
@@ -55,9 +58,13 @@ function ChatsStack() {
 }
 
 function TabNavigator() {
+	const insets = useSafeAreaInsets();
+
 	return (
 		<Tab.Navigator
+			initialRouteName='Home'
 			screenOptions={({ route }) => ({
+				headerShown: false,
 				tabBarIcon: ({ focused, color, size }) => {
 					let iconName;
 
@@ -73,18 +80,27 @@ function TabNavigator() {
 						iconName = focused ? 'person' : 'person-outline';
 					}
 
-					return <Ionicons name={iconName} size={size} color={color} />;
+					return (
+						<Ionicons
+							name={iconName}
+							size={size}
+							color={
+								focused
+									? colors.light.accentForeground
+									: colors.light.mutedForeground
+							}
+						/>
+					);
 				},
-				tabBarActiveTintColor: colors.light.primary,
+				tabBarActiveTintColor: colors.light.muted,
 				tabBarInactiveTintColor: colors.light.mutedForeground,
 				tabBarStyle: {
-					backgroundColor: colors.light.card,
+					backgroundColor: colors.light.cardForeground,
 					borderTopColor: colors.light.border,
+					paddingTop: 10,
+					paddingBottom: Math.max(insets.bottom, 10),
+					height: 60 + Math.max(insets.bottom, 10),
 				},
-				headerStyle: {
-					backgroundColor: colors.light.card,
-				},
-				headerTintColor: colors.light.foreground,
 			})}
 		>
 			<Tab.Screen name='Home' component={HomeStack} />
@@ -119,4 +135,3 @@ export default function AppNavigator() {
 		</NavigationContainer>
 	);
 }
- 
