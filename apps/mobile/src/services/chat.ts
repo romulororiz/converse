@@ -45,7 +45,7 @@ export async function getUserChats(userId: string): Promise<ChatSession[]> {
 	try {
 		const { data, error } = await supabase
 			.from('chat_sessions')
-			.select('*, books(title, cover_url)')
+			.select('*, books(title, cover_url, author)')
 			.eq('user_id', userId)
 			.order('updated_at', { ascending: false });
 
@@ -53,6 +53,56 @@ export async function getUserChats(userId: string): Promise<ChatSession[]> {
 		return data || [];
 	} catch (error) {
 		console.error('Error in getUserChats:', error);
+		throw error;
+	}
+}
+
+export async function getRecentChats(
+	userId: string,
+	limit: number = 3
+): Promise<any[]> {
+	try {
+		const { data: sessions, error } = await supabase
+			.from('chat_sessions')
+			.select('*, books(title, cover_url, author)')
+			.eq('user_id', userId)
+			.order('updated_at', { ascending: false })
+			.limit(limit);
+
+		if (error) throw error;
+		if (!sessions) return [];
+
+		// Get message counts and last messages for each session
+		const sessionsWithDetails = await Promise.all(
+			sessions.map(async session => {
+				// Get message count
+				const { count } = await supabase
+					.from('messages')
+					.select('*', { count: 'exact', head: true })
+					.eq('session_id', session.id);
+
+				// Get last message
+				const { data: lastMessage } = await supabase
+					.from('messages')
+					.select('content, created_at, role')
+					.eq('session_id', session.id)
+					.order('created_at', { ascending: false })
+					.limit(1)
+					.single();
+
+				return {
+					...session,
+					messageCount: count || 0,
+					lastMessage: lastMessage?.content || null,
+					lastMessageTime: lastMessage?.created_at || session.updated_at,
+					lastMessageRole: lastMessage?.role || null,
+				};
+			})
+		);
+
+		return sessionsWithDetails;
+	} catch (error) {
+		console.error('Error in getRecentChats:', error);
 		throw error;
 	}
 }
@@ -100,85 +150,133 @@ export async function sendMessage(
 	}
 }
 
-export async function getAIResponse(
+export async function sendMessageAndGetAIResponse(
 	sessionId: string,
 	userMessage: string
-): Promise<string> {
+): Promise<{ userMessage: Message; aiMessage: Message }> {
 	try {
-		// Get all previous messages for context
-		const messages = await getChatMessages(sessionId);
+		// First, save the user message
+		const userMsg = await sendMessage(sessionId, userMessage, 'user');
 
-		// Prepare messages for AI
+		// Get session with book data
+		const { data: session, error: sessionError } = await supabase
+			.from('chat_sessions')
+			.select('*, books(title, author)')
+			.eq('id', sessionId)
+			.single();
+
+		if (sessionError || !session?.books) {
+			throw new Error('Could not fetch book information');
+		}
+
+		// Get all messages for context (including the new user message)
+		const allMessages = await getChatMessages(sessionId);
+
+		// Prepare messages for OpenAI
 		const messagesForAI = [
 			{
-				role: 'system',
-				content: `You are a wise, knowledgeable, and empathetic book. 
-You only talk about books, literature, and reading. 
-Never discuss anything else. 
-Answer as if you are the book itself, 
-guiding the user on a literary journey.`,
+				role: 'system' as const,
+				content: `You are "${session.books.title}" by ${session.books.author}, a wise and knowledgeable book.
+You have intimate knowledge of your own story, themes, characters, and literary significance.
+You can also discuss other books, literature, and reading in general.
+Never discuss anything outside of literary topics.
+Answer as if you are the book itself, sharing your perspective and guiding the user through your pages.`,
 			},
-			...messages.map(msg => ({
-				role: msg.role,
+			...allMessages.map(msg => ({
+				role: msg.role as 'user' | 'assistant',
 				content: msg.content,
 			})),
-			{
-				role: 'user',
-				content: userMessage,
-			},
 		];
 
-		// Call your AI service here
-		// For now, we'll use a simple response
-		// You can integrate with OpenAI, Claude, or your preferred AI service
-		const aiResponse = await callAIService(messagesForAI);
+		// Call OpenAI API
+		const aiResponse = await callOpenAI(messagesForAI);
 
-		return aiResponse;
+		// Save AI response
+		const aiMsg = await sendMessage(sessionId, aiResponse, 'assistant');
+
+		return { userMessage: userMsg, aiMessage: aiMsg };
 	} catch (error) {
-		console.error('Error in getAIResponse:', error);
+		console.error('Error in sendMessageAndGetAIResponse:', error);
 		throw error;
 	}
 }
 
-async function callAIService(messages: any[]): Promise<string> {
-	// This is a placeholder for AI service integration
-	// You can replace this with actual AI service calls
-	const lastUserMessage = messages[messages.length - 1]?.content || '';
+async function callOpenAI(
+	messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>
+): Promise<string> {
+	try {
+		// Get the OpenAI API key from environment variables
+		const apiKey =
+			process.env.EXPO_PUBLIC_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
 
-	// Simple response logic - replace with actual AI service
-	if (
-		lastUserMessage.toLowerCase().includes('hello') ||
-		lastUserMessage.toLowerCase().includes('hi')
-	) {
-		return "Hello! I'm here to guide you through the wonderful world of literature. What would you like to explore today?";
+		if (!apiKey) {
+			throw new Error('OpenAI API key not found in environment variables');
+		}
+
+		const response = await fetch('https://api.openai.com/v1/chat/completions', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${apiKey}`,
+			},
+			body: JSON.stringify({
+				model: 'gpt-4o',
+				messages: messages,
+				max_tokens: 300,
+				temperature: 0.7,
+			}),
+		});
+
+		if (!response.ok) {
+			const errorData = await response.text();
+			console.error('OpenAI API error:', response.status, errorData);
+			throw new Error(`OpenAI API error: ${response.status} ${errorData}`);
+		}
+
+		const data = await response.json();
+		const aiContent = data.choices?.[0]?.message?.content?.trim();
+
+		if (!aiContent) {
+			throw new Error('No content received from OpenAI');
+		}
+
+		return aiContent;
+	} catch (error) {
+		console.error('Error calling OpenAI:', error);
+		// Fallback response if OpenAI fails
+		return "I apologize, but I'm having trouble connecting to my knowledge base right now. Please try again in a moment, and I'll be happy to discuss literature with you!";
 	}
-
-	if (lastUserMessage.toLowerCase().includes('recommend')) {
-		return "I'd be happy to recommend some books! What genres or themes interest you most? Are you looking for something uplifting, thought-provoking, or perhaps a classic that has stood the test of time?";
-	}
-
-	if (
-		lastUserMessage.toLowerCase().includes('meaning') ||
-		lastUserMessage.toLowerCase().includes('theme')
-	) {
-		return 'Literature is full of rich themes and meanings that speak to the human experience. Every book offers layers of interpretation - from surface-level plot to deeper philosophical questions. What specific aspect would you like to explore?';
-	}
-
-	return "That's a fascinating question about literature! Books have the power to transport us to different worlds, challenge our perspectives, and connect us with characters and ideas that resonate across time and culture. What draws you to reading?";
 }
 
 export async function deleteChatSession(sessionId: string): Promise<void> {
 	try {
 		// Delete all messages first
-		await supabase.from('messages').delete().eq('session_id', sessionId);
+		const { error: messagesError, count: messagesCount } = await supabase
+			.from('messages')
+			.delete()
+			.eq('session_id', sessionId);
+
+		if (messagesError) {
+			console.error('Error deleting messages:', messagesError);
+			throw messagesError;
+		}
 
 		// Then delete the session
-		const { error } = await supabase
+		const { error: sessionError, count: sessionCount } = await supabase
 			.from('chat_sessions')
 			.delete()
 			.eq('id', sessionId);
 
-		if (error) throw error;
+		if (sessionError) {
+			console.error('Error deleting chat session:', sessionError);
+			throw sessionError;
+		}
+
+		if (sessionCount === 0) {
+			console.warn(
+				'No chat session was deleted - it may not exist or user may not have permission'
+			);
+		}
 	} catch (error) {
 		console.error('Error in deleteChatSession:', error);
 		throw error;
@@ -204,4 +302,3 @@ export async function updateChatSession(
 		throw error;
 	}
 }
- 
