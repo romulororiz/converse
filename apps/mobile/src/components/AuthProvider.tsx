@@ -8,6 +8,7 @@ interface AuthContextType {
 	session: Session | null;
 	loading: boolean;
 	signOut: () => Promise<void>;
+	refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -15,6 +16,7 @@ const AuthContext = createContext<AuthContextType>({
 	session: null,
 	loading: true,
 	signOut: async () => {},
+	refreshSession: async () => {},
 });
 
 export function useAuth() {
@@ -43,10 +45,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			// Store session info for debugging
 			if (session) {
 				await AsyncStorage.setItem('supabase.session.exists', 'true');
+				console.log('User logged in:', session.user.email);
 			} else {
 				await AsyncStorage.removeItem('supabase.session.exists');
+				console.log('User logged out');
 			}
 		});
+
+		// Also listen for URL changes (for OAuth callbacks)
+		const handleURLChange = (url: string) => {
+			console.log('URL changed:', url);
+			if (url.includes('interactive-library://auth')) {
+				console.log('OAuth callback detected, refreshing session...');
+				// Small delay to let Supabase process the OAuth callback
+				setTimeout(() => {
+					getInitialSession();
+				}, 500);
+			}
+		};
+
+		// Note: In a real app, you'd use Linking.addEventListener
+		// For now, we'll rely on the manual refresh calls
 
 		return () => {
 			subscription.unsubscribe();
@@ -87,11 +106,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		}
 	}
 
+	async function refreshSession() {
+		try {
+			console.log('Manually refreshing session...');
+			const {
+				data: { session },
+				error,
+			} = await supabase.auth.getSession();
+
+			if (error) {
+				console.error('Error refreshing session:', error);
+				return;
+			}
+
+			console.log('Refreshed session:', session?.user?.email || 'No session');
+			setSession(session);
+			setUser(session?.user ?? null);
+		} catch (error) {
+			console.error('Error during session refresh:', error);
+		}
+	}
+
 	const value = {
 		user,
 		session,
 		loading,
 		signOut,
+		refreshSession,
 	};
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

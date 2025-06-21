@@ -15,13 +15,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../utils/colors';
 import { supabase } from '../../lib/supabase';
 import { useNavigation } from '@react-navigation/native';
+import { signInWithGoogleDirect } from '../../services/googleAuth';
+import { useAuth } from '../../components/AuthProvider';
+
+type AuthNavigationProp = {
+	navigate: (screen: 'Login' | 'SignUp' | 'ForgotPassword') => void;
+};
 
 export default function LoginScreen() {
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [showPassword, setShowPassword] = useState(false);
 	const [loading, setLoading] = useState(false);
-	const navigation = useNavigation();
+	const navigation = useNavigation<AuthNavigationProp>();
+	const { refreshSession } = useAuth();
 
 	const handleLogin = async () => {
 		if (!email || !password) {
@@ -41,6 +48,33 @@ export default function LoginScreen() {
 			// Navigation will be handled by the auth listener in AuthProvider
 		} catch (error) {
 			Alert.alert('Error', error.message);
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const handleGoogleLogin = async () => {
+		try {
+			setLoading(true);
+			console.log('Starting Google login...');
+
+			const result = await signInWithGoogleDirect();
+			console.log('Google login result:', result);
+
+			if (!result.success) {
+				console.error('Google login failed:', result.error);
+				Alert.alert(
+					'Google Sign In Failed',
+					result.error || 'Unable to sign in with Google. Please try again.'
+				);
+			} else {
+				console.log('Google login successful!');
+				// Manually refresh the session to trigger navigation
+				await refreshSession();
+			}
+		} catch (error) {
+			console.error('Google login error:', error);
+			Alert.alert('Error', 'An unexpected error occurred. Please try again.');
 		} finally {
 			setLoading(false);
 		}
@@ -134,10 +168,9 @@ export default function LoginScreen() {
 					</View>
 
 					<TouchableOpacity
-						style={styles.socialButton}
-						onPress={() => {
-							// Handle Google Sign In
-						}}
+						style={[styles.socialButton, loading && styles.buttonDisabled]}
+						onPress={handleGoogleLogin}
+						disabled={loading}
 					>
 						<Ionicons
 							name='logo-google'
