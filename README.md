@@ -1,4 +1,4 @@
-# 📚 Interactive Library
+# 📚 ConversAI
 
 > **Talk to books as if they were real people** - Get insights, information, and deep understanding through conversational AI-powered book interactions.
 
