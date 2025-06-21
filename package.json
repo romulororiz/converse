@@ -5,6 +5,8 @@
 	"scripts": {
 		"web": "cd apps/web && pnpm dev",
 		"mobile": "cd apps/mobile && pnpm start",
+		"mobile:tunnel": "cd apps/mobile && pnpm start --tunnel",
+		"mobile:web": "cd apps/mobile && pnpm web",
 		"build": "turbo run build",
 		"dev": "cd apps/web && pnpm dev",
 		"lint": "turbo run lint"
