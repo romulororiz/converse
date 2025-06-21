@@ -8,16 +8,23 @@ import {
 	Image,
 	ActivityIndicator,
 	TextInput,
+	SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
-import { getAllBooks, searchBooks, Book } from '../services/books';
+import { getAllBooks, searchBooks } from '../services/books';
+import { Book } from '../types/supabase';
+import { BookCover } from '../components/BookCover';
 
-export default function BooksListScreen({ navigation }: any) {
+export default function BooksListScreen({ navigation, route }: any) {
 	const [books, setBooks] = useState<Book[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [filteredBooks, setFilteredBooks] = useState<Book[]>([]);
+
+	// Get route parameters
+	const { category, categoryId, tags, title } = route?.params || {};
+	const screenTitle = title || category || 'All Books';
 
 	useEffect(() => {
 		loadBooks();
@@ -59,22 +66,24 @@ export default function BooksListScreen({ navigation }: any) {
 	};
 
 	const renderBookItem = ({ item }: { item: Book }) => (
-		<TouchableOpacity style={styles.bookItem}>
-			<View style={styles.bookCover}>
-				{item.cover_url ? (
-					<Image source={{ uri: item.cover_url }} style={styles.bookImage} />
-				) : (
-					<View style={styles.bookPlaceholder}>
-						<Text style={styles.bookPlaceholderText}>📚</Text>
-					</View>
-				)}
-			</View>
+		<TouchableOpacity
+			style={styles.bookItem}
+			onPress={() => {
+				navigation.navigate('ChatDetail', { bookId: item.id });
+			}}
+		>
+			<BookCover
+				uri={item.cover_url}
+				style={styles.bookCover}
+				placeholderIcon='book-outline'
+				placeholderSize={24}
+			/>
 			<View style={styles.bookInfo}>
 				<Text style={styles.bookTitle} numberOfLines={2}>
 					{item.title}
 				</Text>
 				<Text style={styles.bookAuthor} numberOfLines={1}>
-					{item.author?.name || 'Unknown Author'}
+					{item?.author || 'Unknown Author'}
 				</Text>
 				<View style={styles.bookMeta}>
 					<View style={styles.ratingContainer}>
@@ -104,7 +113,7 @@ export default function BooksListScreen({ navigation }: any) {
 	}
 
 	return (
-		<View style={styles.container}>
+		<SafeAreaView style={styles.container}>
 			{/* Header */}
 			<View style={styles.header}>
 				<TouchableOpacity
@@ -117,7 +126,7 @@ export default function BooksListScreen({ navigation }: any) {
 						color={colors.light.foreground}
 					/>
 				</TouchableOpacity>
-				<Text style={styles.headerTitle}>All Books</Text>
+				<Text style={styles.headerTitle}>{screenTitle}</Text>
 				<View style={styles.headerRight} />
 			</View>
 
@@ -131,7 +140,7 @@ export default function BooksListScreen({ navigation }: any) {
 					/>
 					<TextInput
 						style={styles.searchInput}
-						placeholder='Search books...'
+						placeholder='Search books or authors...'
 						placeholderTextColor={colors.light.mutedForeground}
 						value={searchQuery}
 						onChangeText={setSearchQuery}
@@ -147,6 +156,20 @@ export default function BooksListScreen({ navigation }: any) {
 					)}
 				</View>
 			</View>
+
+			{/* Selected Tags */}
+			{tags && tags.length > 0 && (
+				<View style={styles.tagsContainer}>
+					<Text style={styles.tagsTitle}>Selected Topics:</Text>
+					<View style={styles.tagsWrapper}>
+						{tags.map((tag: string, index: number) => (
+							<View key={index} style={styles.tagChip}>
+								<Text style={styles.tagChipText}>{tag}</Text>
+							</View>
+						))}
+					</View>
+				</View>
+			)}
 
 			{/* Books List */}
 			<FlatList
@@ -168,7 +191,7 @@ export default function BooksListScreen({ navigation }: any) {
 					</View>
 				}
 			/>
-		</View>
+		</SafeAreaView>
 	);
 }
 
@@ -182,7 +205,7 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		justifyContent: 'space-between',
 		padding: 20,
-		paddingTop: 40,
+		paddingTop: 20,
 		backgroundColor: colors.light.card,
 	},
 	backButton: {
@@ -223,6 +246,10 @@ const styles = StyleSheet.create({
 		borderRadius: 12,
 		padding: 16,
 		marginBottom: 16,
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.15,
+		shadowRadius: 3.84,
+		elevation: 5,
 	},
 	bookCover: {
 		width: 60,
@@ -306,5 +333,30 @@ const styles = StyleSheet.create({
 		color: colors.light.mutedForeground,
 		textAlign: 'center',
 	},
+	tagsContainer: {
+		paddingHorizontal: 20,
+		paddingBottom: 10,
+	},
+	tagsTitle: {
+		fontSize: 14,
+		fontWeight: '600',
+		color: colors.light.foreground,
+		marginBottom: 8,
+	},
+	tagsWrapper: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		gap: 8,
+	},
+	tagChip: {
+		backgroundColor: colors.light.primary,
+		paddingHorizontal: 12,
+		paddingVertical: 6,
+		borderRadius: 16,
+	},
+	tagChipText: {
+		fontSize: 12,
+		fontWeight: '500',
+		color: colors.light.primaryForeground,
+	},
 });
- 
