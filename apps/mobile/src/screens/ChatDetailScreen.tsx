@@ -14,9 +14,14 @@ import {
 	SafeAreaView,
 	Keyboard,
 	Dimensions,
+	NativeScrollEvent,
+	NativeSyntheticEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
+import { showAlert } from '../utils/alert';
+import { LoadingDots } from '../components/LoadingDots';
+import { BookCover } from '../components/BookCover';
 import { useAuth } from '../components/AuthProvider';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -24,14 +29,15 @@ import {
 	GestureHandlerRootView,
 	PanGestureHandler,
 	PanGestureHandlerGestureEvent,
+	State,
 } from 'react-native-gesture-handler';
 import {
 	getOrCreateChatSession,
 	getChatMessages,
-	sendMessage,
-	getAIResponse,
+	sendMessageAndGetAIResponse,
 } from '../services/chat';
 import { getBookById } from '../services/books';
+import { supabase } from '../lib/supabase';
 import type { Book, ChatMessage } from '../types/supabase';
 
 type RootStackParamList = {
@@ -55,6 +61,7 @@ export default function ChatDetailScreen() {
 	const route = useRoute<ChatDetailScreenRouteProp>();
 	const navigation = useNavigation<ChatDetailScreenNavigationProp>();
 	const flatListRef = useRef<FlatList<ChatMessage>>(null);
+	const scrollY = useRef(0);
 	const { bookId } = route.params;
 
 	useEffect(() => {
@@ -62,6 +69,16 @@ export default function ChatDetailScreen() {
 			loadChatData();
 		}
 	}, [user?.id, bookId]);
+
+	// Auto-scroll to bottom when messages change
+	useEffect(() => {
+		if (messages.length > 0 && flatListRef.current) {
+			// Small delay to ensure the FlatList has rendered
+			setTimeout(() => {
+				flatListRef.current?.scrollToEnd({ animated: true });
+			}, 200);
+		}
+	}, [messages.length]);
 
 	const loadChatData = async () => {
 		try {
@@ -72,45 +89,88 @@ export default function ChatDetailScreen() {
 			if (bookData) {
 				setBook(bookData);
 			} else {
-				Alert.alert('Error', 'Book not found');
+				showAlert('Error', 'Book not found');
 				navigation.goBack();
 				return;
 			}
 
-			// Get or create chat session
-			const session = await getOrCreateChatSession(user!.id, bookId);
-			setSessionId(session.id);
+			// Check if chat session already exists (don't create it)
+			const { data: existingSession } = await supabase
+				.from('chat_sessions')
+				.select('*, books(title, cover_url)')
+				.eq('user_id', user!.id)
+				.eq('book_id', bookId)
+				.single();
 
-			// Load messages
-			const chatMessages = await getChatMessages(session.id);
-			setMessages(chatMessages as ChatMessage[]);
+			if (existingSession) {
+				setSessionId(existingSession.id);
+				// Load messages only if session exists
+				const chatMessages = await getChatMessages(existingSession.id);
+				setMessages(chatMessages as ChatMessage[]);
+
+				// Auto-scroll to bottom after loading messages
+				setTimeout(() => {
+					flatListRef.current?.scrollToEnd({ animated: true });
+				}, 300);
+			}
+			// If no session exists, we'll create it when user sends first message
 		} catch (error) {
 			console.error('Error loading chat data:', error);
-			Alert.alert('Error', 'Failed to load conversation');
+			showAlert('Error', 'Failed to load conversation');
 		} finally {
 			setLoading(false);
 		}
 	};
 
 	const handleSendMessage = async () => {
-		if (!newMessage.trim() || !sessionId || sending) return;
+		if (!newMessage.trim() || sending) return;
 
 		const userMessage = newMessage.trim();
 		setNewMessage('');
 		setSending(true);
 
 		try {
-			// Add user message immediately
-			const userMsg = await sendMessage(sessionId, userMessage, 'user');
-			setMessages(prev => [...prev, userMsg as ChatMessage]);
+			// Create session if it doesn't exist
+			let currentSessionId = sessionId;
+			if (!currentSessionId) {
+				const session = await getOrCreateChatSession(user!.id, bookId);
+				currentSessionId = session.id;
+				setSessionId(currentSessionId);
+			}
 
-			// Get AI response
-			const aiResponse = await getAIResponse(sessionId, userMessage);
-			const aiMsg = await sendMessage(sessionId, aiResponse, 'assistant');
-			setMessages(prev => [...prev, aiMsg as ChatMessage]);
+			// Create temporary user message for immediate UI display
+			const tempUserMessage: ChatMessage = {
+				id: `temp-${Date.now()}`,
+				content: userMessage,
+				role: 'user',
+				created_at: new Date().toISOString(),
+				session_id: currentSessionId,
+				metadata: {},
+			};
+
+			// Add user message to UI immediately
+			setMessages(prev => [...prev, tempUserMessage]);
+
+			// Send message and get AI response in one call
+			const { userMessage: userMsg, aiMessage: aiMsg } =
+				await sendMessageAndGetAIResponse(currentSessionId, userMessage);
+
+			// Replace temp message with real user message and add AI response
+			setMessages(prev => [
+				...prev.slice(0, -1), // Remove temp message
+				userMsg as ChatMessage,
+				aiMsg as ChatMessage,
+			]);
+
+			// Auto-scroll to bottom after new messages
+			setTimeout(() => {
+				flatListRef.current?.scrollToEnd({ animated: true });
+			}, 200);
 		} catch (error) {
 			console.error('Error sending message:', error);
-			Alert.alert('Error', 'Failed to send message');
+			// Remove the temp message on error
+			setMessages(prev => prev.slice(0, -1));
+			showAlert('Error', 'Failed to send message');
 		} finally {
 			setSending(false);
 		}
@@ -152,12 +212,7 @@ export default function ChatDetailScreen() {
 			<View style={[styles.messageContainer, styles.aiMessage]}>
 				<View style={[styles.messageBubble, styles.aiBubble]}>
 					<View style={styles.typingIndicator}>
-						<ActivityIndicator size='small' color={colors.light.foreground} />
-						<Text
-							style={[styles.messageText, styles.aiText, styles.typingText]}
-						>
-							AI is typing...
-						</Text>
+						<LoadingDots color={colors.light.foreground} size={8} />
 					</View>
 				</View>
 			</View>
@@ -165,12 +220,26 @@ export default function ChatDetailScreen() {
 	};
 
 	const handleGesture = (event: PanGestureHandlerGestureEvent) => {
-		const { translationY } = event.nativeEvent;
+		const { translationY, velocityY, state } = event.nativeEvent;
 
-		if (translationY > 50) {
-			// If user has dragged down more than 50 units
+		// Only dismiss on gesture end with significant downward movement
+		if (state === State.END && (translationY > 50 || velocityY > 800)) {
 			Keyboard.dismiss();
 		}
+	};
+
+	const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+		const currentScrollY = event.nativeEvent.contentOffset.y;
+		const scrollDelta = currentScrollY - scrollY.current;
+
+		// Only dismiss keyboard on significant downward scroll (scrolling up through messages)
+		// This mimics iOS Messages behavior where scrolling down dismisses keyboard
+		if (scrollDelta < -20) {
+			// Scrolling down by at least 20 points
+			Keyboard.dismiss();
+		}
+
+		scrollY.current = currentScrollY;
 	};
 
 	if (loading) {
@@ -187,7 +256,7 @@ export default function ChatDetailScreen() {
 				<KeyboardAvoidingView
 					behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
 					style={styles.container}
-					keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+					keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
 				>
 					{/* Header */}
 					<View style={styles.header}>
@@ -203,28 +272,18 @@ export default function ChatDetailScreen() {
 						</TouchableOpacity>
 
 						<View style={styles.bookInfo}>
-							<View style={styles.bookCover}>
-								{book?.cover_url ? (
-									<Image
-										source={{ uri: book.cover_url }}
-										style={styles.bookImage}
-									/>
-								) : (
-									<View style={styles.bookPlaceholder}>
-										<Ionicons
-											name='book-outline'
-											size={24}
-											color={colors.light.mutedForeground}
-										/>
-									</View>
-								)}
-							</View>
+							<BookCover
+								uri={book?.cover_url}
+								style={styles.bookCover}
+								placeholderIcon='book-outline'
+								placeholderSize={20}
+							/>
 							<View style={styles.bookDetails}>
 								<Text style={styles.bookTitle} numberOfLines={1}>
 									{book?.title || 'Unknown Book'}
 								</Text>
 								<Text style={styles.bookAuthor} numberOfLines={1}>
-									{book?.author?.name || 'Unknown Author'}
+									{book?.author || 'Unknown Author'}
 								</Text>
 							</View>
 						</View>
@@ -239,9 +298,20 @@ export default function ChatDetailScreen() {
 							keyExtractor={item => item.id}
 							contentContainerStyle={styles.messagesList}
 							showsVerticalScrollIndicator={false}
+							keyboardShouldPersistTaps='always'
+							onScroll={handleScroll}
+							scrollEventThrottle={16}
 							onContentSizeChange={() =>
 								flatListRef.current?.scrollToEnd({ animated: true })
 							}
+							onLayout={() => {
+								// Scroll to bottom when FlatList is first laid out
+								if (messages.length > 0) {
+									setTimeout(() => {
+										flatListRef.current?.scrollToEnd({ animated: true });
+									}, 100);
+								}
+							}}
 							ListEmptyComponent={
 								<View style={styles.emptyContainer}>
 									<Ionicons
@@ -321,7 +391,7 @@ const styles = StyleSheet.create({
 	header: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		paddingTop: Platform.OS === 'ios' ? 0 : 40,
+		paddingTop: Platform.OS === 'ios' ? 12 : 20,
 		paddingHorizontal: 16,
 		paddingBottom: 16,
 		backgroundColor: colors.light.card,
@@ -374,7 +444,8 @@ const styles = StyleSheet.create({
 	},
 	messagesList: {
 		paddingHorizontal: 16,
-		paddingVertical: 16,
+		paddingTop: 20,
+		paddingBottom: 20,
 		flexGrow: 1,
 	},
 	messageContainer: {
@@ -415,14 +486,13 @@ const styles = StyleSheet.create({
 	typingIndicator: {
 		flexDirection: 'row',
 		alignItems: 'center',
-	},
-	typingText: {
-		marginLeft: 8,
-		fontStyle: 'italic',
+		justifyContent: 'center',
+		paddingVertical: 4,
 	},
 	emptyContainer: {
 		alignItems: 'center',
-		paddingVertical: 40,
+		paddingVertical: 60,
+		paddingHorizontal: 20,
 	},
 	emptyTitle: {
 		fontSize: 18,
@@ -440,7 +510,8 @@ const styles = StyleSheet.create({
 	},
 	inputContainer: {
 		paddingHorizontal: 16,
-		paddingVertical: 12,
+		paddingTop: 16,
+		paddingBottom: Platform.OS === 'ios' ? 20 : 16,
 		backgroundColor: colors.light.card,
 		borderTopWidth: 1,
 		borderTopColor: colors.light.border,
