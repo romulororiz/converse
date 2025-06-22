@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
 		flex: 1,
 		marginLeft: 12,
 		fontSize: 16,
-		color: colors.light.foreground,
+		color: colors.light.card,
 	},
 	listContainer: {
 		padding: 20,
@@ -243,23 +243,23 @@ const styles = StyleSheet.create({
 	bookItem: {
 		flexDirection: 'row',
 		backgroundColor: colors.light.card,
-		borderRadius: 12,
-		padding: 16,
+		borderRadius: 8,
+		padding: 10,
 		marginBottom: 16,
 		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.15,
-		shadowRadius: 3.84,
+		shadowOpacity: 0.25,
+		shadowRadius: 3,
 		elevation: 5,
 	},
 	bookCover: {
-		width: 60,
-		height: 90,
+		width: 90,
+		height: 120,
 		marginRight: 16,
 	},
 	bookImage: {
 		width: '100%',
 		height: '100%',
-		borderRadius: 8,
+		borderRadius: 2,
 	},
 	bookPlaceholder: {
 		width: '100%',
@@ -274,6 +274,7 @@ const styles = StyleSheet.create({
 	},
 	bookInfo: {
 		flex: 1,
+		justifyContent: 'center',
 	},
 	bookTitle: {
 		fontSize: 16,

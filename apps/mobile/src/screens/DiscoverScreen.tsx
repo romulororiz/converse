@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
 		borderBottomColor: colors.light.border,
 	},
 	headerContent: {
-		alignItems: 'center',
+		alignItems: 'flex-start',
 		marginBottom: 16,
 	},
 	title: {
@@ -272,12 +272,12 @@ const styles = StyleSheet.create({
 		fontWeight: 'bold',
 		color: colors.light.foreground,
 		marginBottom: 8,
-		textAlign: 'center',
+		textAlign: 'left',
 	},
 	subtitle: {
 		fontSize: 16,
 		color: colors.light.mutedForeground,
-		textAlign: 'center',
+		textAlign: 'left',
 		lineHeight: 22,
 	},
 	selectedInfo: {

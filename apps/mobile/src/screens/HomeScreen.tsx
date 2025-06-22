@@ -401,6 +401,7 @@ const styles = StyleSheet.create({
 	bookCover: {
 		width: '100%',
 		height: 160,
+		objectFit: 'fill',
 		backgroundColor: colors.light.secondary,
 		borderRadius: 2,
 		alignItems: 'center',
@@ -435,8 +436,8 @@ const styles = StyleSheet.create({
 		minWidth: 80,
 		marginVertical: 6,
 		shadowOffset: { width: 0, height: 1 },
-		shadowOpacity: 0.15,
-		shadowRadius: 3.84,
+		shadowOpacity: 0.25,
+		shadowRadius: 3,
 		elevation: 5,
 	},
 	categoryIcon: {
@@ -454,8 +455,8 @@ const styles = StyleSheet.create({
 		padding: 16,
 		borderRadius: 12,
 		shadowOffset: { width: 0, height: 1 },
-		shadowOpacity: 0.15,
-		shadowRadius: 3.84,
+		shadowOpacity: 0.25,
+		shadowRadius: 3,
 		elevation: 5,
 	},
 	conversationCover: {

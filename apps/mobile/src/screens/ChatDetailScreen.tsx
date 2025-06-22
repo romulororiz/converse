@@ -22,8 +22,12 @@ import { colors } from '../utils/colors';
 import { showAlert } from '../utils/alert';
 import { LoadingDots } from '../components/LoadingDots';
 import { BookCover } from '../components/BookCover';
+import VoiceRecorder from '../components/VoiceRecorder';
+import ConversationalVoiceChat from '../components/ConversationalVoiceChat';
 import { useAuth } from '../components/AuthProvider';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import { captureRef, captureScreen } from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
 	GestureHandlerRootView,
@@ -31,6 +35,13 @@ import {
 	PanGestureHandlerGestureEvent,
 	State,
 } from 'react-native-gesture-handler';
+import Animated, {
+	useSharedValue,
+	useAnimatedStyle,
+	withTiming,
+	withSpring,
+	runOnJS,
+} from 'react-native-reanimated';
 import {
 	getOrCreateChatSession,
 	getChatMessages,
@@ -57,12 +68,34 @@ export default function ChatDetailScreen() {
 	const [sending, setSending] = useState(false);
 	const [book, setBook] = useState<Book | null>(null);
 	const [sessionId, setSessionId] = useState<string | null>(null);
+	const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
+	const [showConversationalVoice, setShowConversationalVoice] = useState(false);
+	const [showDropdown, setShowDropdown] = useState(false);
 	const { user } = useAuth();
 	const route = useRoute<ChatDetailScreenRouteProp>();
 	const navigation = useNavigation<ChatDetailScreenNavigationProp>();
 	const flatListRef = useRef<FlatList<ChatMessage>>(null);
+	const chatContainerRef = useRef<View>(null);
 	const scrollY = useRef(0);
 	const { bookId } = route.params;
+
+	// Animation values for dropdown
+	const dropdownOpacity = useSharedValue(0);
+	const dropdownTranslateY = useSharedValue(-20);
+
+	// Preload icons to prevent loading delay
+	useEffect(() => {
+		// Preload commonly used icons by rendering them off-screen
+		const preloadIcons = async () => {
+			// Force icon loading by creating temporary elements
+			// This ensures the icon font is loaded and cached
+			await new Promise(resolve => {
+				// Small delay to ensure the component is mounted
+				setTimeout(resolve, 50);
+			});
+		};
+		preloadIcons();
+	}, []);
 
 	useEffect(() => {
 		if (user?.id && bookId) {
@@ -79,6 +112,15 @@ export default function ChatDetailScreen() {
 			}, 200);
 		}
 	}, [messages.length]);
+
+	// Animate dropdown in/out
+	useEffect(() => {
+		if (showDropdown) {
+			// Fade in and slide down from top
+			dropdownOpacity.value = withTiming(1, { duration: 300 });
+			dropdownTranslateY.value = withTiming(0, { duration: 300 });
+		}
+	}, [showDropdown]);
 
 	const loadChatData = async () => {
 		try {
@@ -176,6 +218,235 @@ export default function ChatDetailScreen() {
 		}
 	};
 
+	const handleVoiceTranscriptionComplete = async (transcribedText: string) => {
+		setShowVoiceRecorder(false);
+
+		// Set the transcribed text as the new message
+		setNewMessage(transcribedText);
+
+		// Automatically send the message
+		if (transcribedText.trim()) {
+			const userMessage = transcribedText.trim();
+			setNewMessage('');
+			setSending(true);
+
+			try {
+				// Create session if it doesn't exist
+				let currentSessionId = sessionId;
+				if (!currentSessionId) {
+					const session = await getOrCreateChatSession(user!.id, bookId);
+					currentSessionId = session.id;
+					setSessionId(currentSessionId);
+				}
+
+				// Create temporary user message for immediate UI display
+				const tempUserMessage: ChatMessage = {
+					id: `temp-${Date.now()}`,
+					content: userMessage,
+					role: 'user',
+					created_at: new Date().toISOString(),
+					session_id: currentSessionId,
+					metadata: {},
+				};
+
+				// Add user message to UI immediately
+				setMessages(prev => [...prev, tempUserMessage]);
+
+				// Send message and get AI response in one call
+				const { userMessage: userMsg, aiMessage: aiMsg } =
+					await sendMessageAndGetAIResponse(currentSessionId, userMessage);
+
+				// Replace temp message with real user message and add AI response
+				setMessages(prev => [
+					...prev.slice(0, -1), // Remove temp message
+					userMsg as ChatMessage,
+					aiMsg as ChatMessage,
+				]);
+
+				// Auto-scroll to bottom after new messages
+				setTimeout(() => {
+					flatListRef.current?.scrollToEnd({ animated: true });
+				}, 200);
+			} catch (error) {
+				console.error('Error sending voice message:', error);
+				// Remove the temp message on error
+				setMessages(prev => prev.slice(0, -1));
+				showAlert('Error', 'Failed to send voice message');
+			} finally {
+				setSending(false);
+			}
+		}
+	};
+
+	const handleVoiceRecorderCancel = () => {
+		setShowVoiceRecorder(false);
+	};
+
+	const handleConversationalVoiceComplete = async (conversation: any[]) => {
+		setShowConversationalVoice(false);
+
+		if (conversation.length === 0) return;
+
+		try {
+			setSending(true);
+
+			// Create session if it doesn't exist
+			let currentSessionId = sessionId;
+			if (!currentSessionId) {
+				const session = await getOrCreateChatSession(user!.id, bookId);
+				currentSessionId = session.id;
+				setSessionId(currentSessionId);
+			}
+
+			// Add each conversation message to the chat
+			for (const msg of conversation) {
+				if (msg.role === 'user' || msg.role === 'assistant') {
+					// Create temporary message for immediate UI display
+					const tempMessage: ChatMessage = {
+						id: `temp-${Date.now()}-${Math.random()}`,
+						content: msg.content,
+						role: msg.role,
+						created_at: new Date().toISOString(),
+						session_id: currentSessionId,
+						metadata: {},
+					};
+
+					// Add message to UI immediately
+					setMessages(prev => [...prev, tempMessage]);
+
+					// Save to database
+					const { data, error } = await supabase
+						.from('chat_messages')
+						.insert({
+							session_id: currentSessionId,
+							content: msg.content,
+							role: msg.role,
+							metadata: {},
+						})
+						.select()
+						.single();
+
+					if (data && !error) {
+						// Replace temp message with real message
+						setMessages(prev =>
+							prev.map(m =>
+								m.id === tempMessage.id
+									? ({ ...data, id: data.id } as ChatMessage)
+									: m
+							)
+						);
+					}
+				}
+			}
+
+			// Auto-scroll to bottom after new messages
+			setTimeout(() => {
+				flatListRef.current?.scrollToEnd({ animated: true });
+			}, 200);
+		} catch (error) {
+			console.error('Error saving conversation:', error);
+			showAlert('Error', 'Failed to save voice conversation');
+		} finally {
+			setSending(false);
+		}
+	};
+
+	const handleConversationalVoiceCancel = () => {
+		setShowConversationalVoice(false);
+	};
+
+	const closeDropdown = () => {
+		// Start exit animation first
+		dropdownOpacity.value = withTiming(0, { duration: 200 });
+		dropdownTranslateY.value = withTiming(-20, { duration: 200 }, () => {
+			// Hide dropdown after animation completes
+			runOnJS(setShowDropdown)(false);
+		});
+	};
+
+	const handleShareChat = async () => {
+		closeDropdown();
+
+		try {
+			// Check if sharing is available
+			if (!(await Sharing.isAvailableAsync())) {
+				showAlert('Error', 'Sharing is not available on this device');
+				return;
+			}
+
+			// Add a small delay to ensure all content is rendered
+			await new Promise(resolve => setTimeout(resolve, 300));
+
+			// Capture screenshot of the entire screen
+			const uri = await captureScreen({
+				format: 'png',
+				quality: 1.0,
+				result: 'tmpfile',
+			});
+
+			// Debug: Log the captured URI
+			console.log('Captured screenshot URI:', uri);
+
+			// Share the screenshot using Expo's sharing API
+			await Sharing.shareAsync(uri, {
+				mimeType: 'image/png',
+				dialogTitle: `Share conversation about "${book?.title}"`,
+			});
+		} catch (error) {
+			console.error('Error sharing chat:', error);
+			showAlert('Error', 'Failed to share chat. Please try again.');
+		}
+	};
+
+	const handleClearChat = () => {
+		closeDropdown();
+		Alert.alert(
+			'Reset Chat',
+			'Are you sure you want to reset this conversation? This will delete all messages and start fresh. This action cannot be undone.',
+			[
+				{
+					text: 'Cancel',
+					style: 'cancel',
+				},
+				{
+					text: 'Reset',
+					style: 'destructive',
+					onPress: async () => {
+						try {
+							if (sessionId) {
+								// First, delete all messages for this session
+								const { error: messagesError } = await supabase
+									.from('messages')
+									.delete()
+									.eq('session_id', sessionId);
+
+								if (messagesError) throw messagesError;
+
+								// Then, delete the chat session itself
+								const { error: sessionError } = await supabase
+									.from('chat_sessions')
+									.delete()
+									.eq('id', sessionId);
+
+								if (sessionError) throw sessionError;
+
+								// Reset local state
+								setMessages([]);
+								setSessionId(null);
+							} else {
+								// If no session exists, just clear any local messages
+								setMessages([]);
+							}
+						} catch (error) {
+							console.error('Error resetting chat:', error);
+							showAlert('Error', 'Failed to reset chat. Please try again.');
+						}
+					},
+				},
+			]
+		);
+	};
+
 	const renderMessage = ({ item }: { item: ChatMessage; index: number }) => {
 		const isUser = item.role === 'user';
 
@@ -242,6 +513,45 @@ export default function ChatDetailScreen() {
 		scrollY.current = currentScrollY;
 	};
 
+	// Animated styles for dropdown
+	const animatedOverlayStyle = useAnimatedStyle(() => ({
+		opacity: dropdownOpacity.value,
+	}));
+
+	const animatedDropdownStyle = useAnimatedStyle(() => ({
+		opacity: dropdownOpacity.value,
+		transform: [{ translateY: dropdownTranslateY.value }],
+	}));
+
+	// Hidden icon preloader to ensure icons are loaded
+	const IconPreloader = () => (
+		<View style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}>
+			<Ionicons name='send' size={20} color={colors.light.primaryForeground} />
+			<Ionicons name='mic' size={20} color={colors.light.primary} />
+			<Ionicons name='chevron-back' size={24} color={colors.light.foreground} />
+			<Ionicons
+				name='ellipsis-vertical'
+				size={20}
+				color={colors.light.foreground}
+			/>
+			<Ionicons
+				name='share-social-outline'
+				size={20}
+				color={colors.light.foreground}
+			/>
+			<Ionicons
+				name='reload-circle-outline'
+				size={20}
+				color={colors.light.foreground}
+			/>
+			<Ionicons
+				name='chatbubbles-outline'
+				size={48}
+				color={colors.light.mutedForeground}
+			/>
+		</View>
+	);
+
 	if (loading) {
 		return (
 			<SafeAreaView style={styles.loadingContainer}>
@@ -252,129 +562,228 @@ export default function ChatDetailScreen() {
 
 	return (
 		<GestureHandlerRootView style={styles.safeArea}>
+			<IconPreloader />
 			<SafeAreaView style={styles.safeArea}>
 				<KeyboardAvoidingView
 					behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
 					style={styles.container}
 					keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
 				>
-					{/* Header */}
-					<View style={styles.header}>
-						<TouchableOpacity
-							style={styles.backButton}
-							onPress={() => navigation.goBack()}
-						>
-							<Ionicons
-								name='arrow-back'
-								size={24}
-								color={colors.light.foreground}
-							/>
-						</TouchableOpacity>
+					<View ref={chatContainerRef} style={styles.chatCaptureContainer}>
+						{/* Header */}
+						<View style={styles.header}>
+							<TouchableOpacity
+								style={styles.backButton}
+								onPress={() => navigation.goBack()}
+							>
+								<Ionicons
+									name='chevron-back'
+									size={24}
+									color={colors.light.accentForeground}
+								/>
+							</TouchableOpacity>
 
-						<View style={styles.bookInfo}>
-							<BookCover
-								uri={book?.cover_url}
-								style={styles.bookCover}
-								placeholderIcon='book-outline'
-								placeholderSize={20}
-							/>
-							<View style={styles.bookDetails}>
-								<Text style={styles.bookTitle} numberOfLines={1}>
-									{book?.title || 'Unknown Book'}
-								</Text>
-								<Text style={styles.bookAuthor} numberOfLines={1}>
-									{book?.author || 'Unknown Author'}
-								</Text>
-							</View>
-						</View>
-					</View>
-
-					{/* Messages */}
-					<View style={styles.messagesContainer}>
-						<FlatList
-							ref={flatListRef}
-							data={messages}
-							renderItem={renderMessage}
-							keyExtractor={item => item.id}
-							contentContainerStyle={styles.messagesList}
-							showsVerticalScrollIndicator={false}
-							keyboardShouldPersistTaps='always'
-							onScroll={handleScroll}
-							scrollEventThrottle={16}
-							onContentSizeChange={() =>
-								flatListRef.current?.scrollToEnd({ animated: true })
-							}
-							onLayout={() => {
-								// Scroll to bottom when FlatList is first laid out
-								if (messages.length > 0) {
-									setTimeout(() => {
-										flatListRef.current?.scrollToEnd({ animated: true });
-									}, 100);
-								}
-							}}
-							ListEmptyComponent={
-								<View style={styles.emptyContainer}>
-									<Ionicons
-										name='chatbubbles-outline'
-										size={48}
-										color={colors.light.mutedForeground}
-									/>
-									<Text style={styles.emptyTitle}>Start the conversation!</Text>
-									<Text style={styles.emptySubtitle}>
-										Ask questions about this book, discuss themes, or explore
-										its meaning
+							<View style={styles.bookInfo}>
+								<BookCover
+									uri={book?.cover_url}
+									style={styles.bookCover}
+									placeholderIcon='book-outline'
+									placeholderSize={20}
+								/>
+								<View style={styles.bookDetails}>
+									<Text style={styles.bookTitle} numberOfLines={2}>
+										{book?.title || 'Unknown Book'}
+									</Text>
+									<Text style={styles.bookAuthor} numberOfLines={1}>
+										{book?.author || 'Unknown Author'}
 									</Text>
 								</View>
-							}
-							ListFooterComponent={renderTypingIndicator}
-						/>
-					</View>
-
-					{/* Input with Gesture Handler */}
-					<PanGestureHandler onGestureEvent={handleGesture}>
-						<View style={styles.inputContainer}>
-							<View style={styles.gestureIndicator} />
-							<View style={styles.inputWrapper}>
-								<TextInput
-									style={styles.textInput}
-									placeholder='Type your message...'
-									placeholderTextColor={colors.light.mutedForeground}
-									value={newMessage}
-									onChangeText={setNewMessage}
-									multiline
-									maxLength={500}
-									onSubmitEditing={Keyboard.dismiss}
-								/>
 								<TouchableOpacity
-									style={[
-										styles.sendButton,
-										(!newMessage.trim() || sending) &&
-											styles.sendButtonDisabled,
-									]}
-									onPress={handleSendMessage}
-									disabled={!newMessage.trim() || sending}
+									style={styles.menuButton}
+									onPress={() => setShowDropdown(true)}
 								>
 									<Ionicons
-										name='send'
-										size={20}
-										color={
-											newMessage.trim() && !sending
-												? colors.light.primaryForeground
-												: colors.light.mutedForeground
-										}
+										name='ellipsis-vertical'
+										size={28}
+										color={colors.light.accentForeground}
 									/>
 								</TouchableOpacity>
 							</View>
 						</View>
-					</PanGestureHandler>
+
+						{/* Messages */}
+						<View style={styles.messagesContainer}>
+							<FlatList
+								ref={flatListRef}
+								data={messages}
+								renderItem={renderMessage}
+								keyExtractor={item => item.id}
+								contentContainerStyle={styles.messagesList}
+								showsVerticalScrollIndicator={false}
+								keyboardShouldPersistTaps='always'
+								onScroll={handleScroll}
+								scrollEventThrottle={16}
+								onContentSizeChange={() =>
+									flatListRef.current?.scrollToEnd({ animated: true })
+								}
+								onLayout={() => {
+									// Scroll to bottom when FlatList is first laid out
+									if (messages.length > 0) {
+										setTimeout(() => {
+											flatListRef.current?.scrollToEnd({ animated: true });
+										}, 100);
+									}
+								}}
+								ListEmptyComponent={
+									<View style={styles.emptyContainer}>
+										<Ionicons
+											name='chatbubbles-outline'
+											size={48}
+											color={colors.light.mutedForeground}
+										/>
+										<Text style={styles.emptyTitle}>
+											Start the conversation!
+										</Text>
+										<Text style={styles.emptySubtitle}>
+											Ask questions about this book, discuss themes, or explore
+											its meaning
+										</Text>
+									</View>
+								}
+								ListFooterComponent={renderTypingIndicator}
+							/>
+						</View>
+
+						{/* Input with Gesture Handler */}
+						<PanGestureHandler onGestureEvent={handleGesture}>
+							<View style={styles.inputContainer}>
+								<View style={styles.inputWrapper}>
+									<TextInput
+										style={styles.textInput}
+										placeholder='Type your message...'
+										placeholderTextColor={colors.light.mutedForeground}
+										value={newMessage}
+										onChangeText={setNewMessage}
+										multiline
+										maxLength={500}
+										onSubmitEditing={Keyboard.dismiss}
+									/>
+									<TouchableOpacity
+										style={[
+											styles.sendButton,
+											(!newMessage.trim() || sending) &&
+												styles.sendButtonDisabled,
+										]}
+										onPress={handleSendMessage}
+										disabled={!newMessage.trim() || sending}
+									>
+										<Ionicons
+											name='send'
+											size={20}
+											color={
+												newMessage.trim() && !sending
+													? colors.light.primaryForeground
+													: colors.light.mutedForeground
+											}
+										/>
+									</TouchableOpacity>
+									<TouchableOpacity
+										style={styles.micButton}
+										onPress={() => setShowConversationalVoice(true)}
+										disabled={sending}
+									>
+										<Ionicons
+											name='mic'
+											size={20}
+											color={
+												sending
+													? colors.light.mutedForeground
+													: colors.light.muted
+											}
+										/>
+									</TouchableOpacity>
+								</View>
+							</View>
+						</PanGestureHandler>
+					</View>
 				</KeyboardAvoidingView>
 			</SafeAreaView>
+
+			{/* Voice Recorder Modal */}
+			<VoiceRecorder
+				visible={showVoiceRecorder}
+				onTranscriptionComplete={handleVoiceTranscriptionComplete}
+				onCancel={handleVoiceRecorderCancel}
+				bookTitle={book?.title}
+				bookAuthor={book?.author}
+			/>
+
+			{/* Conversational Voice Chat Modal */}
+			<ConversationalVoiceChat
+				visible={showConversationalVoice}
+				onConversationComplete={handleConversationalVoiceComplete}
+				onClose={handleConversationalVoiceCancel}
+				bookTitle={book?.title}
+				bookAuthor={book?.author}
+			/>
+
+			{/* Dropdown Menu Modal */}
+			{showDropdown && (
+				<Animated.View style={[styles.dropdownOverlay, animatedOverlayStyle]}>
+					<TouchableOpacity
+						style={StyleSheet.absoluteFill}
+						activeOpacity={1}
+						onPress={closeDropdown}
+					/>
+					<Animated.View
+						style={[styles.dropdownContainer, animatedDropdownStyle]}
+					>
+						<TouchableOpacity
+							style={styles.dropdownItem}
+							onPress={handleShareChat}
+							activeOpacity={0.7}
+						>
+							<Ionicons
+								name='share-social-outline'
+								size={20}
+								color={colors.light.foreground}
+								style={styles.dropdownIcon}
+							/>
+							<Text style={styles.dropdownText}>Share</Text>
+						</TouchableOpacity>
+
+						<View style={styles.dropdownSeparator} />
+
+						<TouchableOpacity
+							style={styles.dropdownItem}
+							onPress={handleClearChat}
+							activeOpacity={0.7}
+						>
+							<Ionicons
+								name='reload-circle-outline'
+								size={20}
+								color={colors.light.foreground}
+								style={styles.dropdownIcon}
+							/>
+							<Text style={styles.dropdownText}>Reset Chat</Text>
+						</TouchableOpacity>
+					</Animated.View>
+				</Animated.View>
+			)}
 		</GestureHandlerRootView>
 	);
 }
 
 const styles = StyleSheet.create({
 	safeArea: {
+		flex: 1,
+		backgroundColor: colors.light.background,
+	},
+	chatContainer: {
+		flex: 1,
+		backgroundColor: colors.light.background,
+	},
+	chatCaptureContainer: {
 		flex: 1,
 		backgroundColor: colors.light.background,
 	},
@@ -391,10 +800,11 @@ const styles = StyleSheet.create({
 	header: {
 		flexDirection: 'row',
 		alignItems: 'center',
+		flexWrap: 'wrap',
 		paddingTop: Platform.OS === 'ios' ? 12 : 20,
 		paddingHorizontal: 16,
 		paddingBottom: 16,
-		backgroundColor: colors.light.card,
+		backgroundColor: colors.light.cardForeground,
 		borderBottomWidth: 1,
 		borderBottomColor: colors.light.border,
 	},
@@ -408,15 +818,17 @@ const styles = StyleSheet.create({
 	},
 	bookInfo: {
 		flexDirection: 'row',
-		alignItems: 'center',
+		alignItems: 'flex-start',
+		height: 100,
 		flex: 1,
 	},
 	bookCover: {
-		width: 40,
-		height: 50,
-		borderRadius: 6,
+		width: 75,
+		height: '100%',
+		borderRadius: 2,
 		overflow: 'hidden',
 		marginRight: 12,
+		objectFit: 'fill',
 	},
 	bookImage: {
 		width: '100%',
@@ -430,17 +842,24 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 	},
 	bookDetails: {
+		height: '100%',
 		flex: 1,
+		display: 'flex',
+		flexDirection: 'column',
+		justifyContent: 'center',
+		alignItems: 'flex-start',
+		marginRight: 12,
 	},
 	bookTitle: {
 		fontSize: 16,
 		fontWeight: '600',
-		color: colors.light.foreground,
-		marginBottom: 2,
+		color: colors.light.accentForeground,
+		marginBottom: 4,
 	},
 	bookAuthor: {
 		fontSize: 14,
-		color: colors.light.mutedForeground,
+		color: colors.light.accent,
+		fontStyle: 'italic',
 	},
 	messagesList: {
 		paddingHorizontal: 16,
@@ -556,5 +975,76 @@ const styles = StyleSheet.create({
 	},
 	sendButtonDisabled: {
 		backgroundColor: colors.light.muted,
+	},
+	micButton: {
+		width: 36,
+		height: 36,
+		borderRadius: 18,
+		backgroundColor: colors.light.primary,
+		alignItems: 'center',
+		justifyContent: 'center',
+		marginLeft: 8,
+	},
+	menuButton: {
+		padding: 8,
+		alignItems: 'center',
+		justifyContent: 'center',
+		display: 'flex',
+		flexDirection: 'column',
+		alignSelf: 'center',
+	},
+	dropdownOverlay: {
+		position: 'absolute',
+		top: 0,
+		left: 0,
+		right: 0,
+		bottom: 0,
+		backgroundColor: 'rgba(0, 0, 0, 0.25)',
+		justifyContent: 'flex-start',
+		alignItems: 'flex-end',
+		paddingTop: Platform.OS === 'ios' ? 100 : 80,
+		paddingRight: 16,
+	},
+	dropdownContainer: {
+		backgroundColor: colors.light.card,
+		borderRadius: 12,
+		minWidth: 160,
+		shadowColor: '#000',
+		shadowOffset: {
+			width: 0,
+			height: 4,
+		},
+		shadowOpacity: 0.15,
+		shadowRadius: 12,
+		elevation: 8,
+		borderWidth: 1,
+		borderColor: colors.light.border,
+		marginTop: 45,
+		marginRight: 16,
+	},
+	dropdownItem: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		paddingHorizontal: 16,
+		paddingVertical: 14,
+	},
+	dropdownIcon: {
+		marginRight: 12,
+	},
+	dropdownText: {
+		fontSize: 16,
+		color: colors.light.foreground,
+		fontWeight: '500',
+	},
+	dropdownSeparator: {
+		height: 1,
+		backgroundColor: colors.light.border,
+		marginHorizontal: 16,
+	},
+	destructiveItem: {
+		// No additional styling needed, handled by text color
+	},
+	destructiveText: {
+		color: colors.light.destructive,
 	},
 });
