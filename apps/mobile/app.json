@@ -13,14 +13,18 @@
 			"backgroundColor": "#ffffff"
 		},
 		"ios": {
-			"supportsTablet": true
+			"supportsTablet": true,
+			"infoPlist": {
+				"NSMicrophoneUsageDescription": "This app needs access to the microphone to record voice messages for AI chat."
+			}
 		},
 		"android": {
 			"adaptiveIcon": {
 				"foregroundImage": "./assets/adaptive-icon.png",
 				"backgroundColor": "#ffffff"
 			},
-			"edgeToEdgeEnabled": true
+			"edgeToEdgeEnabled": true,
+			"permissions": ["android.permission.RECORD_AUDIO"]
 		},
 		"web": {
 			"favicon": "./assets/favicon.png"
