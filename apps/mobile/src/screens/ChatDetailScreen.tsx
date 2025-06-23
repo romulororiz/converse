@@ -50,6 +50,7 @@ import {
 import { getBookById } from '../services/books';
 import { supabase } from '../lib/supabase';
 import type { Book, ChatMessage } from '../types/supabase';
+import { PremiumPaywallDrawer } from '../components/PremiumPaywallDrawer';
 
 type RootStackParamList = {
 	ChatDetail: { bookId: string };
@@ -107,6 +108,10 @@ export default function ChatDetailScreen() {
 	// Animation values for dropdown
 	const dropdownOpacity = useSharedValue(0);
 	const dropdownTranslateY = useSharedValue(-20);
+
+	// MOCK: Replace with real premium check
+	const isPremium = false; // TODO: Replace with real premium check from user/session/profile
+	const [showPaywall, setShowPaywall] = useState(false);
 
 	// Preload icons to prevent loading delay
 	useEffect(() => {
@@ -515,15 +520,6 @@ export default function ChatDetailScreen() {
 		);
 	};
 
-	const handleGesture = (event: PanGestureHandlerGestureEvent) => {
-		const { translationY, velocityY, state } = event.nativeEvent;
-
-		// Only dismiss on gesture end with significant downward movement
-		if (state === State.END && (translationY > 50 || velocityY > 800)) {
-			Keyboard.dismiss();
-		}
-	};
-
 	const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
 		const currentScrollY = event.nativeEvent.contentOffset.y;
 		const scrollDelta = currentScrollY - scrollY.current;
@@ -576,6 +572,14 @@ export default function ChatDetailScreen() {
 			/>
 		</View>
 	);
+
+	const handleVoiceFeaturePress = () => {
+		if (!isPremium) {
+			setShowPaywall(true);
+			return;
+		}
+		setShowConversationalVoice(true);
+	};
 
 	if (loading) {
 		return (
@@ -676,11 +680,22 @@ export default function ChatDetailScreen() {
 									</View>
 								}
 								ListFooterComponent={renderTypingIndicator}
+								keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
 							/>
 						</View>
 
 						{/* Input with Gesture Handler */}
-						<PanGestureHandler onGestureEvent={handleGesture}>
+						<PanGestureHandler
+							onGestureEvent={event => {
+								if (
+									Platform.OS === 'android' &&
+									event.nativeEvent.translationY > 50 &&
+									event.nativeEvent.state === State.ACTIVE
+								) {
+									Keyboard.dismiss();
+								}
+							}}
+						>
 							<View style={styles.inputContainer}>
 								<View style={styles.inputWrapper}>
 									<TextInput
@@ -714,17 +729,14 @@ export default function ChatDetailScreen() {
 									</TouchableOpacity>
 									<TouchableOpacity
 										style={styles.micButton}
+										// onPress={handleVoiceFeaturePress}
 										onPress={() => setShowConversationalVoice(true)}
 										disabled={sending}
 									>
 										<Ionicons
 											name='mic'
 											size={20}
-											color={
-												sending
-													? colors.light.mutedForeground
-													: colors.light.muted
-											}
+											color={sending ? colors.light.mutedForeground : colors.light.muted}
 										/>
 									</TouchableOpacity>
 								</View>
@@ -795,6 +807,24 @@ export default function ChatDetailScreen() {
 					</Animated.View>
 				</Animated.View>
 			)}
+
+			{/*** TODO: Add premium paywall drawer ***/}
+			{/* <PremiumPaywallDrawer
+				visible={showPaywall}
+				onClose={() => setShowPaywall(false)}
+				onPurchase={plan => {
+					// TODO: Integrate real purchase logic
+					setShowPaywall(false);
+					// Optionally set isPremium to true after purchase
+				}}
+				onRestore={() => {
+					// TODO: Integrate restore purchase logic
+					setShowPaywall(false);
+				}}
+				onPrivacyPolicy={() => {
+					// TODO: Show privacy policy
+				}}
+			/> */}
 		</GestureHandlerRootView>
 	);
 }

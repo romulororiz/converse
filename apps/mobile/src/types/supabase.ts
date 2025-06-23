@@ -30,6 +30,7 @@ export type Book = {
 	author: string;
 	slug?: string | null;
 	book_authors?: { author: Author }[];
+	year?: number | null;
 };
 
 export type ChatMessage = {
