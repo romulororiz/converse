@@ -61,6 +61,31 @@ type ChatDetailScreenNavigationProp = NativeStackNavigationProp<
 >;
 type ChatDetailScreenRouteProp = RouteProp<RootStackParamList, 'ChatDetail'>;
 
+// Helper function to format year as AD/BC
+const formatYear = (year: number | string | null | undefined): string => {
+	if (year === null || year === undefined || year === '') {
+		return 'Unknown Year';
+	}
+	
+	const yearNum = typeof year === 'string' ? parseInt(year, 10) : year;
+	
+	if (isNaN(yearNum)) {
+		return 'Unknown Year';
+	}
+	
+	// If year is less than 1000, format as AD/BC
+	if (Math.abs(yearNum) < 1000) {
+		if (yearNum >= 0) {
+			return `${yearNum} AD`;
+		} else {
+			return `${Math.abs(yearNum)} BC`;
+		}
+	}
+	
+	// For years 1000 and above, return as is
+	return yearNum.toString();
+};
+
 export default function ChatDetailScreen() {
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [newMessage, setNewMessage] = useState('');
@@ -594,8 +619,8 @@ export default function ChatDetailScreen() {
 									<Text style={styles.bookTitle} numberOfLines={2}>
 										{book?.title || 'Unknown Book'}
 									</Text>
-									<Text style={styles.bookAuthor} numberOfLines={1}>
-										{book?.author || 'Unknown Author'}
+									<Text style={styles.bookAuthor} numberOfLines={2}>
+										{book?.author || 'Unknown Author'} • {formatYear(book?.year)}
 									</Text>
 								</View>
 								<TouchableOpacity
@@ -854,7 +879,7 @@ const styles = StyleSheet.create({
 		fontSize: 16,
 		fontWeight: '600',
 		color: colors.light.accentForeground,
-		marginBottom: 4,
+		marginBottom: 6,
 	},
 	bookAuthor: {
 		fontSize: 14,
