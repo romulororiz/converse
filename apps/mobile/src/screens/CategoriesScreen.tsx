@@ -12,108 +12,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
 import { useNavigation } from '@react-navigation/native';
+import { getCategoriesWithCounts, Category } from '../services/categories';
+import { showAlert } from '../utils/alert';
 
 const { width } = Dimensions.get('window');
-
-// Mock categories data with book counts
-const categories = [
-	{
-		id: 1,
-		name: 'Fiction',
-		icon: 'book',
-		bookCount: 247,
-		description: 'Novels and imaginative stories',
-		color: '#FF6B6B',
-	},
-	{
-		id: 2,
-		name: 'Non-Fiction',
-		icon: 'library',
-		bookCount: 189,
-		description: 'Real-world knowledge and facts',
-		color: '#4ECDC4',
-	},
-	{
-		id: 3,
-		name: 'Science Fiction',
-		icon: 'rocket',
-		bookCount: 156,
-		description: 'Futuristic and speculative stories',
-		color: '#45B7D1',
-	},
-	{
-		id: 4,
-		name: 'Mystery',
-		icon: 'search',
-		bookCount: 134,
-		description: 'Puzzles, crimes, and suspense',
-		color: '#96CEB4',
-	},
-	{
-		id: 5,
-		name: 'Romance',
-		icon: 'heart',
-		bookCount: 98,
-		description: 'Love stories and relationships',
-		color: '#FFEAA7',
-	},
-	{
-		id: 6,
-		name: 'Biography',
-		icon: 'person',
-		bookCount: 87,
-		description: 'Life stories of real people',
-		color: '#DDA0DD',
-	},
-	{
-		id: 7,
-		name: 'History',
-		icon: 'time',
-		bookCount: 76,
-		description: 'Past events and civilizations',
-		color: '#F4A261',
-	},
-	{
-		id: 8,
-		name: 'Philosophy',
-		icon: 'bulb',
-		bookCount: 65,
-		description: 'Wisdom and deep thinking',
-		color: '#E76F51',
-	},
-	{
-		id: 9,
-		name: 'Self-Help',
-		icon: 'trending-up',
-		bookCount: 54,
-		description: 'Personal development and growth',
-		color: '#2A9D8F',
-	},
-	{
-		id: 10,
-		name: 'Poetry',
-		icon: 'flower',
-		bookCount: 43,
-		description: 'Verses and lyrical expressions',
-		color: '#E9C46A',
-	},
-	{
-		id: 11,
-		name: 'Thriller',
-		icon: 'flash',
-		bookCount: 92,
-		description: 'High-tension and suspenseful stories',
-		color: '#F72585',
-	},
-	{
-		id: 12,
-		name: 'Fantasy',
-		icon: 'star',
-		bookCount: 112,
-		description: 'Magical and mythical worlds',
-		color: '#7209B7',
-	},
-];
 
 type NavigationProp = {
 	navigate: (screen: string, params?: any) => void;
@@ -121,23 +23,41 @@ type NavigationProp = {
 };
 
 export default function CategoriesScreen() {
-	const [loading, setLoading] = useState(false);
+	const [categories, setCategories] = useState<Category[]>([]);
+	const [loading, setLoading] = useState(true);
 	const navigation = useNavigation<NavigationProp>();
 
-	const handleCategoryPress = (category: any) => {
+	useEffect(() => {
+		loadCategories();
+	}, []);
+
+	const loadCategories = async () => {
+		try {
+			setLoading(true);
+			const categoriesData = await getCategoriesWithCounts();
+			setCategories(categoriesData);
+		} catch (error) {
+			console.error('Error loading categories:', error);
+			showAlert('Error', 'Failed to load categories');
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const handleCategoryPress = (category: Category) => {
 		// Navigate to books list filtered by category
 		navigation.navigate('BooksList', {
 			category: category.name,
-			categoryId: category.id,
+			title: category.name,
 		});
 	};
 
-	const renderCategoryCard = (category: any) => {
+	const renderCategoryCard = (category: Category, index: number) => {
 		const cardWidth = (width - 48) / 2; // 2 columns with padding
 
 		return (
 			<TouchableOpacity
-				key={category.id}
+				key={category.name}
 				style={[styles.categoryCard, { width: cardWidth }]}
 				onPress={() => handleCategoryPress(category)}
 				activeOpacity={0.7}
@@ -159,7 +79,7 @@ export default function CategoriesScreen() {
 					{category.description}
 				</Text>
 				<View style={styles.bookCountContainer}>
-					<Text style={styles.bookCount}>{category.bookCount}</Text>
+					<Text style={styles.bookCount}>{category.count}</Text>
 					<Text style={styles.bookCountLabel}>books</Text>
 				</View>
 			</TouchableOpacity>
@@ -216,47 +136,41 @@ export default function CategoriesScreen() {
 				<View style={styles.section}>
 					<Text style={styles.sectionTitle}>Most Popular</Text>
 					<Text style={styles.sectionSubtitle}>
-						Categories with the most conversations
+						Categories with the most books in our library
 					</Text>
 
 					<View style={styles.popularList}>
-						{categories
-							.sort((a, b) => b.bookCount - a.bookCount)
-							.slice(0, 5)
-							.map((category, index) => (
-								<TouchableOpacity
-									key={category.id}
-									style={styles.popularItem}
-									onPress={() => handleCategoryPress(category)}
+						{categories.slice(0, 5).map((category, index) => (
+							<TouchableOpacity
+								key={category.name}
+								style={styles.popularItem}
+								onPress={() => handleCategoryPress(category)}
+							>
+								<View
+									style={[
+										styles.popularIcon,
+										{ backgroundColor: category.color + '20' },
+									]}
 								>
-									<View style={styles.popularRank}>
-										<Text style={styles.rankNumber}>{index + 1}</Text>
-									</View>
-									<View
-										style={[
-											styles.popularIcon,
-											{ backgroundColor: category.color + '20' },
-										]}
-									>
-										<Ionicons
-											name={category.icon as any}
-											size={20}
-											color={category.color}
-										/>
-									</View>
-									<View style={styles.popularInfo}>
-										<Text style={styles.popularName}>{category.name}</Text>
-										<Text style={styles.popularCount}>
-											{category.bookCount} books
-										</Text>
-									</View>
 									<Ionicons
-										name='chevron-forward'
+										name={category.icon as any}
 										size={20}
-										color={colors.light.mutedForeground}
+										color={category.color}
 									/>
-								</TouchableOpacity>
-							))}
+								</View>
+								<View style={styles.popularInfo}>
+									<Text style={styles.popularName}>{category.name}</Text>
+									<Text style={styles.popularCount}>
+										{category.count} books
+									</Text>
+								</View>
+								<Ionicons
+									name='chevron-forward'
+									size={20}
+									color={colors.light.mutedForeground}
+								/>
+							</TouchableOpacity>
+						))}
 					</View>
 				</View>
 			</ScrollView>

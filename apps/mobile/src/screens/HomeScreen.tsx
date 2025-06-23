@@ -13,22 +13,26 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
+import { showAlert } from '../utils/alert';
 import { getFeaturedBooks } from '../services/books';
-import { getRecentChats } from '../services/chat';
-import { useNavigation } from '@react-navigation/native';
+import { getRecentChats, deleteChatSession } from '../services/chat';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../components/AuthProvider';
 import { Book } from '../types/supabase';
 import { BookCover } from '../components/BookCover';
+import { SwipeableChatItem } from '../components/SwipeableChatItem';
+import { EmptyState } from '../components/EmptyState';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 const { width } = Dimensions.get('window');
 
 const categories = [
-	{ id: 1, name: 'Fiction', icon: 'book' },
-	{ id: 2, name: 'Non-Fiction', icon: 'library' },
-	{ id: 3, name: 'Science Fiction', icon: 'rocket' },
-	{ id: 4, name: 'Mystery', icon: 'search' },
-	{ id: 5, name: 'Romance', icon: 'heart' },
-	{ id: 6, name: 'Biography', icon: 'person' },
+	{ id: 1, name: 'Romance', icon: 'heart' },
+	{ id: 2, name: 'Classic Literature', icon: 'library' },
+	{ id: 3, name: 'Adventure', icon: 'map' },
+	{ id: 4, name: 'Mystery & Detective', icon: 'search' },
+	{ id: 5, name: 'Science Fiction', icon: 'rocket' },
+	{ id: 6, name: 'Philosophy', icon: 'bulb' },
 ];
 
 type NavigationProp = {
@@ -49,6 +53,15 @@ export default function HomeScreen() {
 			loadRecentChats();
 		}
 	}, [user]);
+
+	// Refresh recent chats when screen comes into focus
+	useFocusEffect(
+		React.useCallback(() => {
+			if (user) {
+				loadRecentChats();
+			}
+		}, [user])
+	);
 
 	const loadFeaturedBooks = async () => {
 		try {
@@ -99,7 +112,16 @@ export default function HomeScreen() {
 	);
 
 	const renderCategoryCard = (category: any) => (
-		<TouchableOpacity key={category.id} style={styles.categoryCard}>
+		<TouchableOpacity
+			key={category.id}
+			style={styles.categoryCard}
+			onPress={() =>
+				navigation.navigate('BooksList', {
+					category: category.name,
+					title: category.name,
+				})
+			}
+		>
 			<View style={styles.categoryIcon}>
 				<Ionicons
 					name={category.icon as any}
@@ -111,194 +133,156 @@ export default function HomeScreen() {
 		</TouchableOpacity>
 	);
 
-	const formatTimeAgo = (dateString: string) => {
-		const now = new Date();
-		const date = new Date(dateString);
-		const diffInHours = Math.floor(
-			(now.getTime() - date.getTime()) / (1000 * 60 * 60)
-		);
-
-		if (diffInHours < 1) return 'Just now';
-		if (diffInHours < 24)
-			return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
-
-		const diffInDays = Math.floor(diffInHours / 24);
-		if (diffInDays === 1) return 'Yesterday';
-		if (diffInDays < 7) return `${diffInDays} days ago`;
-
-		const diffInWeeks = Math.floor(diffInDays / 7);
-		if (diffInWeeks === 1) return '1 week ago';
-		if (diffInWeeks < 4) return `${diffInWeeks} weeks ago`;
-
-		return date.toLocaleDateString();
+	const handleDeleteChat = async (chatId: string) => {
+		try {
+			console.log('Deleting chat:', chatId);
+			await deleteChatSession(chatId);
+			setRecentChats(prev => prev.filter(chat => chat.id !== chatId));
+		} catch (error) {
+			console.error('Error deleting chat:', error);
+			showAlert('Error', 'Failed to delete conversation');
+		}
 	};
 
-	const renderRecentChatCard = (chat: any, index: number) => (
-		<View
-			key={chat.id}
-			style={[styles.conversationCard, index > 0 && { marginTop: 12 }]}
-		>
-			<View style={styles.conversationCover}>
-				{chat.books?.cover_url ? (
-					<BookCover
-						uri={chat.books.cover_url}
-						style={styles.conversationCoverImage}
-						placeholderIcon='book-outline'
-						placeholderSize={24}
-					/>
-				) : (
-					<Text style={styles.bookCoverText}>📖</Text>
-				)}
-			</View>
-			<View style={styles.conversationInfo}>
-				<Text style={styles.conversationTitle} numberOfLines={1}>
-					{chat.books?.title || 'Unknown Book'}
-				</Text>
-				<Text style={styles.conversationAuthor} numberOfLines={1}>
-					{chat.books?.author || 'Unknown Author'}
-				</Text>
-				<View style={styles.conversationMeta}>
-					<View style={styles.messageCount}>
-						<Ionicons
-							name='chatbubble'
-							size={12}
-							color={colors.light.primary}
-						/>
-						<Text style={styles.messageCountText}>
-							{chat.messageCount} message{chat.messageCount !== 1 ? 's' : ''}
-						</Text>
-					</View>
-					<Text style={styles.lastChatTime}>
-						{formatTimeAgo(chat.lastMessageTime)}
-					</Text>
-				</View>
-				{chat.lastMessage && (
-					<Text style={styles.lastMessage} numberOfLines={1}>
-						{chat.lastMessageRole === 'user'
-							? `"${chat.lastMessage}"`
-							: chat.lastMessage}
-					</Text>
-				)}
-				<TouchableOpacity
-					style={styles.continueButton}
-					onPress={() =>
-						navigation.navigate('ChatDetail', { bookId: chat.book_id })
+	const renderRecentChatCard = (chat: any, index: number) => {
+		// Transform data to match SwipeableChatItem interface
+		const chatData = {
+			...chat,
+			updated_at:
+				chat.updated_at || chat.lastMessageTime || new Date().toISOString(),
+			lastMessage: chat.lastMessage
+				? chat.lastMessageRole === 'user'
+					? `"${chat.lastMessage}"`
+					: chat.lastMessage
+				: undefined,
+		};
+
+		return (
+			<View key={chat.id} style={index > 0 && { marginTop: 12 }}>
+				<SwipeableChatItem
+					item={chatData}
+					onPress={chatItem =>
+						navigation.navigate('ChatDetail', { bookId: chatItem.book_id })
 					}
-				>
-					<Ionicons
-						name='chatbubbles'
-						size={16}
-						color={colors.light.accentForeground}
-					/>
-					<Text style={styles.continueButtonText}>Continue Chat</Text>
-				</TouchableOpacity>
+					onDelete={handleDeleteChat}
+				/>
 			</View>
-		</View>
-	);
+		);
+	};
 
 	return (
-		<SafeAreaView style={styles.safeArea}>
-			<ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-				{/* Header Section */}
-				<View style={styles.header}>
-					<View style={styles.headerTop}>
-						<Text style={styles.appTitle}>ConversAI</Text>
-					</View>
-					<Text style={styles.welcomeText}>Chat with your favorite books.</Text>
-					<TouchableOpacity
-						style={styles.ctaButton}
-						onPress={() => navigation.navigate('Discover')}
-					>
-						<Text style={styles.ctaButtonText}>Explore Books</Text>
-						<Ionicons
-							name='arrow-forward'
-							size={20}
-							color={colors.light.primaryForeground}
-						/>
-					</TouchableOpacity>
-				</View>
-
-				{/* Featured Books Carousel */}
-				<View style={styles.section}>
-					<View style={styles.sectionHeader}>
-						<Text style={styles.sectionTitle}>Featured Books</Text>
-						<TouchableOpacity onPress={() => navigation.navigate('BooksList')}>
-							<Text style={styles.seeAllText}>See All</Text>
+		<GestureHandlerRootView style={styles.safeArea}>
+			<SafeAreaView style={styles.safeArea}>
+				<ScrollView
+					style={styles.container}
+					showsVerticalScrollIndicator={false}
+				>
+					{/* Header Section */}
+					<View style={styles.header}>
+						<View style={styles.headerTop}>
+							<Text style={styles.appTitle}>ConversAI</Text>
+						</View>
+						<Text style={styles.welcomeText}>
+							Chat with your favorite books.
+						</Text>
+						<TouchableOpacity
+							style={styles.ctaButton}
+							onPress={() => navigation.navigate('Discover')}
+						>
+							<Text style={styles.ctaButtonText}>Explore Books</Text>
+							<Ionicons
+								name='arrow-forward'
+								size={20}
+								color={colors.light.primaryForeground}
+							/>
 						</TouchableOpacity>
 					</View>
-					{loading ? (
-						<View style={styles.loadingContainer}>
-							<ActivityIndicator size='large' color={colors.light.primary} />
-							<Text style={styles.loadingText}>Loading books...</Text>
+
+					{/* Featured Books Carousel */}
+					<View style={styles.section}>
+						<View style={styles.sectionHeader}>
+							<Text style={styles.sectionTitle}>Featured Books</Text>
+							<TouchableOpacity
+								onPress={() => navigation.navigate('BooksList')}
+							>
+								<Text style={styles.seeAllText}>See All</Text>
+							</TouchableOpacity>
 						</View>
-					) : (
+						{loading ? (
+							<View style={styles.loadingContainer}>
+								<ActivityIndicator size='large' color={colors.light.primary} />
+								<Text style={styles.loadingText}>Loading books...</Text>
+							</View>
+						) : (
+							<ScrollView
+								horizontal
+								showsHorizontalScrollIndicator={false}
+								style={styles.carousel}
+							>
+								{featuredBooks.map(book => (
+									<View key={book.id}>{renderBookCard({ item: book })}</View>
+								))}
+							</ScrollView>
+						)}
+					</View>
+
+					{/* Categories */}
+					<View style={styles.section}>
+						<View style={styles.sectionHeader}>
+							<Text style={styles.sectionTitle}>Browse Categories</Text>
+							<TouchableOpacity
+								onPress={() => navigation.navigate('Categories')}
+							>
+								<Text style={styles.seeAllText}>See All</Text>
+							</TouchableOpacity>
+						</View>
 						<ScrollView
 							horizontal
 							showsHorizontalScrollIndicator={false}
 							style={styles.carousel}
 						>
-							{featuredBooks.map(book => (
-								<View key={book.id}>{renderBookCard({ item: book })}</View>
-							))}
+							{categories.map(renderCategoryCard)}
 						</ScrollView>
-					)}
-				</View>
-
-				{/* Categories */}
-				<View style={styles.section}>
-					<View style={styles.sectionHeader}>
-						<Text style={styles.sectionTitleCategories}>Browse Categories</Text>
-						<TouchableOpacity onPress={() => navigation.navigate('Categories')}>
-							<Text style={styles.seeAllText}>See All</Text>
-						</TouchableOpacity>
-					</View>
-					<ScrollView
-						horizontal
-						showsHorizontalScrollIndicator={false}
-						style={styles.carousel}
-					>
-						{categories.map(renderCategoryCard)}
-					</ScrollView>
-				</View>
-
-				{/* Recent Conversations */}
-				<View style={styles.section}>
-					<View style={styles.sectionHeader}>
-						<Text style={styles.sectionTitle}>Recent Conversations</Text>
-						<TouchableOpacity onPress={() => navigation.navigate('Chats')}>
-							<Text style={styles.seeAllText}>See All</Text>
-						</TouchableOpacity>
 					</View>
 
-					{chatsLoading ? (
-						<View style={styles.loadingContainer}>
-							<ActivityIndicator size='small' color={colors.light.primary} />
-							<Text style={styles.loadingText}>Loading conversations...</Text>
-						</View>
-					) : recentChats.length > 0 ? (
-						recentChats.map((chat, index) => renderRecentChatCard(chat, index))
-					) : (
-						<View style={styles.emptyChatsContainer}>
-							<Ionicons
-								name='chatbubbles-outline'
-								size={48}
-								color={colors.light.mutedForeground}
-							/>
-							<Text style={styles.emptyChatsText}>No conversations yet</Text>
-							<Text style={styles.emptyChatsSubtext}>
-								Start chatting with a book to see your conversations here
-							</Text>
-							<TouchableOpacity
-								style={styles.exploreButton}
-								onPress={() => navigation.navigate('Discover')}
-							>
-								<Text style={styles.exploreButtonText}>Explore Books</Text>
+					{/* Recent Conversations */}
+					<View style={styles.section}>
+						<View style={styles.sectionHeader}>
+							<Text style={styles.sectionTitle}>Recent Conversations</Text>
+							<TouchableOpacity onPress={() => navigation.navigate('Chats')}>
+								<Text style={styles.seeAllText}>See All</Text>
 							</TouchableOpacity>
 						</View>
-					)}
-				</View>
-			</ScrollView>
-		</SafeAreaView>
+
+						{chatsLoading ? (
+							<View style={styles.loadingContainer}>
+								<ActivityIndicator size='small' color={colors.light.primary} />
+								<Text style={styles.loadingText}>Loading conversations...</Text>
+							</View>
+						) : recentChats.length > 0 ? (
+							recentChats.map((chat, index) =>
+								renderRecentChatCard(chat, index)
+							)
+						) : (
+							<EmptyState
+								icon={{
+									name: 'chatbubbles-outline',
+									size: 48,
+									color: colors.light.mutedForeground,
+								}}
+								title='No conversations yet'
+								subtitle='Start chatting with a book to see your conversations here'
+								button={{
+									text: 'Explore Books',
+									onPress: () => navigation.navigate('Discover'),
+									style: 'primary',
+								}}
+							/>
+						)}
+					</View>
+				</ScrollView>
+			</SafeAreaView>
+		</GestureHandlerRootView>
 	);
 }
 
@@ -357,23 +341,18 @@ const styles = StyleSheet.create({
 	},
 	sectionHeader: {
 		width: '100%',
+		display: 'flex',
 		flexDirection: 'row',
 		justifyContent: 'space-between',
 		alignItems: 'center',
+		marginBottom: 8,
 	},
 	sectionTitle: {
 		width: 'auto',
 		fontSize: 20,
 		fontWeight: 'bold',
 		color: colors.light.foreground,
-		marginBottom: 16,
-	},
-	sectionTitleCategories: {
-		width: 'auto',
-		fontSize: 20,
-		fontWeight: 'bold',
-		color: colors.light.foreground,
-		marginBottom: 10,
+		height: '100%',
 	},
 	seeAllText: {
 		color: colors.light.primary,
@@ -449,116 +428,7 @@ const styles = StyleSheet.create({
 		color: colors.light.foreground,
 		textAlign: 'center',
 	},
-	conversationCard: {
-		flexDirection: 'row',
-		backgroundColor: colors.light.card,
-		padding: 16,
-		borderRadius: 12,
-		shadowOffset: { width: 0, height: 1 },
-		shadowOpacity: 0.25,
-		shadowRadius: 3,
-		elevation: 5,
-	},
-	conversationCover: {
-		width: 80,
-		height: 120,
-		backgroundColor: colors.light.secondary,
-		borderRadius: 2,
-		alignItems: 'center',
-		justifyContent: 'center',
-		marginRight: 16,
-	},
-	conversationCoverImage: {
-		width: 80,
-		height: 120,
-		borderRadius: 2,
-	},
-	conversationInfo: {
-		flex: 1,
-		justifyContent: 'space-between',
-	},
-	conversationTitle: {
-		fontSize: 16,
-		fontWeight: '600',
-		color: colors.light.foreground,
-		marginBottom: 4,
-	},
-	conversationAuthor: {
-		fontSize: 14,
-		color: colors.light.mutedForeground,
-		marginBottom: 8,
-	},
-	conversationMeta: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		justifyContent: 'space-between',
-		marginBottom: 8,
-	},
-	messageCount: {
-		flexDirection: 'row',
-		alignItems: 'center',
-	},
-	messageCountText: {
-		fontSize: 12,
-		color: colors.light.foreground,
-		marginLeft: 4,
-	},
-	lastChatTime: {
-		fontSize: 12,
-		color: colors.light.mutedForeground,
-	},
-	lastMessage: {
-		fontSize: 13,
-		color: colors.light.mutedForeground,
-		fontStyle: 'italic',
-		marginBottom: 12,
-		lineHeight: 18,
-	},
-	continueButton: {
-		backgroundColor: colors.light.accent,
-		flexDirection: 'row',
-		alignItems: 'center',
-		paddingVertical: 8,
-		paddingHorizontal: 16,
-		borderRadius: 6,
-		alignSelf: 'flex-start',
-		gap: 6,
-	},
-	continueButtonText: {
-		color: colors.light.accentForeground,
-		fontSize: 12,
-		fontWeight: '500',
-	},
-	emptyChatsContainer: {
-		alignItems: 'center',
-		paddingVertical: 40,
-		paddingHorizontal: 20,
-	},
-	emptyChatsText: {
-		fontSize: 16,
-		fontWeight: '600',
-		color: colors.light.foreground,
-		marginTop: 16,
-		marginBottom: 8,
-	},
-	emptyChatsSubtext: {
-		fontSize: 14,
-		color: colors.light.mutedForeground,
-		textAlign: 'center',
-		lineHeight: 20,
-		marginBottom: 20,
-	},
-	exploreButton: {
-		backgroundColor: colors.light.primary,
-		paddingVertical: 10,
-		paddingHorizontal: 20,
-		borderRadius: 8,
-	},
-	exploreButtonText: {
-		color: colors.light.primaryForeground,
-		fontSize: 14,
-		fontWeight: '600',
-	},
+
 	loadingContainer: {
 		flexDirection: 'row',
 		alignItems: 'center',

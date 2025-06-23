@@ -13,8 +13,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
 import { getAllBooks, searchBooks } from '../services/books';
+import { searchBooksByCategory } from '../services/categories';
 import { Book } from '../types/supabase';
 import { BookCover } from '../components/BookCover';
+import { EmptyState } from '../components/EmptyState';
 
 export default function BooksListScreen({ navigation, route }: any) {
 	const [books, setBooks] = useState<Book[]>([]);
@@ -28,7 +30,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 
 	useEffect(() => {
 		loadBooks();
-	}, []);
+	}, [category]); // Reload when category changes
 
 	useEffect(() => {
 		if (searchQuery.trim() === '') {
@@ -41,9 +43,18 @@ export default function BooksListScreen({ navigation, route }: any) {
 	const loadBooks = async () => {
 		try {
 			setLoading(true);
-			const allBooks = await getAllBooks();
-			setBooks(allBooks);
-			setFilteredBooks(allBooks);
+			let booksToShow: Book[];
+
+			if (category) {
+				// Load books filtered by category
+				booksToShow = await searchBooksByCategory(category);
+			} else {
+				// Load all books
+				booksToShow = await getAllBooks();
+			}
+
+			setBooks(booksToShow);
+			setFilteredBooks(booksToShow);
 		} catch (error) {
 			console.error('Error loading books:', error);
 		} finally {
@@ -157,6 +168,23 @@ export default function BooksListScreen({ navigation, route }: any) {
 				</View>
 			</View>
 
+			{/* Category Filter */}
+			{category && (
+				<View style={styles.tagsContainer}>
+					<Text style={styles.tagsTitle}>Browsing Category:</Text>
+					<View style={styles.tagsWrapper}>
+						<View style={styles.tagChip}>
+							<Text style={styles.tagChipText}>{category}</Text>
+						</View>
+						<View style={styles.tagChip}>
+							<Text style={styles.tagChipText}>
+								{filteredBooks.length} books
+							</Text>
+						</View>
+					</View>
+				</View>
+			)}
+
 			{/* Selected Tags */}
 			{tags && tags.length > 0 && (
 				<View style={styles.tagsContainer}>
@@ -179,16 +207,45 @@ export default function BooksListScreen({ navigation, route }: any) {
 				contentContainerStyle={styles.listContainer}
 				showsVerticalScrollIndicator={false}
 				ListEmptyComponent={
-					<View style={styles.emptyContainer}>
-						<Ionicons
-							name='library'
-							size={48}
-							color={colors.light.mutedForeground}
-						/>
-						<Text style={styles.emptyText}>
-							{searchQuery ? 'No books found' : 'No books available'}
-						</Text>
-					</View>
+					<EmptyState
+						icon={{
+							name: searchQuery ? 'search-outline' : 'library-outline',
+							size: 48,
+							color: colors.light.mutedForeground,
+						}}
+						title={
+							searchQuery
+								? 'No books found'
+								: category
+									? `No ${category} books`
+									: 'No books available'
+						}
+						subtitle={
+							searchQuery
+								? 'Try adjusting your search terms or browse by category'
+								: category
+									? 'Try exploring other categories or check back later for new additions'
+									: 'Check back later for new book additions'
+						}
+						button={
+							searchQuery || category
+								? {
+										text: searchQuery
+											? 'Clear Search'
+											: 'Browse All Categories',
+										onPress: () => {
+											if (searchQuery) {
+												setSearchQuery('');
+											} else {
+												navigation.navigate('Categories');
+											}
+										},
+										style: 'secondary',
+									}
+								: undefined
+						}
+						containerStyle={styles.emptyContainer}
+					/>
 				}
 			/>
 		</SafeAreaView>
@@ -206,7 +263,7 @@ const styles = StyleSheet.create({
 		justifyContent: 'space-between',
 		padding: 20,
 		paddingTop: 20,
-		backgroundColor: colors.light.card,
+		backgroundColor: colors.light.cardForeground,
 	},
 	backButton: {
 		padding: 4,
@@ -214,14 +271,14 @@ const styles = StyleSheet.create({
 	headerTitle: {
 		fontSize: 20,
 		fontWeight: 'bold',
-		color: colors.light.foreground,
+		color: colors.light.accentForeground,
 	},
 	headerRight: {
 		width: 32,
 	},
 	searchContainer: {
-		padding: 20,
-		paddingTop: 10,
+		paddingHorizontal: 20,
+		paddingTop: 20,
 	},
 	searchBar: {
 		flexDirection: 'row',
@@ -235,21 +292,15 @@ const styles = StyleSheet.create({
 		flex: 1,
 		marginLeft: 12,
 		fontSize: 16,
-		color: colors.light.card,
+		color: colors.light.cardForeground,
 	},
 	listContainer: {
-		padding: 20,
+		paddingHorizontal: 20,
 	},
 	bookItem: {
 		flexDirection: 'row',
-		backgroundColor: colors.light.card,
-		borderRadius: 8,
 		padding: 10,
 		marginBottom: 16,
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.25,
-		shadowRadius: 3,
-		elevation: 5,
 	},
 	bookCover: {
 		width: 90,
@@ -275,6 +326,8 @@ const styles = StyleSheet.create({
 	bookInfo: {
 		flex: 1,
 		justifyContent: 'center',
+		borderBottomWidth: 1,
+		borderColor: colors.light.border,
 	},
 	bookTitle: {
 		fontSize: 16,
@@ -328,15 +381,9 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		paddingVertical: 60,
 	},
-	emptyText: {
-		marginTop: 16,
-		fontSize: 16,
-		color: colors.light.mutedForeground,
-		textAlign: 'center',
-	},
 	tagsContainer: {
 		paddingHorizontal: 20,
-		paddingBottom: 10,
+		paddingVertical: 12,
 	},
 	tagsTitle: {
 		fontSize: 14,
@@ -345,12 +392,14 @@ const styles = StyleSheet.create({
 		marginBottom: 8,
 	},
 	tagsWrapper: {
+		display: 'flex',
 		flexDirection: 'row',
+		justifyContent: 'space-between',
 		flexWrap: 'wrap',
 		gap: 8,
 	},
 	tagChip: {
-		backgroundColor: colors.light.primary,
+		backgroundColor: colors.light.cardForeground,
 		paddingHorizontal: 12,
 		paddingVertical: 6,
 		borderRadius: 16,

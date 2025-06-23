@@ -67,13 +67,13 @@ const formatYear = (year: number | string | null | undefined): string => {
 	if (year === null || year === undefined || year === '') {
 		return 'Unknown Year';
 	}
-	
+
 	const yearNum = typeof year === 'string' ? parseInt(year, 10) : year;
-	
+
 	if (isNaN(yearNum)) {
 		return 'Unknown Year';
 	}
-	
+
 	// If year is less than 1000, format as AD/BC
 	if (Math.abs(yearNum) < 1000) {
 		if (yearNum >= 0) {
@@ -82,7 +82,7 @@ const formatYear = (year: number | string | null | undefined): string => {
 			return `${Math.abs(yearNum)} BC`;
 		}
 	}
-	
+
 	// For years 1000 and above, return as is
 	return yearNum.toString();
 };
@@ -240,6 +240,58 @@ export default function ChatDetailScreen() {
 			}, 200);
 		} catch (error) {
 			console.error('Error sending message:', error);
+			// Remove the temp message on error
+			setMessages(prev => prev.slice(0, -1));
+			showAlert('Error', 'Failed to send message');
+		} finally {
+			setSending(false);
+		}
+	};
+
+	const handleSampleQuestionPress = async (question: string) => {
+		if (sending) return;
+
+		setSending(true);
+
+		try {
+			// Create session if it doesn't exist
+			let currentSessionId = sessionId;
+			if (!currentSessionId) {
+				const session = await getOrCreateChatSession(user!.id, bookId);
+				currentSessionId = session.id;
+				setSessionId(currentSessionId);
+			}
+
+			// Create temporary user message for immediate UI display
+			const tempUserMessage: ChatMessage = {
+				id: `temp-${Date.now()}`,
+				content: question,
+				role: 'user',
+				created_at: new Date().toISOString(),
+				session_id: currentSessionId,
+				metadata: {},
+			};
+
+			// Add user message to UI immediately
+			setMessages(prev => [...prev, tempUserMessage]);
+
+			// Send message and get AI response in one call
+			const { userMessage: userMsg, aiMessage: aiMsg } =
+				await sendMessageAndGetAIResponse(currentSessionId, question);
+
+			// Replace temp message with real user message and add AI response
+			setMessages(prev => [
+				...prev.slice(0, -1), // Remove temp message
+				userMsg as ChatMessage,
+				aiMsg as ChatMessage,
+			]);
+
+			// Auto-scroll to bottom after new messages
+			setTimeout(() => {
+				flatListRef.current?.scrollToEnd({ animated: true });
+			}, 200);
+		} catch (error) {
+			console.error('Error sending sample question:', error);
 			// Remove the temp message on error
 			setMessages(prev => prev.slice(0, -1));
 			showAlert('Error', 'Failed to send message');
@@ -520,6 +572,32 @@ export default function ChatDetailScreen() {
 		);
 	};
 
+	const renderSampleQuestions = () => {
+		// Only show sample questions when there are no messages
+		if (messages.length > 0) return null;
+
+		return (
+			<View style={styles.sampleQuestionsContainer}>
+				{[
+					'What are the main themes in this book?',
+					'Tell me about the main character',
+					'What is the historical context of this story?',
+					'What lesson can I learn from this book?',
+				].map((question, index) => (
+					<TouchableOpacity
+						key={index}
+						style={styles.sampleQuestionBubble}
+						onPress={() => handleSampleQuestionPress(question)}
+						activeOpacity={0.7}
+						disabled={sending}
+					>
+						<Text style={styles.sampleQuestionText}>{question}</Text>
+					</TouchableOpacity>
+				))}
+			</View>
+		);
+	};
+
 	const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
 		const currentScrollY = event.nativeEvent.contentOffset.y;
 		const scrollDelta = currentScrollY - scrollY.current;
@@ -624,7 +702,8 @@ export default function ChatDetailScreen() {
 										{book?.title || 'Unknown Book'}
 									</Text>
 									<Text style={styles.bookAuthor} numberOfLines={2}>
-										{book?.author || 'Unknown Author'} • {formatYear(book?.year)}
+										{book?.author || 'Unknown Author'} •{' '}
+										{formatYear(book?.year)}
 									</Text>
 								</View>
 								<TouchableOpacity
@@ -679,8 +758,15 @@ export default function ChatDetailScreen() {
 										</Text>
 									</View>
 								}
-								ListFooterComponent={renderTypingIndicator}
-								keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+								ListFooterComponent={() => (
+									<>
+										{renderSampleQuestions()}
+										{renderTypingIndicator()}
+									</>
+								)}
+								keyboardDismissMode={
+									Platform.OS === 'ios' ? 'interactive' : 'on-drag'
+								}
 							/>
 						</View>
 
@@ -736,7 +822,11 @@ export default function ChatDetailScreen() {
 										<Ionicons
 											name='mic'
 											size={20}
-											color={sending ? colors.light.mutedForeground : colors.light.muted}
+											color={
+												sending
+													? colors.light.mutedForeground
+													: colors.light.muted
+											}
 										/>
 									</TouchableOpacity>
 								</View>
@@ -753,6 +843,7 @@ export default function ChatDetailScreen() {
 				onCancel={handleVoiceRecorderCancel}
 				bookTitle={book?.title}
 				bookAuthor={book?.author}
+				bookId={bookId}
 			/>
 
 			{/* Conversational Voice Chat Modal */}
@@ -762,6 +853,7 @@ export default function ChatDetailScreen() {
 				onClose={handleConversationalVoiceCancel}
 				bookTitle={book?.title}
 				bookAuthor={book?.author}
+				bookId={bookId}
 			/>
 
 			{/* Dropdown Menu Modal */}
@@ -981,6 +1073,29 @@ const styles = StyleSheet.create({
 		textAlign: 'center',
 		lineHeight: 20,
 		paddingHorizontal: 32,
+		marginBottom: 24,
+	},
+	sampleQuestionsContainer: {
+		width: '100%',
+		alignItems: 'flex-start',
+		gap: 12,
+		paddingBottom: 20,
+	},
+	sampleQuestionBubble: {
+		alignSelf: 'flex-start',
+		maxWidth: '80%',
+		paddingHorizontal: 16,
+		paddingVertical: 12,
+		borderRadius: 20,
+		borderBottomLeftRadius: 4,
+		backgroundColor: 'transparent',
+		borderWidth: 1,
+		borderColor: colors.light.border,
+	},
+	sampleQuestionText: {
+		fontSize: 12,
+		lineHeight: 22,
+		color: colors.light.mutedForeground,
 	},
 	inputContainer: {
 		paddingHorizontal: 16,
