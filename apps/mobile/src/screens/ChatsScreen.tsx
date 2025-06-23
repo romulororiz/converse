@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
 import { showAlert } from '../utils/alert';
 import { useAuth } from '../components/AuthProvider';
-import { getUserChats, deleteChatSession } from '../services/chat';
+import { getRecentChats, deleteChatSession } from '../services/chat';
 import { useNavigation } from '@react-navigation/native';
 import { formatDistanceToNow } from 'date-fns';
 import { BookCover } from '../components/BookCover';
@@ -165,7 +165,7 @@ const SwipeableRow = ({
 				<Animated.View
 					style={[styles.deleteButtonContainer, deleteButtonStyle]}
 				>
-					<Ionicons name='trash' size={24} color='#FFFFFF' />
+					<Ionicons name='trash' size={20} color='#FFFFFF' />
 				</Animated.View>
 			</View>
 
@@ -182,7 +182,7 @@ const SwipeableRow = ({
 };
 
 export default function ChatsScreen() {
-	const [chats, setChats] = useState<ChatSession[]>([]);
+	const [chats, setChats] = useState<any[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [refreshing, setRefreshing] = useState(false);
 	const [searchQuery, setSearchQuery] = useState('');
@@ -198,7 +198,7 @@ export default function ChatsScreen() {
 	const loadChats = async () => {
 		try {
 			setLoading(true);
-			const chatSessions = await getUserChats(user!.id);
+			const chatSessions = await getRecentChats(user!.id, 100);
 			setChats(chatSessions);
 		} catch (error) {
 			console.error('Error loading chats:', error);
@@ -268,7 +268,7 @@ export default function ChatsScreen() {
 		return title.toLowerCase().includes(searchQuery.toLowerCase());
 	});
 
-	const renderChatItem = ({ item }: { item: ChatSession }) => (
+	const renderChatItem = ({ item }: { item: any }) => (
 		<SwipeableRow
 			itemId={item.id}
 			onDelete={handleDeleteChat}
@@ -296,14 +296,18 @@ export default function ChatsScreen() {
 									{item.books.author}
 								</Text>
 							)}
-						</View>
-
-						<View style={styles.timeContainer}>
-							<Text style={styles.chatDate}>
-								{formatDistanceToNow(new Date(item.updated_at), {
-									addSuffix: true,
-								})}
-							</Text>
+							{item.lastMessage && (
+								<Text style={styles.lastMessage} numberOfLines={1}>
+									{item.lastMessage}
+								</Text>
+							)}
+							<View style={styles.timeContainer}>
+								<Text style={styles.chatDate}>
+									{formatDistanceToNow(new Date(item.updated_at), {
+										addSuffix: true,
+									})}
+								</Text>
+							</View>
 						</View>
 					</View>
 				</AnimatedTouchableOpacity>
@@ -439,7 +443,6 @@ const styles = StyleSheet.create({
 	swipeContainer: {
 		backgroundColor: colors.light.background,
 		marginBottom: 12,
-		borderRadius: 8,
 	},
 	deleteBackground: {
 		position: 'absolute',
@@ -447,34 +450,30 @@ const styles = StyleSheet.create({
 		bottom: 0,
 		right: 0,
 		width: 120,
-		backgroundColor: colors.light.destructive,
 		justifyContent: 'center',
-		alignItems: 'center',
-		paddingRight: 10,
-		borderTopRightRadius: 8,
-		borderBottomRightRadius: 8,
+		alignItems: 'flex-end',
 	},
 	deleteButtonContainer: {
-		width: 60,
-		height: 60,
+		width: 50,
+		height: 50,
 		borderRadius: 30,
-		backgroundColor: 'rgba(255, 255, 255, 0.2)',
+		backgroundColor: colors.light.destructive,
 		justifyContent: 'center',
 		alignItems: 'center',
 	},
 	swipeableContent: {
-		backgroundColor: colors.light.background,
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.25,
-		shadowRadius: 3,
-		elevation: 5,
-		shadowColor: '#000',
+		// backgroundColor: colors.light.background,
+		// shadowOffset: { width: 0, height: 2 },
+		// shadowOpacity: 0.25,
+		// shadowRadius: 3,
+		// elevation: 5,
+		// shadowColor: '#000',
 	},
 	chatItem: {
-		backgroundColor: colors.light.card,
-		borderWidth: 1,
-		borderColor: colors.light.border,
-		overflow: 'hidden',
+		// backgroundColor: colors.light.card,
+		// borderWidth: 1,
+		// overflow: 'hidden',
+		// borderRadius: 8,
 	},
 	chatContent: {
 		flexDirection: 'row',
@@ -484,7 +483,7 @@ const styles = StyleSheet.create({
 		position: 'relative',
 	},
 	bookCover: {
-		width: 80,
+		width: 70,
 		height: 100,
 		borderRadius: 2,
 		overflow: 'hidden',
@@ -503,7 +502,10 @@ const styles = StyleSheet.create({
 	},
 	chatInfo: {
 		flex: 1,
-		paddingTop: 4,
+		justifyContent: 'center',
+		borderBottomWidth: 1,
+		borderColor: colors.light.border,
+		height: 100,
 	},
 	bookTitle: {
 		fontSize: 16,
@@ -522,11 +524,11 @@ const styles = StyleSheet.create({
 		justifyContent: 'flex-end',
 		alignItems: 'flex-end',
 		position: 'absolute',
-		bottom: 10,
-		right: 15,
+		bottom: 5,
+		right: 0,
 	},
 	chatDate: {
-		fontSize: 10,
+		fontSize: 8,
 		color: colors.light.mutedForeground,
 		textAlign: 'right',
 	},
@@ -549,5 +551,14 @@ const styles = StyleSheet.create({
 		color: colors.light.mutedForeground,
 		textAlign: 'center',
 		lineHeight: 22,
+	},
+	lastMessage: {
+		fontSize: 14,
+		color: colors.light.mutedForeground,
+		marginTop: -2,
+		width: '65%',
+		position: 'absolute',
+		bottom: 5,
+		left: 0,
 	},
 });
