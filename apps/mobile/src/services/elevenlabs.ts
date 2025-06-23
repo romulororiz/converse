@@ -27,25 +27,63 @@ const btoaPolyfill = (str: string): string => {
 
 // Voice configurations for different book characters/moods
 export const VOICE_CONFIGS = {
+	// Male voices
 	narrator: {
 		voice_id: 'JBFqnCBsd6RMkjVDRZzb', // George - Professional narrator
 		name: 'George',
 		description: 'Professional, clear narrator voice',
+		gender: 'male',
+		personality: 'authoritative',
 	},
 	storyteller: {
 		voice_id: 'TxGEqnHWrfWFTfGW9XjX', // Josh - Warm storyteller
 		name: 'Josh',
 		description: 'Warm, engaging storyteller',
+		gender: 'male',
+		personality: 'warm',
 	},
 	wise: {
 		voice_id: 'CYw3kZ02Hs0563khs1Fj', // Dave - Wise, thoughtful
 		name: 'Dave',
 		description: 'Wise, thoughtful voice',
+		gender: 'male',
+		personality: 'wise',
 	},
 	conversational: {
 		voice_id: 'pNInz6obpgDQGcFmaJgB', // Adam - Conversational
 		name: 'Adam',
 		description: 'Natural, conversational voice',
+		gender: 'male',
+		personality: 'friendly',
+	},
+	// Female voices
+	elegantFemale: {
+		voice_id: 'EXAVITQu4vr4xnSDxMaL', // Bella - Elegant, sophisticated
+		name: 'Bella',
+		description: 'Elegant, sophisticated female voice',
+		gender: 'female',
+		personality: 'elegant',
+	},
+	warmFemale: {
+		voice_id: 'MF3mGyEYCl7XYWbV9V6O', // Elli - Warm, nurturing
+		name: 'Elli',
+		description: 'Warm, nurturing female voice',
+		gender: 'female',
+		personality: 'nurturing',
+	},
+	intellectualFemale: {
+		voice_id: 'ThT5KcBeYPX3keUQqHPh', // Dorothy - Intellectual, clear
+		name: 'Dorothy',
+		description: 'Intellectual, clear female voice',
+		gender: 'female',
+		personality: 'intellectual',
+	},
+	youthfulFemale: {
+		voice_id: 'XrExE9yKIg1WjnnlVkGX', // Matilda - Youthful, energetic
+		name: 'Matilda',
+		description: 'Youthful, energetic female voice',
+		gender: 'female',
+		personality: 'youthful',
 	},
 };
 
@@ -62,6 +100,179 @@ export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
 	style: 0.5,
 	use_speaker_boost: true,
 };
+
+/**
+ * Select voice based on author gender and book characteristics
+ */
+export function selectVoiceForBook(
+	bookAuthor?: string,
+	bookId?: string,
+	bookTitle?: string
+): string {
+	if (!bookAuthor || !bookId) {
+		return VOICE_CONFIGS.conversational.voice_id; // Default fallback
+	}
+
+	// Known female authors database
+	const femaleAuthors = [
+		'jane austen',
+		'charlotte brontë',
+		'emily brontë',
+		'virginia woolf',
+		'george eliot',
+		'edith wharton',
+		'willa cather',
+		'louisa may alcott',
+		'agatha christie',
+		'harper lee',
+		'toni morrison',
+		'maya angelou',
+		'margaret atwood',
+		'j.k. rowling',
+		'gillian flynn',
+		'donna tartt',
+		'zadie smith',
+		'chimamanda ngozi adichie',
+		'octavia butler',
+		'ursula k. le guin',
+		'sylvia plath',
+		"flannery o'connor",
+		'zora neale hurston',
+		'alice walker',
+		'simone de beauvoir',
+		'ayn rand',
+		'pearl s. buck',
+		'gertrude stein',
+		'anne rice',
+		'joyce carol oates',
+		'alice munro',
+		'doris lessing',
+		'nadine gordimer',
+	];
+
+	// Known male authors database
+	const maleAuthors = [
+		'william shakespeare',
+		'charles dickens',
+		'mark twain',
+		'ernest hemingway',
+		'f. scott fitzgerald',
+		'george orwell',
+		'j.d. salinger',
+		'john steinbeck',
+		'william faulkner',
+		'herman melville',
+		'nathaniel hawthorne',
+		'edgar allan poe',
+		'oscar wilde',
+		'james joyce',
+		'franz kafka',
+		'leo tolstoy',
+		'fyodor dostoevsky',
+		'gabriel garcía márquez',
+		'jorge luis borges',
+		'milan kundera',
+		'isaac asimov',
+		'ray bradbury',
+		'arthur c. clarke',
+		'stephen king',
+		'dan brown',
+		'john grisham',
+		'michael crichton',
+		'tom clancy',
+		'jack kerouac',
+		'allen ginsberg',
+		'kurt vonnegut',
+		'joseph heller',
+		'norman mailer',
+		'philip roth',
+		'saul bellow',
+	];
+
+	const authorLower = bookAuthor.toLowerCase();
+	const isKnownFemale = femaleAuthors.some(author =>
+		authorLower.includes(author)
+	);
+	const isKnownMale = maleAuthors.some(author => authorLower.includes(author));
+
+	// Determine gender based on known authors or common patterns
+	let isFemale = false;
+	if (isKnownFemale) {
+		isFemale = true;
+	} else if (!isKnownMale) {
+		// Check for common female name patterns if not in known lists
+		const femaleNamePatterns = [
+			'jane',
+			'mary',
+			'elizabeth',
+			'emma',
+			'charlotte',
+			'emily',
+			'anne',
+			'margaret',
+			'sarah',
+			'lisa',
+			'jennifer',
+			'jessica',
+			'ashley',
+			'michelle',
+			'kimberly',
+			'amy',
+			'donna',
+			'carol',
+			'susan',
+			'helen',
+			'patricia',
+			'linda',
+			'barbara',
+			'maria',
+			'nancy',
+			'dorothy',
+			'sandra',
+			'betty',
+			'ruth',
+			'sharon',
+			'diana',
+		];
+		isFemale = femaleNamePatterns.some(name => authorLower.includes(name));
+	}
+
+	// Create consistent voice selection based on book ID hash
+	const bookHash = bookId
+		.split('')
+		.reduce((acc, char) => acc + char.charCodeAt(0), 0);
+	const voiceVariation = bookHash % 4; // 0, 1, 2, or 3
+
+	if (isFemale) {
+		// Female voice selection based on book characteristics
+		const femaleVoices = [
+			VOICE_CONFIGS.elegantFemale,
+			VOICE_CONFIGS.warmFemale,
+			VOICE_CONFIGS.intellectualFemale,
+			VOICE_CONFIGS.youthfulFemale,
+		];
+		return femaleVoices[voiceVariation].voice_id;
+	} else {
+		// Male voice selection based on book characteristics
+		const maleVoices = [
+			VOICE_CONFIGS.narrator,
+			VOICE_CONFIGS.storyteller,
+			VOICE_CONFIGS.wise,
+			VOICE_CONFIGS.conversational,
+		];
+		return maleVoices[voiceVariation].voice_id;
+	}
+}
+
+/**
+ * Get voice information for display purposes
+ */
+export function getVoiceInfo(voiceId: string) {
+	const voiceConfig = Object.values(VOICE_CONFIGS).find(
+		config => config.voice_id === voiceId
+	);
+	return voiceConfig || VOICE_CONFIGS.conversational;
+}
 
 /**
  * Get ElevenLabs API key

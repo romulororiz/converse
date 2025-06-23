@@ -20,6 +20,7 @@ interface VoiceRecorderProps {
 	visible: boolean;
 	bookTitle?: string;
 	bookAuthor?: string;
+	bookId?: string;
 }
 
 const { width, height } = Dimensions.get('window');
@@ -30,6 +31,7 @@ export default function VoiceRecorder({
 	visible,
 	bookTitle,
 	bookAuthor,
+	bookId,
 }: VoiceRecorderProps) {
 	const [recording, setRecording] = useState<Audio.Recording | null>(null);
 	const [isRecording, setIsRecording] = useState(false);
@@ -42,6 +44,179 @@ export default function VoiceRecorder({
 	const pulseAnim = useRef(new Animated.Value(1)).current;
 	const ballAnim = useRef(new Animated.Value(0)).current;
 	const backgroundAnim = useRef(new Animated.Value(0)).current;
+
+	// Fluid smoke animation values
+	const smokeAnim1 = useRef(new Animated.Value(0)).current;
+	const smokeAnim2 = useRef(new Animated.Value(0)).current;
+	const smokeAnim3 = useRef(new Animated.Value(0)).current;
+	const smokeOpacity1 = useRef(new Animated.Value(0.3)).current;
+	const smokeOpacity2 = useRef(new Animated.Value(0.2)).current;
+	const smokeOpacity3 = useRef(new Animated.Value(0.4)).current;
+
+	// Voice selection based on author gender and book characteristics
+	const getVoiceForBook = () => {
+		if (!bookAuthor || !bookId) {
+			return { pitch: 1.0, rate: 0.9 }; // Default voice
+		}
+
+		// Known female authors database
+		const femaleAuthors = [
+			'jane austen',
+			'charlotte brontë',
+			'emily brontë',
+			'virginia woolf',
+			'george eliot',
+			'edith wharton',
+			'willa cather',
+			'louisa may alcott',
+			'agatha christie',
+			'harper lee',
+			'toni morrison',
+			'maya angelou',
+			'margaret atwood',
+			'j.k. rowling',
+			'gillian flynn',
+			'donna tartt',
+			'zadie smith',
+			'chimamanda ngozi adichie',
+			'octavia butler',
+			'ursula k. le guin',
+			'sylvia plath',
+			"flannery o'connor",
+			'zora neale hurston',
+			'alice walker',
+			'simone de beauvoir',
+			'ayn rand',
+			'pearl s. buck',
+			'gertrude stein',
+			'anne rice',
+			'joyce carol oates',
+			'alice munro',
+			'doris lessing',
+			'nadine gordimer',
+		];
+
+		// Known male authors database
+		const maleAuthors = [
+			'william shakespeare',
+			'charles dickens',
+			'mark twain',
+			'ernest hemingway',
+			'f. scott fitzgerald',
+			'george orwell',
+			'j.d. salinger',
+			'john steinbeck',
+			'william faulkner',
+			'herman melville',
+			'nathaniel hawthorne',
+			'edgar allan poe',
+			'oscar wilde',
+			'james joyce',
+			'franz kafka',
+			'leo tolstoy',
+			'fyodor dostoevsky',
+			'gabriel garcía márquez',
+			'jorge luis borges',
+			'milan kundera',
+			'isaac asimov',
+			'ray bradbury',
+			'arthur c. clarke',
+			'stephen king',
+			'dan brown',
+			'john grisham',
+			'michael crichton',
+			'tom clancy',
+			'jack kerouac',
+			'allen ginsberg',
+			'kurt vonnegut',
+			'joseph heller',
+			'norman mailer',
+			'philip roth',
+			'saul bellow',
+		];
+
+		const authorLower = bookAuthor.toLowerCase();
+		const isKnownFemale = femaleAuthors.some(author =>
+			authorLower.includes(author)
+		);
+		const isKnownMale = maleAuthors.some(author =>
+			authorLower.includes(author)
+		);
+
+		// Determine gender based on known authors or common patterns
+		let isFemale = false;
+		if (isKnownFemale) {
+			isFemale = true;
+		} else if (!isKnownMale) {
+			// Check for common female name patterns if not in known lists
+			const femaleNamePatterns = [
+				'jane',
+				'mary',
+				'elizabeth',
+				'emma',
+				'charlotte',
+				'emily',
+				'anne',
+				'margaret',
+				'sarah',
+				'lisa',
+				'jennifer',
+				'jessica',
+				'ashley',
+				'michelle',
+				'kimberly',
+				'amy',
+				'donna',
+				'carol',
+				'susan',
+				'helen',
+				'patricia',
+				'linda',
+				'barbara',
+				'maria',
+				'nancy',
+				'dorothy',
+				'sandra',
+				'betty',
+				'ruth',
+				'sharon',
+				'diana',
+			];
+			isFemale = femaleNamePatterns.some(name => authorLower.includes(name));
+		}
+
+		// Create unique voice characteristics for each book
+		const bookHash = bookId
+			.split('')
+			.reduce((acc, char) => acc + char.charCodeAt(0), 0);
+		const voiceVariation = (bookHash % 3) + 1; // 1, 2, or 3
+
+		if (isFemale) {
+			// Female voices - higher pitch, varied rates
+			switch (voiceVariation) {
+				case 1:
+					return { pitch: 1.3, rate: 0.85 }; // Higher, slower - wise/mature
+				case 2:
+					return { pitch: 1.2, rate: 0.95 }; // Medium-high, normal - friendly
+				case 3:
+					return { pitch: 1.4, rate: 0.9 }; // Highest, slightly slow - youthful
+				default:
+					return { pitch: 1.3, rate: 0.9 };
+			}
+		} else {
+			// Male voices - lower pitch, varied rates
+			switch (voiceVariation) {
+				case 1:
+					return { pitch: 0.8, rate: 0.85 }; // Lower, slower - deep/authoritative
+				case 2:
+					return { pitch: 0.9, rate: 0.95 }; // Medium-low, normal - conversational
+				case 3:
+					return { pitch: 0.75, rate: 0.9 }; // Lowest, slightly slow - dramatic
+				default:
+					return { pitch: 0.8, rate: 0.9 };
+			}
+		}
+	};
 
 	// Preload icons to prevent loading delay
 	useEffect(() => {
@@ -80,44 +255,108 @@ export default function VoiceRecorder({
 	}, [visible]);
 
 	useEffect(() => {
-		if (isRecording) {
-			// Start pulse animation
+		if (isRecording || isPlaying) {
+			// Start fluid smoke animations with different speeds and patterns
 			Animated.loop(
 				Animated.sequence([
-					Animated.timing(pulseAnim, {
-						toValue: 1.2,
-						duration: 1000,
+					Animated.timing(smokeAnim1, {
+						toValue: 1,
+						duration: 3000,
 						useNativeDriver: true,
 					}),
-					Animated.timing(pulseAnim, {
-						toValue: 1,
-						duration: 1000,
+					Animated.timing(smokeAnim1, {
+						toValue: 0,
+						duration: 2500,
 						useNativeDriver: true,
 					}),
 				])
 			).start();
 
-			// Start floating ball animation
 			Animated.loop(
 				Animated.sequence([
-					Animated.timing(ballAnim, {
+					Animated.timing(smokeAnim2, {
 						toValue: 1,
+						duration: 2200,
+						useNativeDriver: true,
+					}),
+					Animated.timing(smokeAnim2, {
+						toValue: 0,
+						duration: 3200,
+						useNativeDriver: true,
+					}),
+				])
+			).start();
+
+			Animated.loop(
+				Animated.sequence([
+					Animated.timing(smokeAnim3, {
+						toValue: 1,
+						duration: 2800,
+						useNativeDriver: true,
+					}),
+					Animated.timing(smokeAnim3, {
+						toValue: 0,
+						duration: 2600,
+						useNativeDriver: true,
+					}),
+				])
+			).start();
+
+			// Opacity animations for breathing effect
+			Animated.loop(
+				Animated.sequence([
+					Animated.timing(smokeOpacity1, {
+						toValue: 0.8,
+						duration: 1500,
+						useNativeDriver: true,
+					}),
+					Animated.timing(smokeOpacity1, {
+						toValue: 0.3,
+						duration: 1500,
+						useNativeDriver: true,
+					}),
+				])
+			).start();
+
+			Animated.loop(
+				Animated.sequence([
+					Animated.timing(smokeOpacity2, {
+						toValue: 0.6,
 						duration: 2000,
 						useNativeDriver: true,
 					}),
-					Animated.timing(ballAnim, {
-						toValue: 0,
+					Animated.timing(smokeOpacity2, {
+						toValue: 0.2,
 						duration: 2000,
+						useNativeDriver: true,
+					}),
+				])
+			).start();
+
+			Animated.loop(
+				Animated.sequence([
+					Animated.timing(smokeOpacity3, {
+						toValue: 0.7,
+						duration: 1800,
+						useNativeDriver: true,
+					}),
+					Animated.timing(smokeOpacity3, {
+						toValue: 0.4,
+						duration: 1800,
 						useNativeDriver: true,
 					}),
 				])
 			).start();
 		} else {
 			// Stop animations
-			pulseAnim.stopAnimation();
-			ballAnim.stopAnimation();
+			smokeAnim1.stopAnimation();
+			smokeAnim2.stopAnimation();
+			smokeAnim3.stopAnimation();
+			smokeOpacity1.stopAnimation();
+			smokeOpacity2.stopAnimation();
+			smokeOpacity3.stopAnimation();
 		}
-	}, [isRecording]);
+	}, [isRecording, isPlaying]);
 
 	const startRecording = async () => {
 		try {
@@ -170,19 +409,30 @@ export default function VoiceRecorder({
 	const processRecording = async (uri: string) => {
 		setIsProcessing(true);
 		try {
-			// Send to OpenAI Whisper API for transcription
-			const transcription = await transcribeAudio(uri);
+			// Send to OpenAI Whisper API for transcription with timeout
+			const transcription = await Promise.race([
+				transcribeAudio(uri),
+				new Promise<string>((_, reject) =>
+					setTimeout(() => reject(new Error('Transcription timeout')), 10000)
+				),
+			]);
 			setTranscribedText(transcription);
 
-			// Get AI response
-			const response = await getAIResponse(transcription);
+			// Get AI response with timeout (parallel processing where possible)
+			const response = await Promise.race([
+				getAIResponse(transcription),
+				new Promise<string>((_, reject) =>
+					setTimeout(() => reject(new Error('AI response timeout')), 8000)
+				),
+			]);
 			setAiResponse(response);
 
-			// Play AI response
-			await playAIResponse(response);
+			// Play AI response immediately without waiting
+			setIsProcessing(false);
+			playAIResponse(response); // Don't await this
 		} catch (error) {
 			console.error('Failed to process recording:', error);
-			Alert.alert('Error', 'Failed to process recording');
+			Alert.alert('Error', 'Failed to process recording. Please try again.');
 		} finally {
 			setIsProcessing(false);
 		}
@@ -251,7 +501,7 @@ Answer as if you are the book itself, sharing your perspective and guiding the u
 						'Content-Type': 'application/json',
 					},
 					body: JSON.stringify({
-						model: 'gpt-4o',
+						model: 'gpt-4o-mini', // Faster and cheaper model
 						messages: [
 							{
 								role: 'system',
@@ -262,8 +512,9 @@ Answer as if you are the book itself, sharing your perspective and guiding the u
 								content: userMessage,
 							},
 						],
-						max_tokens: 150,
+						max_tokens: 120, // Reduced for faster response
 						temperature: 0.7,
+						stream: false, // Ensure we get full response at once
 					}),
 				}
 			);
@@ -286,10 +537,12 @@ Answer as if you are the book itself, sharing your perspective and guiding the u
 	const playAIResponse = async (text: string) => {
 		try {
 			setIsPlaying(true);
+			const voiceSettings = getVoiceForBook();
+
 			await Speech.speak(text, {
 				language: 'en',
-				pitch: 1.0,
-				rate: 0.9,
+				pitch: voiceSettings.pitch,
+				rate: voiceSettings.rate,
 			});
 		} catch (error) {
 			console.error('Failed to play AI response:', error);
@@ -364,26 +617,12 @@ Answer as if you are the book itself, sharing your perspective and guiding the u
 
 						{isRecording && (
 							<View style={styles.recordingState}>
-								<Animated.View
-									style={[
-										styles.recordingBall,
-										{
-											transform: [
-												{
-													translateY: ballAnim.interpolate({
-														inputRange: [0, 1],
-														outputRange: [0, -20],
-													}),
-												},
-												{
-													scale: pulseAnim,
-												},
-											],
-										},
-									]}
-								>
-									<View style={styles.ballInner} />
-								</Animated.View>
+								<View style={styles.fluidContainer}>
+									{/* Gradient orb with fluid animation inside */}
+									<View style={styles.gradientOrb}>
+										<View style={styles.listeningGradient} />
+									</View>
+								</View>
 								<Text style={styles.recordingText}>Listening...</Text>
 								<TouchableOpacity
 									style={styles.stopButton}
@@ -400,9 +639,7 @@ Answer as if you are the book itself, sharing your perspective and guiding the u
 
 						{isProcessing && (
 							<View style={styles.processingState}>
-								<View style={styles.loadingBall}>
-									<View style={styles.ballInner} />
-								</View>
+								<View style={styles.loadingBall} />
 								<Text style={styles.processingText}>Processing...</Text>
 							</View>
 						)}
@@ -430,20 +667,12 @@ Answer as if you are the book itself, sharing your perspective and guiding the u
 
 						{isPlaying && (
 							<View style={styles.playingState}>
-								<Animated.View
-									style={[
-										styles.playingBall,
-										{
-											transform: [
-												{
-													scale: pulseAnim,
-												},
-											],
-										},
-									]}
-								>
-									<View style={styles.ballInner} />
-								</Animated.View>
+								<View style={styles.fluidContainer}>
+									{/* Speaking gradient orb with different color scheme */}
+									<View style={styles.gradientOrb}>
+										<View style={styles.speakingGradient} />
+									</View>
+								</View>
 								<Text style={styles.playingText}>Playing AI response...</Text>
 							</View>
 						)}
@@ -516,20 +745,95 @@ const styles = StyleSheet.create({
 	recordingState: {
 		alignItems: 'center',
 	},
-	recordingBall: {
+	fluidContainer: {
+		width: 140,
+		height: 140,
+		alignItems: 'center',
+		justifyContent: 'center',
+		marginBottom: 30,
+		position: 'relative',
+	},
+	// Main gradient orb container
+	gradientOrb: {
 		width: 120,
 		height: 120,
 		borderRadius: 60,
-		backgroundColor: colors.light.primary,
-		justifyContent: 'center',
-		alignItems: 'center',
-		marginBottom: 30,
+		position: 'absolute',
+		overflow: 'hidden',
+		elevation: 8,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.3,
+		shadowRadius: 8,
 	},
-	ballInner: {
-		width: 80,
-		height: 80,
-		borderRadius: 40,
-		backgroundColor: colors.light.background,
+	// Listening state gradient (blue to white)
+	listeningGradient: {
+		width: '100%',
+		height: '100%',
+		backgroundColor: '#E3F2FD', // Light blue base
+		position: 'relative',
+	},
+	// Speaking state gradient (different colors)
+	speakingGradient: {
+		width: '100%',
+		height: '100%',
+		backgroundColor: '#F3E5F5', // Light purple base
+		position: 'relative',
+	},
+	// Fluid moving elements inside the orb
+	fluidElement: {
+		position: 'absolute',
+		borderRadius: 1000,
+	},
+	// Listening fluid elements (blue tones)
+	listeningFluid1: {
+		width: 40,
+		height: 40,
+		backgroundColor: '#2196F3', // Pure blue
+		opacity: 0.8,
+	},
+	listeningFluid2: {
+		width: 60,
+		height: 60,
+		backgroundColor: '#64B5F6', // Light blue
+		opacity: 0.6,
+	},
+	listeningFluid3: {
+		width: 35,
+		height: 35,
+		backgroundColor: '#BBDEFB', // Very light blue
+		opacity: 0.9,
+	},
+	listeningFluid4: {
+		width: 25,
+		height: 25,
+		backgroundColor: '#FFFFFF', // White accent
+		opacity: 0.7,
+	},
+	// Speaking fluid elements (purple/pink tones)
+	speakingFluid1: {
+		width: 45,
+		height: 45,
+		backgroundColor: '#9C27B0', // Purple
+		opacity: 0.8,
+	},
+	speakingFluid2: {
+		width: 55,
+		height: 55,
+		backgroundColor: '#BA68C8', // Light purple
+		opacity: 0.6,
+	},
+	speakingFluid3: {
+		width: 38,
+		height: 38,
+		backgroundColor: '#E1BEE7', // Very light purple
+		opacity: 0.9,
+	},
+	speakingFluid4: {
+		width: 28,
+		height: 28,
+		backgroundColor: '#FFFFFF', // White accent
+		opacity: 0.8,
 	},
 	recordingText: {
 		fontSize: 18,
@@ -551,7 +855,7 @@ const styles = StyleSheet.create({
 		width: 100,
 		height: 100,
 		borderRadius: 50,
-		backgroundColor: colors.light.muted,
+		backgroundColor: colors.light.muted + '80',
 		justifyContent: 'center',
 		alignItems: 'center',
 		marginBottom: 20,
@@ -605,15 +909,6 @@ const styles = StyleSheet.create({
 	},
 	playingState: {
 		alignItems: 'center',
-	},
-	playingBall: {
-		width: 100,
-		height: 100,
-		borderRadius: 50,
-		backgroundColor: colors.light.secondary,
-		justifyContent: 'center',
-		alignItems: 'center',
-		marginBottom: 20,
 	},
 	playingText: {
 		fontSize: 16,
