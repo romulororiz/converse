@@ -17,7 +17,7 @@ export const colors = {
 		accent: '#b6aa97',
 		accentForeground: '#f8f6f2',
 		destructive: '#d97a7a',
-		border: '#e0ddd6',
+		border: '#dcd9d3',
 		input: '#e0ddd6',
 		ring: '#b6aa97',
 		sidebar: '#f3efe7',

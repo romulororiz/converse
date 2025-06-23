@@ -75,7 +75,7 @@ function TabNavigator() {
 					} else if (route.name === 'Discover') {
 						iconName = focused ? 'search' : 'search-outline';
 					} else if (route.name === 'Insights') {
-						iconName = focused ? 'journal' : 'journal-outline';
+						iconName = focused ? 'book' : 'book-outline';
 					} else if (route.name === 'Profile') {
 						iconName = focused ? 'person' : 'person-outline';
 					}

@@ -1,9 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { Database } from '../lib/supabase';
 import { Book } from '../types/supabase';
-
-type BookRow = Database['public']['Tables']['books']['Row'];
-type AuthorRow = Database['public']['Tables']['authors']['Row'];
 
 export async function getFeaturedBooks(limit: number = 6): Promise<Book[]> {
 	try {
@@ -56,20 +52,16 @@ export async function getBooksByCategory(category: string): Promise<Book[]> {
 	try {
 		const { data, error } = await supabase
 			.from('books')
-			.select(
-				`
-				*
-			`
-			)
-			.contains('metadata->>categories', [category])
-			.order('created_at', { ascending: false });
+			.select('*')
+			.contains('categories', [category])
+			.order('title', { ascending: true });
 
 		if (error) {
 			console.error('Error fetching books by category:', error);
 			return [];
 		}
 
-		return data;
+		return data || [];
 	} catch (error) {
 		console.error('Error fetching books by category:', error);
 		return [];
@@ -78,57 +70,21 @@ export async function getBooksByCategory(category: string): Promise<Book[]> {
 
 export async function searchBooks(query: string): Promise<Book[]> {
 	try {
-		// Search books by title or direct author field
-		const { data: directBooks, error: directError } = await supabase
+		// Search books by title, author, or description
+		const { data, error } = await supabase
 			.from('books')
 			.select('*')
-			.or(`title.ilike.%${query}%,author.ilike.%${query}%`)
-			.order('created_at', { ascending: false });
-
-		if (directError) {
-			console.error('Error searching books directly:', directError);
-		}
-
-		// Search books through the book_authors relationship
-		const { data: authorBooks, error: authorError } = await supabase
-			.from('book_authors')
-			.select(
-				`
-				books (*),
-				authors (*)
-			`
+			.or(
+				`title.ilike.%${query}%,author.ilike.%${query}%,description.ilike.%${query}%`
 			)
-			.or(`authors.full_name.ilike.%${query}%`);
+			.order('title', { ascending: true });
 
-		if (authorError) {
-			console.error('Error searching books by authors:', authorError);
+		if (error) {
+			console.error('Error searching books:', error);
+			return [];
 		}
 
-		// Combine results
-		const allBooks: Book[] = [];
-
-		// Add direct search results
-		if (directBooks) {
-			allBooks.push(...directBooks);
-		}
-
-		// Add books found through author relationships
-		if (authorBooks) {
-			const booksFromAuthors = authorBooks
-				.map((item: any) => item.books)
-				.filter((book: any) => book !== null) as Book[];
-			allBooks.push(...booksFromAuthors);
-		}
-
-		// Remove duplicates based on book ID and sort by created_at
-		const uniqueBooks = [
-			...new Map(allBooks.map(item => [item.id, item])).values(),
-		].sort(
-			(a, b) =>
-				new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-		);
-
-		return uniqueBooks;
+		return data || [];
 	} catch (error) {
 		console.error('Error searching books:', error);
 		return [];
