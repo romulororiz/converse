@@ -953,7 +953,6 @@ Current conversation context: This is an ongoing voice conversation, so respond 
 						language: 'en',
 						pitch: voiceSettings.pitch,
 						rate: voiceSettings.rate,
-						quality: 'enhanced',
 						onDone: () => {
 							clearTimeout(speakingTimeout);
 							setIsSpeaking(false);
@@ -975,7 +974,6 @@ Current conversation context: This is an ongoing voice conversation, so respond 
 					language: 'en',
 					pitch: voiceSettings.pitch,
 					rate: voiceSettings.rate,
-					quality: 'enhanced',
 					onDone: () => {
 						clearTimeout(speakingTimeout);
 						setIsSpeaking(false);
