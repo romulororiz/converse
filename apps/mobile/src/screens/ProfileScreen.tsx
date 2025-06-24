@@ -13,11 +13,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import { colors } from '../utils/colors';
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '@react-navigation/native';
 import { PremiumPaywallDrawer } from '../components/PremiumPaywallDrawer';
-import { uploadFile } from '../services/storage';
 
 type NavigationProp = {
 	navigate: (screen: string, params?: any) => void;
@@ -126,66 +126,86 @@ export default function ProfileScreen() {
 	const uploadImage = async uri => {
 		try {
 			setUploading(true);
-
 			console.log('Starting image upload from URI:', uri);
 
-			// Method 1: Try blob upload first
-			try {
-				// Convert image to blob with proper error handling
-				const response = await fetch(uri);
-				if (!response.ok) {
-					throw new Error(
-						`Failed to fetch image: ${response.status} ${response.statusText}`
-					);
-				}
+			// Get file info to validate
+			const fileInfo = await FileSystem.getInfoAsync(uri);
+			console.log('File info:', fileInfo);
 
-				const blob = await response.blob();
-				console.log('Blob created, size:', blob.size, 'type:', blob.type);
+			if (!fileInfo.exists) {
+				throw new Error('File does not exist');
+			}
 
-				if (blob.size === 0) {
-					throw new Error('Image blob is empty');
-				}
+			if (fileInfo.size === 0) {
+				throw new Error('File is empty');
+			}
 
-				// Upload to Supabase Storage using the new service
-				const fileName = `avatar-${profile.id}-${Date.now()}.jpg`;
-				const result = await uploadFile(blob, 'avatars', fileName, {
+			// Create a unique filename with user ID as folder
+			const fileExtension = uri.split('.').pop() || 'jpg';
+			const fileName = `${profile.id}/avatar-${Date.now()}.${fileExtension}`;
+
+			console.log('Uploading file:', fileName);
+
+			// Read the file as base64
+			const base64 = await FileSystem.readAsStringAsync(uri, {
+				encoding: FileSystem.EncodingType.Base64,
+			});
+
+			console.log('File read as base64, length:', base64.length);
+
+			if (base64.length === 0) {
+				throw new Error('Failed to read file as base64');
+			}
+
+			// Convert base64 to ArrayBuffer (this is the key fix!)
+			const binaryString = atob(base64);
+			const bytes = new Uint8Array(binaryString.length);
+			for (let i = 0; i < binaryString.length; i++) {
+				bytes[i] = binaryString.charCodeAt(i);
+			}
+
+			console.log('Converted to bytes array, length:', bytes.length);
+
+			// Upload using Supabase storage with ArrayBuffer
+			const { data, error } = await supabase.storage
+				.from('avatars')
+				.upload(fileName, bytes.buffer, {
 					cacheControl: '3600',
 					upsert: false,
+					contentType: `image/${fileExtension}`,
 				});
 
-				if (result.error) {
-					throw new Error(result.error);
-				}
-
-				console.log('Upload successful, URL:', result.url);
-
-				// Update profile with new avatar URL
-				const { error: updateError } = await supabase
-					.from('profiles')
-					.update({ avatar_url: result.url })
-					.eq('id', profile.id);
-
-				if (updateError) throw updateError;
-
-				// Update local state immediately
-				setProfile(prev => {
-					const updatedProfile = { ...prev, avatar_url: result.url };
-					console.log('Updated profile state:', updatedProfile);
-					return updatedProfile;
-				});
-
-				// Reload profile to ensure we have the latest data
-				await loadProfile();
-
-				Alert.alert('Success', 'Profile picture updated successfully!');
-				return;
-			} catch (blobError) {
-				console.warn(
-					'Blob upload failed, trying alternative method:',
-					blobError
-				);
-				throw blobError; // Re-throw to try alternative method
+			if (error) {
+				console.error('Supabase upload error:', error);
+				throw new Error(error.message);
 			}
+
+			console.log('Upload successful, data:', data);
+
+			// Get the public URL
+			const {
+				data: { publicUrl },
+			} = supabase.storage.from('avatars').getPublicUrl(fileName);
+
+			console.log('Generated public URL:', publicUrl);
+
+			// Update profile with new avatar URL (store clean URL without timestamp)
+			const { error: updateError } = await supabase
+				.from('profiles')
+				.update({ avatar_url: publicUrl })
+				.eq('id', profile.id);
+
+			if (updateError) {
+				console.error('Profile update error:', updateError);
+				throw updateError;
+			}
+
+			// Update local state immediately with a cache-busting timestamp
+			const finalUrl = `${publicUrl}?t=${Date.now()}`;
+			setProfile(prev => ({
+				...prev,
+				avatar_url: finalUrl,
+			}));
 		} catch (error) {
 			console.error('Error uploading image:', error);
 
@@ -272,12 +292,6 @@ export default function ProfileScreen() {
 										console.error('Image loading error:', error);
 										console.log('Failed URL:', profile.avatar_url);
 									}}
-									onLoad={() => {
-										console.log(
-											'Image loaded successfully:',
-											profile.avatar_url
-										);
-									}}
 								/>
 							) : (
 								<View style={styles.avatarPlaceholder}>
@@ -307,18 +321,6 @@ export default function ProfileScreen() {
 						</View>
 						<Text style={styles.name}>{profile?.full_name || 'Anonymous'}</Text>
 						<Text style={styles.email}>{profile?.email}</Text>
-
-						{/* Debug info - remove this after fixing */}
-						{__DEV__ && (
-							<View style={styles.debugInfo}>
-								<Text style={styles.debugText}>
-									Avatar URL: {profile?.avatar_url || 'None'}
-								</Text>
-								<Text style={styles.debugText}>
-									Profile ID: {profile?.id || 'None'}
-								</Text>
-							</View>
-						)}
 					</View>
 				</View>
 
@@ -433,17 +435,7 @@ export default function ProfileScreen() {
 					onPress={handleGetFullAccess}
 				>
 					<View style={styles.premiumButtonContent}>
-						<Ionicons
-							name='diamond-outline'
-							size={24}
-							color={colors.light.primaryForeground}
-						/>
 						<Text style={styles.premiumButtonText}>Get Full Access</Text>
-						<Ionicons
-							name='arrow-forward'
-							size={20}
-							color={colors.light.primaryForeground}
-						/>
 					</View>
 				</TouchableOpacity>
 			</ScrollView>
@@ -486,9 +478,11 @@ const styles = StyleSheet.create({
 		marginBottom: 16,
 	},
 	avatar: {
-		width: 100,
-		height: 100,
-		borderRadius: 50,
+		width: 140,
+		height: 140,
+		borderRadius: 90,
+		marginTop: 20,
+		marginBottom: -10,
 	},
 	avatarPlaceholder: {
 		width: 100,
@@ -573,7 +567,7 @@ const styles = StyleSheet.create({
 	premiumButton: {
 		backgroundColor: colors.light.primary,
 		marginHorizontal: 20,
-		marginTop: 20,
+		marginTop: 40,
 		paddingVertical: 16,
 		paddingHorizontal: 20,
 		borderRadius: 30,
@@ -581,24 +575,11 @@ const styles = StyleSheet.create({
 	premiumButtonContent: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		justifyContent: 'space-between',
+		justifyContent: 'center',
 	},
 	premiumButtonText: {
 		fontSize: 18,
 		fontWeight: '600',
 		color: colors.light.primaryForeground,
-		marginLeft: 12,
-		flex: 0.5,
-	},
-	debugInfo: {
-		marginTop: 10,
-		padding: 10,
-		backgroundColor: colors.light.muted + '20',
-		borderRadius: 8,
-	},
-	debugText: {
-		fontSize: 12,
-		color: colors.light.mutedForeground,
-		marginBottom: 4,
 	},
 });

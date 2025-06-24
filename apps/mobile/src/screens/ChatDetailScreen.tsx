@@ -103,6 +103,7 @@ export default function ChatDetailScreen() {
 	const flatListRef = useRef<FlatList<ChatMessage>>(null);
 	const chatContainerRef = useRef<View>(null);
 	const scrollY = useRef(0);
+
 	const { bookId } = route.params;
 
 	// Animation values for dropdown
@@ -136,10 +137,10 @@ export default function ChatDetailScreen() {
 	// Auto-scroll to bottom when messages change
 	useEffect(() => {
 		if (messages.length > 0 && flatListRef.current) {
-			// Small delay to ensure the FlatList has rendered
-			setTimeout(() => {
+			// Use a more performant scroll approach
+			requestAnimationFrame(() => {
 				flatListRef.current?.scrollToEnd({ animated: true });
-			}, 200);
+			});
 		}
 	}, [messages.length]);
 
@@ -180,10 +181,14 @@ export default function ChatDetailScreen() {
 				const chatMessages = await getChatMessages(existingSession.id);
 				setMessages(chatMessages as ChatMessage[]);
 
-				// Auto-scroll to bottom after loading messages
-				setTimeout(() => {
-					flatListRef.current?.scrollToEnd({ animated: true });
-				}, 300);
+				// Auto-scroll to bottom after loading messages - use requestAnimationFrame for better performance
+				if (chatMessages.length > 0) {
+					requestAnimationFrame(() => {
+						setTimeout(() => {
+							flatListRef.current?.scrollToEnd({ animated: false }); // Use non-animated scroll on initial load
+						}, 100);
+					});
+				}
 			}
 			// If no session exists, we'll create it when user sends first message
 		} catch (error) {
@@ -233,11 +238,6 @@ export default function ChatDetailScreen() {
 				userMsg as ChatMessage,
 				aiMsg as ChatMessage,
 			]);
-
-			// Auto-scroll to bottom after new messages
-			setTimeout(() => {
-				flatListRef.current?.scrollToEnd({ animated: true });
-			}, 200);
 		} catch (error) {
 			console.error('Error sending message:', error);
 			// Remove the temp message on error
@@ -285,11 +285,6 @@ export default function ChatDetailScreen() {
 				userMsg as ChatMessage,
 				aiMsg as ChatMessage,
 			]);
-
-			// Auto-scroll to bottom after new messages
-			setTimeout(() => {
-				flatListRef.current?.scrollToEnd({ animated: true });
-			}, 200);
 		} catch (error) {
 			console.error('Error sending sample question:', error);
 			// Remove the temp message on error
@@ -344,11 +339,6 @@ export default function ChatDetailScreen() {
 					userMsg as ChatMessage,
 					aiMsg as ChatMessage,
 				]);
-
-				// Auto-scroll to bottom after new messages
-				setTimeout(() => {
-					flatListRef.current?.scrollToEnd({ animated: true });
-				}, 200);
 			} catch (error) {
 				console.error('Error sending voice message:', error);
 				// Remove the temp message on error
@@ -420,11 +410,6 @@ export default function ChatDetailScreen() {
 					}
 				}
 			}
-
-			// Auto-scroll to bottom after new messages
-			setTimeout(() => {
-				flatListRef.current?.scrollToEnd({ animated: true });
-			}, 200);
 		} catch (error) {
 			console.error('Error saving conversation:', error);
 			showAlert('Error', 'Failed to save voice conversation');
@@ -529,36 +514,39 @@ export default function ChatDetailScreen() {
 		);
 	};
 
-	const renderMessage = ({ item }: { item: ChatMessage; index: number }) => {
-		const isUser = item.role === 'user';
+	const renderMessage = React.useCallback(
+		({ item }: { item: ChatMessage; index: number }) => {
+			const isUser = item.role === 'user';
 
-		return (
-			<View
-				style={[
-					styles.messageContainer,
-					isUser ? styles.userMessage : styles.aiMessage,
-				]}
-			>
+			return (
 				<View
 					style={[
-						styles.messageBubble,
-						isUser ? styles.userBubble : styles.aiBubble,
+						styles.messageContainer,
+						isUser ? styles.userMessage : styles.aiMessage,
 					]}
 				>
-					<Text
+					<View
 						style={[
-							styles.messageText,
-							isUser ? styles.userText : styles.aiText,
+							styles.messageBubble,
+							isUser ? styles.userBubble : styles.aiBubble,
 						]}
 					>
-						{item.content}
-					</Text>
+						<Text
+							style={[
+								styles.messageText,
+								isUser ? styles.userText : styles.aiText,
+							]}
+						>
+							{item.content}
+						</Text>
+					</View>
 				</View>
-			</View>
-		);
-	};
+			);
+		},
+		[]
+	);
 
-	const renderTypingIndicator = () => {
+	const renderTypingIndicator = React.useCallback(() => {
 		if (!sending) return null;
 
 		return (
@@ -570,9 +558,9 @@ export default function ChatDetailScreen() {
 				</View>
 			</View>
 		);
-	};
+	}, [sending]);
 
-	const renderSampleQuestions = () => {
+	const renderSampleQuestions = React.useCallback(() => {
 		// Only show sample questions when there are no messages
 		if (messages.length > 0) return null;
 
@@ -596,7 +584,18 @@ export default function ChatDetailScreen() {
 				))}
 			</View>
 		);
-	};
+	}, [messages.length, sending, handleSampleQuestionPress]);
+
+	// Memoize the ListFooterComponent to prevent hooks order issues
+	const listFooterComponent = React.useMemo(
+		() => () => (
+			<>
+				{renderSampleQuestions()}
+				{renderTypingIndicator()}
+			</>
+		),
+		[renderSampleQuestions, renderTypingIndicator]
+	);
 
 	const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
 		const currentScrollY = event.nativeEvent.contentOffset.y;
@@ -730,17 +729,15 @@ export default function ChatDetailScreen() {
 								showsVerticalScrollIndicator={false}
 								keyboardShouldPersistTaps='always'
 								onScroll={handleScroll}
-								scrollEventThrottle={16}
-								onContentSizeChange={() =>
-									flatListRef.current?.scrollToEnd({ animated: true })
-								}
-								onLayout={() => {
-									// Scroll to bottom when FlatList is first laid out
-									if (messages.length > 0) {
-										setTimeout(() => {
-											flatListRef.current?.scrollToEnd({ animated: true });
-										}, 100);
-									}
+								scrollEventThrottle={32}
+								removeClippedSubviews={true}
+								maxToRenderPerBatch={10}
+								windowSize={10}
+								initialNumToRender={15}
+								getItemLayout={null}
+								maintainVisibleContentPosition={{
+									minIndexForVisible: 0,
+									autoscrollToTopThreshold: 10,
 								}}
 								ListEmptyComponent={
 									<View style={styles.emptyContainer}>
@@ -758,12 +755,7 @@ export default function ChatDetailScreen() {
 										</Text>
 									</View>
 								}
-								ListFooterComponent={() => (
-									<>
-										{renderSampleQuestions()}
-										{renderTypingIndicator()}
-									</>
-								)}
+								ListFooterComponent={listFooterComponent}
 								keyboardDismissMode={
 									Platform.OS === 'ios' ? 'interactive' : 'on-drag'
 								}

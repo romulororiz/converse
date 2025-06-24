@@ -135,6 +135,8 @@ export async function getBookById(bookId: string): Promise<Book | null> {
 			return null;
 		}
 
+		console.log('data', data);
+
 		return data;
 	} catch (error) {
 		console.error('Error in getBookById:', error);

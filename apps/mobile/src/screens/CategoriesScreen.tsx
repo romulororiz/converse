@@ -141,36 +141,36 @@ export default function CategoriesScreen() {
 
 					<View style={styles.popularList}>
 						{categories.slice(0, 5).map((category, index) => (
-							<TouchableOpacity
+								<TouchableOpacity
 								key={category.name}
-								style={styles.popularItem}
-								onPress={() => handleCategoryPress(category)}
-							>
-								<View
-									style={[
-										styles.popularIcon,
-										{ backgroundColor: category.color + '20' },
-									]}
+									style={styles.popularItem}
+									onPress={() => handleCategoryPress(category)}
 								>
-									<Ionicons
-										name={category.icon as any}
-										size={20}
-										color={category.color}
-									/>
-								</View>
-								<View style={styles.popularInfo}>
-									<Text style={styles.popularName}>{category.name}</Text>
-									<Text style={styles.popularCount}>
+									<View
+										style={[
+											styles.popularIcon,
+											{ backgroundColor: category.color + '20' },
+										]}
+									>
+										<Ionicons
+											name={category.icon as any}
+											size={20}
+											color={category.color}
+										/>
+									</View>
+									<View style={styles.popularInfo}>
+										<Text style={styles.popularName}>{category.name}</Text>
+										<Text style={styles.popularCount}>
 										{category.count} books
-									</Text>
-								</View>
-								<Ionicons
-									name='chevron-forward'
-									size={20}
-									color={colors.light.mutedForeground}
-								/>
-							</TouchableOpacity>
-						))}
+										</Text>
+									</View>
+									<Ionicons
+										name='chevron-forward'
+										size={20}
+										color={colors.light.mutedForeground}
+									/>
+								</TouchableOpacity>
+							))}
 					</View>
 				</View>
 			</ScrollView>

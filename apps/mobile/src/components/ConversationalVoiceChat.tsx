@@ -16,6 +16,7 @@ import * as Speech from 'expo-speech';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../utils/colors';
 import { showAlert } from '../utils/alert';
+import { ModernVoiceVisualizer } from './ModernVoiceVisualizer';
 import {
 	textToSpeech,
 	playAudioFile,
@@ -1056,160 +1057,28 @@ Current conversation context: This is an ongoing voice conversation, so respond 
 
 				{/* Main content */}
 				<View style={styles.content}>
-					{/* Animated orb */}
-					<View style={styles.orbContainer}>
-						<Animated.View
-							style={[
-								styles.orbWrapper,
-								{
-									transform: [{ scale: orbScale }],
-								},
-							]}
-						>
-							<LinearGradient
-								colors={
-									isListening
-										? voiceActivityLevel > 15
-											? ['#10B981', '#059669', '#047857'] // Green when speaking
-											: ['#4F46E5', '#7C3AED', '#EC4899'] // Blue when listening
+					{/* Modern Voice Visualizer */}
+					<View style={styles.visualizerContainer}>
+						<ModernVoiceVisualizer
+							isRecording={isListening || isSpeaking || isProcessing}
+							isProcessing={isProcessing}
+							size={180}
+							color={
+								isProcessing
+									? '#F59E0B' // Orange when processing
+									: isListening
+										? '#4F46E5' // Blue when listening (removed green switching)
 										: isSpeaking
-											? ['#059669', '#0891B2', '#7C3AED']
-											: ['#6B7280', '#9CA3AF', '#D1D5DB']
+											? '#059669' // Teal when AI is speaking
+											: '#6B7280' // Gray when idle
+							}
+							onVolumeChange={volume => {
+								// Only update if actually listening, not processing
+								if (isListening && !isProcessing) {
+									setVoiceActivityLevel(volume * 60); // Convert 0-1 to 0-60 range
 								}
-								style={styles.orb}
-								start={{ x: 0, y: 0 }}
-								end={{ x: 1, y: 1 }}
-							>
-								{/* Misty cloud layers inside the orb */}
-								<Animated.View
-									style={[
-										styles.cloudLayer,
-										{
-											opacity: cloudOpacity1,
-											transform: [
-												{ scale: cloudScale1 },
-												{
-													rotate: cloudRotate1.interpolate({
-														inputRange: [0, 1],
-														outputRange: ['0deg', '360deg'],
-													}),
-												},
-											],
-										},
-									]}
-								>
-									<LinearGradient
-										colors={
-											isListening
-												? voiceActivityLevel > 15
-													? [
-															'rgba(16, 185, 129, 0.6)',
-															'rgba(5, 150, 105, 0.4)',
-														]
-													: [
-															'rgba(79, 70, 229, 0.6)',
-															'rgba(124, 58, 237, 0.4)',
-														]
-												: isSpeaking
-													? ['rgba(5, 150, 105, 0.6)', 'rgba(8, 145, 178, 0.4)']
-													: [
-															'rgba(107, 114, 128, 0.6)',
-															'rgba(156, 163, 175, 0.4)',
-														]
-										}
-										style={styles.cloudGradient}
-										start={{ x: 0, y: 0 }}
-										end={{ x: 1, y: 1 }}
-									/>
-								</Animated.View>
-
-								<Animated.View
-									style={[
-										styles.cloudLayer,
-										{
-											opacity: cloudOpacity2,
-											transform: [
-												{ scale: cloudScale2 },
-												{
-													rotate: cloudRotate2.interpolate({
-														inputRange: [0, 1],
-														outputRange: ['360deg', '0deg'],
-													}),
-												},
-											],
-										},
-									]}
-								>
-									<LinearGradient
-										colors={
-											isListening
-												? voiceActivityLevel > 15
-													? [
-															'rgba(52, 211, 153, 0.5)',
-															'rgba(16, 185, 129, 0.3)',
-														]
-													: [
-															'rgba(139, 92, 246, 0.5)',
-															'rgba(79, 70, 229, 0.3)',
-														]
-												: isSpeaking
-													? ['rgba(34, 197, 94, 0.5)', 'rgba(5, 150, 105, 0.3)']
-													: [
-															'rgba(156, 163, 175, 0.5)',
-															'rgba(107, 114, 128, 0.3)',
-														]
-										}
-										style={styles.cloudGradient}
-										start={{ x: 1, y: 0 }}
-										end={{ x: 0, y: 1 }}
-									/>
-								</Animated.View>
-
-								{/* Voice activity indicator in center */}
-								{isListening && voiceActivityLevel > 10 && (
-									<Animated.View
-										style={[
-											styles.voiceIndicator,
-											{
-												opacity: voiceActivityLevel / 60,
-												transform: [
-													{
-														scale: 1 + voiceActivityLevel / 100,
-													},
-												],
-											},
-										]}
-									>
-										<LinearGradient
-											colors={[
-												'rgba(255, 255, 255, 0.8)',
-												'rgba(255, 255, 255, 0.3)',
-											]}
-											style={styles.voiceIndicatorGradient}
-										/>
-									</Animated.View>
-								)}
-
-								{/* Pulse effect for listening */}
-								{isListening && (
-									<Animated.View
-										style={[
-											styles.pulseRing,
-											{
-												transform: [{ scale: pulseAnim }],
-												opacity: pulseAnim.interpolate({
-													inputRange: [1, 1.2],
-													outputRange: [0.5, 0.1],
-												}),
-												borderColor:
-													voiceActivityLevel > 15 ? '#00FF88' : '#FFFFFF',
-												borderWidth: voiceActivityLevel > 15 ? 3 : 2,
-											},
-										]}
-									/>
-								)}
-							</LinearGradient>
-						</Animated.View>
+							}}
+						/>
 					</View>
 
 					{/* Status text */}
@@ -1282,37 +1151,10 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		paddingHorizontal: 40,
 	},
-	orbContainer: {
-		marginBottom: 40,
-	},
-	orbWrapper: {
-		width: 200,
-		height: 200,
-		justifyContent: 'center',
+	visualizerContainer: {
+		marginBottom: 60,
 		alignItems: 'center',
-	},
-	orb: {
-		width: 180,
-		height: 180,
-		borderRadius: 90,
 		justifyContent: 'center',
-		alignItems: 'center',
-		elevation: 20,
-		shadowColor: '#000',
-		shadowOffset: {
-			width: 0,
-			height: 10,
-		},
-		shadowOpacity: 0.3,
-		shadowRadius: 20,
-	},
-	pulseRing: {
-		position: 'absolute',
-		width: 220,
-		height: 220,
-		borderRadius: 110,
-		borderWidth: 2,
-		borderColor: '#FFFFFF',
 	},
 	statusText: {
 		fontSize: 18,
@@ -1344,33 +1186,5 @@ const styles = StyleSheet.create({
 	micButtonDisabled: {
 		backgroundColor: 'rgba(107, 114, 128, 0.3)',
 		borderColor: 'rgba(107, 114, 128, 0.3)',
-	},
-	cloudLayer: {
-		position: 'absolute',
-		width: '100%',
-		height: '100%',
-		borderRadius: 90,
-		overflow: 'hidden',
-	},
-	cloudGradient: {
-		width: '100%',
-		height: '100%',
-		borderRadius: 90,
-	},
-	voiceIndicator: {
-		position: 'absolute',
-		width: 30,
-		height: 30,
-		borderRadius: 15,
-		alignSelf: 'center',
-		top: '50%',
-		left: '50%',
-		marginTop: -15,
-		marginLeft: -15,
-	},
-	voiceIndicatorGradient: {
-		width: '100%',
-		height: '100%',
-		borderRadius: 15,
 	},
 });

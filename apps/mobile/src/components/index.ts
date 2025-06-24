@@ -7,6 +7,7 @@ export { AuthProvider } from './AuthProvider';
 export { VoiceRecorder } from './VoiceRecorder';
 export { ConversationalVoiceChat } from './ConversationalVoiceChat';
 export { PremiumPaywallDrawer } from './PremiumPaywallDrawer';
+export { ModernVoiceVisualizer } from './ModernVoiceVisualizer';
 
 // New reusable components
 export { LoadingState } from './LoadingState';

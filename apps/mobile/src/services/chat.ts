@@ -77,6 +77,7 @@ export async function getRecentChats(
 			.select(
 				`
 				id,
+				book_id,
 				updated_at,
 				books (
 					title,

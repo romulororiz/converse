@@ -11,6 +11,8 @@ import {
 	SafeAreaView,
 	KeyboardAvoidingView,
 	Platform,
+	StyleProp,
+	TextStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
@@ -162,6 +164,7 @@ export default function AccountSettingsScreen() {
 		multiline = false,
 		required = false,
 		secureTextEntry = false,
+		labelStyle = {},
 	}: {
 		label: string;
 		value: string;
@@ -170,14 +173,19 @@ export default function AccountSettingsScreen() {
 		multiline?: boolean;
 		required?: boolean;
 		secureTextEntry?: boolean;
+		labelStyle?: StyleProp<TextStyle>;
 	}) => (
 		<View style={styles.fieldContainer}>
 			<View style={styles.fieldHeader}>
-				<Text style={styles.fieldLabel}>{label}</Text>
+				<Text style={[styles.fieldLabel, label === 'Full Name' && { marginTop: 10 }]}>{label}</Text>
 				{required && <Text style={styles.required}>*</Text>}
 			</View>
 			<TextInput
-				style={[styles.textInput, multiline && styles.multilineInput]}
+				style={[
+					styles.textInput,
+					multiline && styles.multilineInput,
+					labelStyle,
+				]}
 				value={value}
 				onChangeText={onChangeText}
 				placeholder={placeholder}
@@ -204,22 +212,6 @@ export default function AccountSettingsScreen() {
 				behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
 				style={styles.container}
 			>
-				{/* Header */}
-				<View style={styles.header}>
-					<TouchableOpacity
-						style={styles.backButton}
-						onPress={() => navigation.goBack()}
-					>
-						<Ionicons
-							name='arrow-back'
-							size={24}
-							color={colors.light.foreground}
-						/>
-					</TouchableOpacity>
-					<Text style={styles.headerTitle}>Account Settings</Text>
-					<View style={styles.headerRight} />
-				</View>
-
 				<ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
 					{/* Edit Profile Section */}
 					<View style={styles.section}>
@@ -227,7 +219,7 @@ export default function AccountSettingsScreen() {
 							<View style={styles.sectionTitleContainer}>
 								<Ionicons
 									name='person-outline'
-									size={20}
+									size={24}
 									color={colors.light.primary}
 								/>
 								<Text style={styles.sectionTitle}>Profile Information</Text>
@@ -250,6 +242,7 @@ export default function AccountSettingsScreen() {
 									value={fullName}
 									onChangeText={setFullName}
 									placeholder='Enter your full name'
+									labelStyle={styles.fieldLabelFullName}
 									required
 								/>
 
@@ -266,14 +259,6 @@ export default function AccountSettingsScreen() {
 									value={readingPreferences}
 									onChangeText={setReadingPreferences}
 									placeholder='e.g., Fiction, Non-fiction, Mystery...'
-									multiline
-								/>
-
-								<ProfileField
-									label='Favorite Genres'
-									value={favoriteGenres}
-									onChangeText={setFavoriteGenres}
-									placeholder='e.g., Science Fiction, Romance, Thriller...'
 									multiline
 								/>
 
@@ -346,7 +331,7 @@ export default function AccountSettingsScreen() {
 							<View style={styles.sectionTitleContainer}>
 								<Ionicons
 									name='lock-closed-outline'
-									size={20}
+									size={24}
 									color={colors.light.primary}
 								/>
 								<Text style={styles.sectionTitle}>Security</Text>
@@ -480,11 +465,11 @@ const styles = StyleSheet.create({
 	},
 	sectionTitleContainer: {
 		flexDirection: 'row',
-		alignItems: 'center',
+		alignItems: 'flex-end',
 		gap: 8,
 	},
 	sectionTitle: {
-		fontSize: 14,
+		fontSize: 18,
 		fontWeight: '600',
 		color: colors.light.foreground,
 	},
@@ -511,7 +496,11 @@ const styles = StyleSheet.create({
 		gap: 4,
 	},
 	fieldLabel: {
-		marginTop: 4,
+		fontSize: 14,
+		fontWeight: '500',
+		color: colors.light.foreground,
+	},
+	fieldLabelFullName: {
 		fontSize: 14,
 		fontWeight: '500',
 		color: colors.light.foreground,
