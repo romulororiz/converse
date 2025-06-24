@@ -15,7 +15,9 @@
 		"ios": {
 			"supportsTablet": true,
 			"infoPlist": {
-				"NSMicrophoneUsageDescription": "This app needs access to the microphone to record voice messages for AI chat."
+				"NSMicrophoneUsageDescription": "This app needs access to the microphone to record voice messages for AI chat.",
+				"NSPhotoLibraryUsageDescription": "This app needs access to your photo library to upload profile pictures.",
+				"NSCameraUsageDescription": "This app needs access to your camera to take profile pictures."
 			}
 		},
 		"android": {
@@ -24,7 +26,12 @@
 				"backgroundColor": "#ffffff"
 			},
 			"edgeToEdgeEnabled": true,
-			"permissions": ["android.permission.RECORD_AUDIO"]
+			"permissions": [
+				"android.permission.RECORD_AUDIO",
+				"android.permission.READ_EXTERNAL_STORAGE",
+				"android.permission.WRITE_EXTERNAL_STORAGE",
+				"android.permission.CAMERA"
+			]
 		},
 		"web": {
 			"favicon": "./assets/favicon.png"
@@ -36,6 +43,15 @@
 			}
 		},
 		"owner": "romulororiz",
-		"plugins": ["expo-web-browser"]
+		"plugins": [
+			"expo-web-browser",
+			[
+				"expo-image-picker",
+				{
+					"photosPermission": "The app accesses your photos to let you share them with your friends.",
+					"cameraPermission": "The app accesses your camera to let you take photos."
+				}
+			]
+		]
 	}
 }

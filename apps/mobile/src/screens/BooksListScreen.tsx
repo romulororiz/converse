@@ -12,7 +12,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
-import { getAllBooks, searchBooks } from '../services/books';
+import {
+	getAllBooks,
+	searchBooks,
+	searchBooksInCategory,
+} from '../services/books';
 import { searchBooksByCategory } from '../services/categories';
 import { Book } from '../types/supabase';
 import { BookCover } from '../components/BookCover';
@@ -69,7 +73,16 @@ export default function BooksListScreen({ navigation, route }: any) {
 		}
 
 		try {
-			const searchResults = await searchBooks(query);
+			let searchResults: Book[];
+
+			if (category) {
+				// Search within the selected category
+				searchResults = await searchBooksInCategory(query, category);
+			} else {
+				// Search all books
+				searchResults = await searchBooks(query);
+			}
+
 			setFilteredBooks(searchResults);
 		} catch (error) {
 			console.error('Error searching books:', error);

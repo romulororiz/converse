@@ -91,6 +91,33 @@ export async function searchBooks(query: string): Promise<Book[]> {
 	}
 }
 
+export async function searchBooksInCategory(
+	query: string,
+	category: string
+): Promise<Book[]> {
+	try {
+		// Search books by title, author, or description within a specific category
+		const { data, error } = await supabase
+			.from('books')
+			.select('*')
+			.contains('categories', [category])
+			.or(
+				`title.ilike.%${query}%,author.ilike.%${query}%,description.ilike.%${query}%`
+			)
+			.order('title', { ascending: true });
+
+		if (error) {
+			console.error('Error searching books in category:', error);
+			return [];
+		}
+
+		return data || [];
+	} catch (error) {
+		console.error('Error searching books in category:', error);
+		return [];
+	}
+}
+
 export async function getBookById(bookId: string): Promise<Book | null> {
 	try {
 		const { data, error } = await supabase

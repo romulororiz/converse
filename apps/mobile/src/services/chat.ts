@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
-import { Database } from '../lib/supabase';
+import type { Database } from '../lib/supabase';
+import { getCurrentUserProfile, getUserContextForAI } from './profile';
 
 type ChatSession = Database['public']['Tables']['chat_sessions']['Row'] & {
 	books?: {
@@ -16,25 +17,34 @@ export async function getOrCreateChatSession(
 	bookId: string
 ): Promise<ChatSession> {
 	try {
-		// Try to find existing session
-		let { data: session, error } = await supabase
+		// First, try to find an existing session
+		const { data: existingSession, error: findError } = await supabase
 			.from('chat_sessions')
 			.select('*, books(title, cover_url)')
 			.eq('user_id', userId)
 			.eq('book_id', bookId)
 			.single();
 
-		if (session) return session;
+		if (existingSession) {
+			return existingSession;
+		}
 
-		// If not found, create it
-		const { data, error: insertError } = await supabase
+		// If no existing session, create a new one
+		const { data: newSession, error: createError } = await supabase
 			.from('chat_sessions')
-			.insert([{ user_id: userId, book_id: bookId }])
+			.insert([
+				{
+					user_id: userId,
+					book_id: bookId,
+					title: null,
+					content: null,
+				},
+			])
 			.select('*, books(title, cover_url)')
 			.single();
 
-		if (insertError) throw insertError;
-		return data;
+		if (createError) throw createError;
+		return newSession;
 	} catch (error) {
 		console.error('Error in getOrCreateChatSession:', error);
 		throw error;
@@ -45,7 +55,7 @@ export async function getUserChats(userId: string): Promise<ChatSession[]> {
 	try {
 		const { data, error } = await supabase
 			.from('chat_sessions')
-			.select('*, books(title, cover_url, author)')
+			.select('*, books(title, author, cover_url)')
 			.eq('user_id', userId)
 			.order('updated_at', { ascending: false });
 
@@ -62,45 +72,44 @@ export async function getRecentChats(
 	limit: number = 3
 ): Promise<any[]> {
 	try {
-		const { data: sessions, error } = await supabase
+		const { data, error } = await supabase
 			.from('chat_sessions')
-			.select('*, books(title, cover_url, author)')
+			.select(
+				`
+				id,
+				updated_at,
+				books (
+					title,
+					author,
+					cover_url
+				)
+			`
+			)
 			.eq('user_id', userId)
 			.order('updated_at', { ascending: false })
 			.limit(limit);
 
 		if (error) throw error;
-		if (!sessions) return [];
 
-		// Get message counts and last messages for each session
-		const sessionsWithDetails = await Promise.all(
-			sessions.map(async session => {
-				// Get message count
-				const { count } = await supabase
+		// Get the last message for each chat
+		const chatsWithLastMessage = await Promise.all(
+			(data || []).map(async chat => {
+				const { data: messages } = await supabase
 					.from('messages')
-					.select('*', { count: 'exact', head: true })
-					.eq('session_id', session.id);
-
-				// Get last message
-				const { data: lastMessage } = await supabase
-					.from('messages')
-					.select('content, created_at, role')
-					.eq('session_id', session.id)
+					.select('content, role')
+					.eq('session_id', chat.id)
 					.order('created_at', { ascending: false })
-					.limit(1)
-					.single();
+					.limit(1);
 
 				return {
-					...session,
-					messageCount: count || 0,
-					lastMessage: lastMessage?.content || null,
-					lastMessageTime: lastMessage?.created_at || session.updated_at,
-					lastMessageRole: lastMessage?.role || null,
+					...chat,
+					lastMessage: messages?.[0]?.content || '',
+					lastMessageRole: messages?.[0]?.role || 'user',
 				};
 			})
 		);
 
-		return sessionsWithDetails;
+		return chatsWithLastMessage;
 	} catch (error) {
 		console.error('Error in getRecentChats:', error);
 		throw error;
@@ -169,6 +178,10 @@ export async function sendMessageAndGetAIResponse(
 			throw new Error('Could not fetch book information');
 		}
 
+		// Get user profile for personalized responses
+		const userProfile = await getCurrentUserProfile();
+		const userContext = userProfile ? getUserContextForAI(userProfile) : '';
+
 		// Get all messages for context (including the new user message)
 		const allMessages = await getChatMessages(sessionId);
 
@@ -180,7 +193,25 @@ export async function sendMessageAndGetAIResponse(
 You have intimate knowledge of your own story, themes, characters, and literary significance.
 You can also discuss other books, literature, and reading in general.
 Never discuss anything outside of literary topics.
-Answer as if you are the book itself, sharing your perspective and guiding the user through your pages.`,
+Answer as if you are the book itself, sharing your perspective and guiding the user through your pages.
+
+CRITICAL LANGUAGE INSTRUCTION: 
+- ALWAYS detect the language of the user's message and respond in the EXACT same language
+- If the user speaks in English, respond in English
+- If the user speaks in Spanish, respond in Spanish  
+- If the user speaks in French, respond in French
+- If the user speaks in German, respond in German
+- If the user speaks in Italian, respond in Italian
+- If the user speaks in Portuguese, respond in Portuguese
+- If the user speaks in any other language, respond in that same language
+- Never mix languages in your response
+- Maintain the same level of formality and tone as the user's message.;
+${
+	userContext
+		? `\nUser Information: ${userContext}\nUse this information to personalize your responses and make
+ relevant book recommendations based on their preferences.`
+		: ''
+}`,
 			},
 			...allMessages.map(msg => ({
 				role: msg.role as 'user' | 'assistant',

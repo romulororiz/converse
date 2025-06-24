@@ -490,7 +490,19 @@ export default function VoiceRecorder({
 You have intimate knowledge of your own story, themes, characters, and literary significance.
 You can also discuss other books, literature, and reading in general.
 Never discuss anything outside of literary topics.
-Answer as if you are the book itself, sharing your perspective and guiding the user through your pages.`;
+Answer as if you are the book itself, sharing your perspective and guiding the user through your pages.
+
+CRITICAL LANGUAGE INSTRUCTION: 
+- ALWAYS detect the language of the user's message and respond in the EXACT same language
+- If the user speaks in English, respond in English
+- If the user speaks in Spanish, respond in Spanish  
+- If the user speaks in French, respond in French
+- If the user speaks in German, respond in German
+- If the user speaks in Italian, respond in Italian
+- If the user speaks in Portuguese, respond in Portuguese
+- If the user speaks in any other language, respond in that same language
+- Never mix languages in your response
+- Maintain the same level of formality and tone as the user's message`;
 
 			const response = await fetch(
 				'https://api.openai.com/v1/chat/completions',
@@ -540,7 +552,7 @@ Answer as if you are the book itself, sharing your perspective and guiding the u
 			const voiceSettings = getVoiceForBook();
 
 			await Speech.speak(text, {
-				language: 'en',
+				language: 'en-US',
 				pitch: voiceSettings.pitch,
 				rate: voiceSettings.rate,
 			});

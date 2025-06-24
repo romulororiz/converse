@@ -900,7 +900,7 @@ export default function ChatDetailScreen() {
 				</Animated.View>
 			)}
 
-			{/*** TODO: Add premium paywall drawer ***/}
+			{/* ** TODO: Add premium paywall drawer ***/}
 			{/* <PremiumPaywallDrawer
 				visible={showPaywall}
 				onClose={() => setShowPaywall(false)}

@@ -55,6 +55,10 @@ export interface Database {
 					email: string;
 					full_name: string | null;
 					avatar_url: string | null;
+					bio: string | null;
+					reading_preferences: string | null;
+					favorite_genres: string | null;
+					reading_goals: string | null;
 					role: string | null;
 					preferences: Json | null;
 					created_at: string;
@@ -65,6 +69,10 @@ export interface Database {
 					email: string;
 					full_name?: string | null;
 					avatar_url?: string | null;
+					bio?: string | null;
+					reading_preferences?: string | null;
+					favorite_genres?: string | null;
+					reading_goals?: string | null;
 					role?: string | null;
 					preferences?: Json | null;
 					created_at?: string;
@@ -75,6 +83,10 @@ export interface Database {
 					email?: string;
 					full_name?: string | null;
 					avatar_url?: string | null;
+					bio?: string | null;
+					reading_preferences?: string | null;
+					favorite_genres?: string | null;
+					reading_goals?: string | null;
 					role?: string | null;
 					preferences?: Json | null;
 					created_at?: string;

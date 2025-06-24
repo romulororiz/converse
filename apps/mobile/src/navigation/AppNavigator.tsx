@@ -13,6 +13,7 @@ import ChatsScreen from '../screens/ChatsScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
 import InsightsScreen from '../screens/InsightsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import AccountSettingsScreen from '../screens/AccountSettingsScreen';
 import BooksListScreen from '../screens/BooksListScreen';
 import CategoriesScreen from '../screens/CategoriesScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -53,6 +54,15 @@ function ChatsStack() {
 		<Stack.Navigator screenOptions={{ headerShown: false }}>
 			<Stack.Screen name='ChatsMain' component={ChatsScreen} />
 			<Stack.Screen name='ChatDetail' component={ChatDetailScreen} />
+		</Stack.Navigator>
+	);
+}
+
+function ProfileStack() {
+	return (
+		<Stack.Navigator screenOptions={{ headerShown: false }}>
+			<Stack.Screen name='ProfileMain' component={ProfileScreen} />
+			<Stack.Screen name='AccountSettings' component={AccountSettingsScreen} />
 		</Stack.Navigator>
 	);
 }
@@ -107,7 +117,7 @@ function TabNavigator() {
 			<Tab.Screen name='Chats' component={ChatsStack} />
 			<Tab.Screen name='Discover' component={DiscoverScreen} />
 			<Tab.Screen name='Insights' component={InsightsScreen} />
-			<Tab.Screen name='Profile' component={ProfileScreen} />
+			<Tab.Screen name='Profile' component={ProfileStack} />
 		</Tab.Navigator>
 	);
 }
