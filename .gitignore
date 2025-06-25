@@ -190,3 +190,7 @@ storybook-static
 # Temporary folders
 tmp/
 temp/
+
+# Production checklist
+PRODUCTION_CHECKLIST.md
+SETUP_GUIDE.md
