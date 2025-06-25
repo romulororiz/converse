@@ -10,14 +10,22 @@ import {
 	Alert,
 	ActivityIndicator,
 	SafeAreaView,
+	StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { colors } from '../utils/colors';
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '@react-navigation/native';
 import { PremiumPaywallDrawer } from '../components/PremiumPaywallDrawer';
+import { SkeletonLoader } from '../components/SkeletonLoader';
+import { useTheme } from '../contexts/ThemeContext';
+import {
+	NotificationService,
+	NotificationSettings,
+} from '../services/notifications';
 
 type NavigationProp = {
 	navigate: (screen: string, params?: any) => void;
@@ -27,7 +35,16 @@ type NavigationProp = {
 export default function ProfileScreen() {
 	const [loading, setLoading] = useState(true);
 	const [uploading, setUploading] = useState(false);
+	const [imageLoading, setImageLoading] = useState(false);
 	const [profile, setProfile] = useState(null);
+	const [notificationSettings, setNotificationSettings] =
+		useState<NotificationSettings>({
+			enabled: true,
+			readingReminders: true,
+			newBooks: true,
+			chatResponses: true,
+			achievements: true,
+		});
 	const [preferences, setPreferences] = useState({
 		notifications: true,
 		darkMode: false,
@@ -36,10 +53,20 @@ export default function ProfileScreen() {
 	});
 	const [showPremiumPaywall, setShowPremiumPaywall] = useState(false);
 	const navigation = useNavigation<NavigationProp>();
+	const { theme, toggleTheme, isDark } = useTheme();
+
+	// Get current colors based on theme
+	const currentColors = colors[theme];
 
 	useEffect(() => {
 		loadProfile();
+		loadNotificationSettings();
 	}, []);
+
+	// Update preferences when theme changes
+	useEffect(() => {
+		handlePreferenceChange('darkMode', isDark);
+	}, [isDark]);
 
 	const loadProfile = async () => {
 		try {
@@ -73,6 +100,15 @@ export default function ProfileScreen() {
 		}
 	};
 
+	const loadNotificationSettings = async () => {
+		try {
+			const settings = await NotificationService.getNotificationSettings();
+			setNotificationSettings(settings);
+		} catch (error) {
+			console.error('Error loading notification settings:', error);
+		}
+	};
+
 	const handlePreferenceChange = async (key, value) => {
 		try {
 			const newPreferences = {
@@ -80,6 +116,36 @@ export default function ProfileScreen() {
 				[key]: value,
 			};
 			setPreferences(newPreferences);
+
+			// Handle special cases
+			if (key === 'darkMode') {
+				// Theme is handled by ThemeContext
+				return;
+			}
+
+			if (key === 'notifications') {
+				if (value) {
+					const hasPermission = await NotificationService.requestPermissions();
+					if (!hasPermission) {
+						Alert.alert(
+							'Permission Required',
+							'Please enable notifications in your device settings to receive push notifications.',
+							[{ text: 'OK' }]
+						);
+						// Revert the change if permission denied
+						setPreferences(prev => ({ ...prev, notifications: false }));
+						return;
+					}
+					// Get and save push token
+					const token = await NotificationService.getExpoPushToken();
+					if (token && profile?.id) {
+						await NotificationService.saveTokenToServer(token, profile.id);
+					}
+				} else {
+					// Disable notifications
+					await NotificationService.cancelAllNotifications();
+				}
+			}
 
 			const { error } = await supabase
 				.from('profiles')
@@ -90,6 +156,23 @@ export default function ProfileScreen() {
 		} catch (error) {
 			console.error('Error updating preferences:', error);
 			Alert.alert('Error', 'Failed to update preferences');
+		}
+	};
+
+	const handleNotificationSettingChange = async (
+		key: keyof NotificationSettings,
+		value: boolean
+	) => {
+		try {
+			const newSettings = {
+				...notificationSettings,
+				[key]: value,
+			};
+			setNotificationSettings(newSettings);
+			await NotificationService.updateNotificationSettings(newSettings);
+		} catch (error) {
+			console.error('Error updating notification settings:', error);
+			Alert.alert('Error', 'Failed to update notification settings');
 		}
 	};
 
@@ -126,6 +209,7 @@ export default function ProfileScreen() {
 	const uploadImage = async uri => {
 		try {
 			setUploading(true);
+			setImageLoading(true);
 			console.log('Starting image upload from URI:', uri);
 
 			// Get file info to validate
@@ -226,6 +310,7 @@ export default function ProfileScreen() {
 			}
 		} finally {
 			setUploading(false);
+			setImageLoading(false);
 		}
 	};
 
@@ -267,73 +352,153 @@ export default function ProfileScreen() {
 		Alert.alert('Privacy Policy', 'Privacy policy would open here');
 	};
 
+	const handleImageLoadStart = () => {
+		setImageLoading(true);
+	};
+
+	const handleImageLoadEnd = () => {
+		setImageLoading(false);
+	};
+
 	if (loading) {
 		return (
-			<View style={styles.loadingContainer}>
-				<ActivityIndicator size='large' color={colors.light.primary} />
+			<View
+				style={[
+					styles.loadingContainer,
+					{ backgroundColor: currentColors.background },
+				]}
+			>
+				<StatusBar
+					barStyle={isDark ? 'light-content' : 'dark-content'}
+					backgroundColor={currentColors.background}
+				/>
+				<ActivityIndicator size='large' color={currentColors.primary} />
+				<Text
+					style={[styles.loadingText, { color: currentColors.mutedForeground }]}
+				>
+					Loading profile...
+				</Text>
 			</View>
 		);
 	}
 
 	return (
-		<SafeAreaView style={styles.safeArea}>
+		<SafeAreaView
+			style={[styles.safeArea, { backgroundColor: currentColors.background }]}
+		>
+			<StatusBar
+				barStyle={isDark ? 'light-content' : 'dark-content'}
+				backgroundColor={currentColors.background}
+			/>
 			<ScrollView style={styles.container}>
-				<View style={styles.header}>
+				<View style={[styles.header, { backgroundColor: currentColors.card }]}>
 					<View style={styles.profileSection}>
 						<View style={styles.avatarContainer}>
 							{profile?.avatar_url ? (
-								<Image
-									source={{
-										uri: profile.avatar_url,
-										cache: 'reload', // Force reload to avoid caching issues
-									}}
-									style={styles.avatar}
-									onError={error => {
-										console.error('Image loading error:', error);
-										console.log('Failed URL:', profile.avatar_url);
-									}}
-								/>
+								<View style={styles.avatarWrapper}>
+									{imageLoading && (
+										<Animated.View
+											entering={FadeIn}
+											exiting={FadeOut}
+											style={styles.skeletonOverlay}
+										>
+											<SkeletonLoader
+												width={140}
+												height={140}
+												borderRadius={70}
+											/>
+										</Animated.View>
+									)}
+									<Image
+										source={{
+											uri: profile.avatar_url,
+											cache: 'reload',
+										}}
+										style={styles.avatar}
+										onLoadStart={handleImageLoadStart}
+										onLoadEnd={handleImageLoadEnd}
+										onError={error => {
+											console.error('Image loading error:', error);
+											console.log('Failed URL:', profile.avatar_url);
+											setImageLoading(false);
+										}}
+									/>
+								</View>
 							) : (
-								<View style={styles.avatarPlaceholder}>
-									<Text style={styles.avatarText}>
+								<View
+									style={[
+										styles.avatarPlaceholder,
+										{ backgroundColor: currentColors.primary },
+									]}
+								>
+									<Text
+										style={[
+											styles.avatarText,
+											{ color: currentColors.primaryForeground },
+										]}
+									>
 										{profile?.full_name?.[0]?.toUpperCase() || '?'}
 									</Text>
 								</View>
 							)}
 							<TouchableOpacity
-								style={styles.editAvatarButton}
+								style={[
+									styles.editAvatarButton,
+									{ backgroundColor: currentColors.primary },
+								]}
 								onPress={pickImage}
 								disabled={uploading}
 							>
 								{uploading ? (
 									<ActivityIndicator
 										size={16}
-										color={colors.light.primaryForeground}
+										color={currentColors.primaryForeground}
 									/>
 								) : (
 									<Ionicons
 										name='camera-outline'
 										size={20}
-										color={colors.light.primaryForeground}
+										color={currentColors.primaryForeground}
 									/>
 								)}
 							</TouchableOpacity>
 						</View>
-						<Text style={styles.name}>{profile?.full_name || 'Anonymous'}</Text>
-						<Text style={styles.email}>{profile?.email}</Text>
+						<Text style={[styles.name, { color: currentColors.foreground }]}>
+							{profile?.full_name || 'Anonymous'}
+						</Text>
+						<Text
+							style={[styles.email, { color: currentColors.mutedForeground }]}
+						>
+							{profile?.email}
+						</Text>
 					</View>
 				</View>
 
-				<View style={styles.section}>
-					<Text style={styles.sectionTitle}>Reading Preferences</Text>
+				<View style={[styles.section, { backgroundColor: currentColors.card }]}>
+					<Text
+						style={[
+							styles.sectionTitle,
+							{ color: currentColors.mutedForeground },
+						]}
+					>
+						App Preferences
+					</Text>
+
 					<View style={styles.preferenceItem}>
 						<View style={styles.preferenceInfo}>
 							<Ionicons
 								name='notifications-outline'
 								size={24}
-								color={colors.light.foreground}
+								color={currentColors.foreground}
 							/>
-							<Text style={styles.preferenceText}>Push Notifications</Text>
+							<Text
+								style={[
+									styles.preferenceText,
+									{ color: currentColors.foreground },
+								]}
+							>
+								Push Notifications
+							</Text>
 						</View>
 						<Switch
 							value={preferences.notifications}
@@ -341,9 +506,10 @@ export default function ProfileScreen() {
 								handlePreferenceChange('notifications', value)
 							}
 							trackColor={{
-								false: colors.light.border,
-								true: colors.light.primary,
+								false: currentColors.border,
+								true: currentColors.primary,
 							}}
+							thumbColor={currentColors.background}
 						/>
 					</View>
 
@@ -352,17 +518,25 @@ export default function ProfileScreen() {
 							<Ionicons
 								name='moon-outline'
 								size={24}
-								color={colors.light.foreground}
+								color={currentColors.foreground}
 							/>
-							<Text style={styles.preferenceText}>Dark Mode</Text>
+							<Text
+								style={[
+									styles.preferenceText,
+									{ color: currentColors.foreground },
+								]}
+							>
+								Dark Mode
+							</Text>
 						</View>
 						<Switch
-							value={preferences.darkMode}
-							onValueChange={value => handlePreferenceChange('darkMode', value)}
+							value={isDark}
+							onValueChange={toggleTheme}
 							trackColor={{
-								false: colors.light.border,
-								true: colors.light.primary,
+								false: currentColors.border,
+								true: currentColors.primary,
 							}}
+							thumbColor={currentColors.background}
 						/>
 					</View>
 
@@ -371,9 +545,16 @@ export default function ProfileScreen() {
 							<Ionicons
 								name='mail-outline'
 								size={24}
-								color={colors.light.foreground}
+								color={currentColors.foreground}
 							/>
-							<Text style={styles.preferenceText}>Email Updates</Text>
+							<Text
+								style={[
+									styles.preferenceText,
+									{ color: currentColors.foreground },
+								]}
+							>
+								Email Updates
+							</Text>
 						</View>
 						<Switch
 							value={preferences.emailUpdates}
@@ -381,9 +562,10 @@ export default function ProfileScreen() {
 								handlePreferenceChange('emailUpdates', value)
 							}
 							trackColor={{
-								false: colors.light.border,
-								true: colors.light.primary,
+								false: currentColors.border,
+								true: currentColors.primary,
 							}}
+							thumbColor={currentColors.background}
 						/>
 					</View>
 
@@ -392,9 +574,16 @@ export default function ProfileScreen() {
 							<Ionicons
 								name='trophy-outline'
 								size={24}
-								color={colors.light.foreground}
+								color={currentColors.foreground}
 							/>
-							<Text style={styles.preferenceText}>Reading Goals</Text>
+							<Text
+								style={[
+									styles.preferenceText,
+									{ color: currentColors.foreground },
+								]}
+							>
+								Reading Goals
+							</Text>
 						</View>
 						<Switch
 							value={preferences.readingGoals}
@@ -402,14 +591,116 @@ export default function ProfileScreen() {
 								handlePreferenceChange('readingGoals', value)
 							}
 							trackColor={{
-								false: colors.light.border,
-								true: colors.light.primary,
+								false: currentColors.border,
+								true: currentColors.primary,
 							}}
+							thumbColor={currentColors.background}
 						/>
 					</View>
 				</View>
 
-				<View style={styles.section}>
+				{preferences.notifications && (
+					<View
+						style={[styles.section, { backgroundColor: currentColors.card }]}
+					>
+						<Text
+							style={[
+								styles.sectionTitle,
+								{ color: currentColors.mutedForeground },
+							]}
+						>
+							Notification Settings
+						</Text>
+
+						<View style={styles.preferenceItem}>
+							<View style={styles.preferenceInfo}>
+								<Ionicons
+									name='book-outline'
+									size={24}
+									color={currentColors.foreground}
+								/>
+								<Text
+									style={[
+										styles.preferenceText,
+										{ color: currentColors.foreground },
+									]}
+								>
+									Reading Reminders
+								</Text>
+							</View>
+							<Switch
+								value={notificationSettings.readingReminders}
+								onValueChange={value =>
+									handleNotificationSettingChange('readingReminders', value)
+								}
+								trackColor={{
+									false: currentColors.border,
+									true: currentColors.primary,
+								}}
+								thumbColor={currentColors.background}
+							/>
+						</View>
+
+						<View style={styles.preferenceItem}>
+							<View style={styles.preferenceInfo}>
+								<Ionicons
+									name='add-circle-outline'
+									size={24}
+									color={currentColors.foreground}
+								/>
+								<Text
+									style={[
+										styles.preferenceText,
+										{ color: currentColors.foreground },
+									]}
+								>
+									New Books
+								</Text>
+							</View>
+							<Switch
+								value={notificationSettings.newBooks}
+								onValueChange={value =>
+									handleNotificationSettingChange('newBooks', value)
+								}
+								trackColor={{
+									false: currentColors.border,
+									true: currentColors.primary,
+								}}
+								thumbColor={currentColors.background}
+							/>
+						</View>
+						<View style={styles.preferenceItem}>
+							<View style={styles.preferenceInfo}>
+								<Ionicons
+									name='star-outline'
+									size={24}
+									color={currentColors.foreground}
+								/>
+								<Text
+									style={[
+										styles.preferenceText,
+										{ color: currentColors.foreground },
+									]}
+								>
+									Achievements
+								</Text>
+							</View>
+							<Switch
+								value={notificationSettings.achievements}
+								onValueChange={value =>
+									handleNotificationSettingChange('achievements', value)
+								}
+								trackColor={{
+									false: currentColors.border,
+									true: currentColors.primary,
+								}}
+								thumbColor={currentColors.background}
+							/>
+						</View>
+					</View>
+				)}
+
+				<View style={[styles.section, { backgroundColor: currentColors.card }]}>
 					<TouchableOpacity
 						style={styles.menuItem}
 						onPress={navigateToAccountSettings}
@@ -418,24 +709,38 @@ export default function ProfileScreen() {
 							<Ionicons
 								name='settings-outline'
 								size={24}
-								color={colors.light.foreground}
+								color={currentColors.foreground}
 							/>
-							<Text style={styles.menuText}>Account Settings</Text>
+							<Text
+								style={[styles.menuText, { color: currentColors.foreground }]}
+							>
+								Account Settings
+							</Text>
 						</View>
 						<Ionicons
 							name='chevron-forward'
 							size={24}
-							color={colors.light.mutedForeground}
+							color={currentColors.mutedForeground}
 						/>
 					</TouchableOpacity>
 				</View>
 
 				<TouchableOpacity
-					style={styles.premiumButton}
+					style={[
+						styles.premiumButton,
+						{ backgroundColor: currentColors.primary },
+					]}
 					onPress={handleGetFullAccess}
 				>
 					<View style={styles.premiumButtonContent}>
-						<Text style={styles.premiumButtonText}>Get Full Access</Text>
+						<Text
+							style={[
+								styles.premiumButtonText,
+								{ color: currentColors.primaryForeground },
+							]}
+						>
+							Get Full Access
+						</Text>
 					</View>
 				</TouchableOpacity>
 			</ScrollView>
@@ -454,7 +759,6 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
 	safeArea: {
 		flex: 1,
-		backgroundColor: colors.light.background,
 	},
 	container: {
 		flex: 1,
@@ -463,10 +767,13 @@ const styles = StyleSheet.create({
 		flex: 1,
 		justifyContent: 'center',
 		alignItems: 'center',
-		backgroundColor: colors.light.background,
+	},
+	loadingText: {
+		fontSize: 16,
+		fontWeight: '500',
+		marginTop: 16,
 	},
 	header: {
-		backgroundColor: colors.light.card,
 		padding: 20,
 		paddingTop: 20,
 	},
@@ -477,10 +784,19 @@ const styles = StyleSheet.create({
 		position: 'relative',
 		marginBottom: 16,
 	},
+	avatarWrapper: {
+		position: 'relative',
+	},
+	skeletonOverlay: {
+		position: 'absolute',
+		top: 20,
+		left: 0,
+		zIndex: 1,
+	},
 	avatar: {
 		width: 140,
 		height: 140,
-		borderRadius: 90,
+		borderRadius: 70,
 		marginTop: 20,
 		marginBottom: -10,
 	},
@@ -488,47 +804,42 @@ const styles = StyleSheet.create({
 		width: 100,
 		height: 100,
 		borderRadius: 50,
-		backgroundColor: colors.light.primary,
 		alignItems: 'center',
 		justifyContent: 'center',
+		marginTop: 20,
+		marginBottom: -10,
 	},
 	avatarText: {
 		fontSize: 36,
-		color: colors.light.primaryForeground,
 		fontWeight: 'bold',
 	},
 	editAvatarButton: {
 		position: 'absolute',
 		bottom: 0,
 		right: 0,
-		backgroundColor: colors.light.primary,
 		width: 36,
 		height: 36,
 		borderRadius: 18,
 		alignItems: 'center',
 		justifyContent: 'center',
 		borderWidth: 3,
-		borderColor: colors.light.background,
+		borderColor: 'white',
 	},
 	name: {
 		fontSize: 24,
 		fontWeight: 'bold',
-		color: colors.light.foreground,
 		marginBottom: 4,
 	},
 	email: {
 		fontSize: 16,
-		color: colors.light.mutedForeground,
 	},
 	section: {
-		backgroundColor: colors.light.card,
 		marginTop: 20,
 		paddingVertical: 8,
 	},
 	sectionTitle: {
 		fontSize: 16,
 		fontWeight: '600',
-		color: colors.light.mutedForeground,
 		paddingHorizontal: 20,
 		paddingVertical: 12,
 	},
@@ -546,7 +857,6 @@ const styles = StyleSheet.create({
 	},
 	preferenceText: {
 		fontSize: 16,
-		color: colors.light.foreground,
 	},
 	menuItem: {
 		flexDirection: 'row',
@@ -562,10 +872,8 @@ const styles = StyleSheet.create({
 	},
 	menuText: {
 		fontSize: 16,
-		color: colors.light.foreground,
 	},
 	premiumButton: {
-		backgroundColor: colors.light.primary,
 		marginHorizontal: 20,
 		marginTop: 40,
 		paddingVertical: 16,
@@ -580,6 +888,5 @@ const styles = StyleSheet.create({
 	premiumButtonText: {
 		fontSize: 18,
 		fontWeight: '600',
-		color: colors.light.primaryForeground,
 	},
 });
