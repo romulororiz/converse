@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
 	View,
 	Text,
@@ -14,171 +14,270 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
+import { SkeletonLoader } from '../components/SkeletonLoader';
+import { getCategoriesWithCounts, type Category } from '../services/categories';
 
 const { width } = Dimensions.get('window');
 
-const allTags = [
-	// Personal Development
-	'Personal Growth',
-	'Self-Discovery',
-	'Mindfulness',
-	'Emotional Intelligence',
-	'Habits & Routines',
-	'Spirituality',
-	'Meditation',
-	'Wellness',
-	// Career & Business
-	'Career Development',
-	'Leadership',
-	'Entrepreneurship',
-	'Productivity',
-	'Innovation',
-	'Business Strategy',
-	'Professional Skills',
-	'Work-Life Balance',
-	// Relationships
-	'Relationships',
-	'Communication',
-	'Social Skills',
-	'Family Dynamics',
-	'Friendship',
-	'Dating & Romance',
-	'Conflict Resolution',
-	'Empathy',
-	// Mental Health
-	'Mental Health',
-	'Psychology',
-	'Anxiety & Stress',
-	'Depression',
-	'Resilience',
-	'Trauma Healing',
-	'Self-Care',
-	'Therapy',
-	// Finance
-	'Personal Finance',
-	'Investing',
-	'Wealth Building',
-	'Financial Freedom',
-	'Money Mindset',
-	'Budgeting',
-	'Retirement Planning',
-	'Financial Education',
-	// Creativity
-	'Creativity',
-	'Art & Design',
-	'Writing',
-	'Music',
-	'Photography',
-	'Storytelling',
-	'Creative Thinking',
-	'Visual Arts',
-	// Science & Technology
-	'Science',
-	'Technology',
-	'Artificial Intelligence',
-	'Space & Astronomy',
-	'Biology',
-	'Physics',
-	'Chemistry',
-	'Mathematics',
-	// Philosophy & History
-	'Philosophy',
-	'History',
-	'Ethics',
-	'Critical Thinking',
-	'World Cultures',
-	'Ancient Wisdom',
-	'Modern Thought',
-	'Social Sciences',
-];
-
-const TAGS_PER_PAGE = 12;
-
 type NavigationProp = {
 	navigate: (screen: string, params?: any) => void;
+	goBack: () => void;
 };
 
 export default function DiscoverScreen() {
 	const navigation = useNavigation<NavigationProp>();
 	const { theme, isDark } = useTheme();
 	const currentColors = colors[theme];
-	const [selectedTags, setSelectedTags] = useState<string[]>([]);
-	const [visibleTagsCount, setVisibleTagsCount] = useState(TAGS_PER_PAGE);
-	const [isLoadingMore, setIsLoadingMore] = useState(false);
+	const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+	const [categories, setCategories] = useState<Category[]>([]);
+	const [isLoading, setIsLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
 
-	const visibleTags = allTags.slice(0, visibleTagsCount);
-	const hasMoreTags = visibleTagsCount < allTags.length;
+	useEffect(() => {
+		loadCategories();
+	}, []);
 
-	const toggleTag = (tag: string) => {
-		setSelectedTags(prev =>
-			prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+	const loadCategories = async () => {
+		try {
+			setIsLoading(true);
+			setError(null);
+			const data = await getCategoriesWithCounts();
+			setCategories(data);
+		} catch (err) {
+			console.error('Error loading categories:', err);
+			setError('Failed to load categories. Please try again.');
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	const toggleCategory = (categoryName: string) => {
+		setSelectedCategories(prev =>
+			prev.includes(categoryName)
+				? prev.filter(c => c !== categoryName)
+				: [...prev, categoryName]
 		);
 	};
 
-	const loadMoreTags = () => {
-		setIsLoadingMore(true);
-		setTimeout(() => {
-			setVisibleTagsCount(prev =>
-				Math.min(prev + TAGS_PER_PAGE, allTags.length)
-			);
-			setIsLoadingMore(false);
-		}, 500);
-	};
-
 	const handleFindBooks = () => {
-		if (selectedTags.length === 0) return;
+		if (selectedCategories.length === 0) return;
 
-		// Navigate to BooksList with selected tags as filter
+		console.log('🔍 DiscoverScreen - Selected categories:', selectedCategories);
+		console.log('🔍 DiscoverScreen - Navigation params:', {
+			categories: selectedCategories,
+			title: 'Discover Results',
+		});
+
+		// Navigate to BooksList with selected categories as filter
 		navigation.navigate('BooksList', {
-			tags: selectedTags,
+			categories: selectedCategories,
 			title: 'Discover Results',
 		});
 	};
 
-	const clearAllTags = () => {
-		setSelectedTags([]);
+	const clearAllCategories = () => {
+		setSelectedCategories([]);
 	};
 
-	const renderTag = (tag: string, index: number) => {
-		const isSelected = selectedTags.includes(tag);
+	const getIconName = (iconName: string): keyof typeof Ionicons.glyphMap => {
+		const iconMap: { [key: string]: keyof typeof Ionicons.glyphMap } = {
+			heart: 'heart',
+			library: 'library',
+			search: 'search',
+			map: 'map',
+			rocket: 'rocket',
+			skull: 'skull',
+			time: 'time',
+			bulb: 'bulb',
+			happy: 'happy',
+			sparkles: 'sparkles',
+			videocam: 'videocam',
+			star: 'star',
+			'trending-up': 'trending-up',
+			flag: 'flag',
+			shield: 'shield',
+			people: 'people',
+			eye: 'eye',
+			'happy-outline': 'happy-outline',
+			home: 'home',
+			leaf: 'leaf',
+		};
+		return iconMap[iconName] || 'book';
+	};
+
+	const renderSkeletonCategories = () => (
+		<View style={styles.categoriesContainer}>
+			{Array.from({ length: 8 }).map((_, index) => (
+				<View key={index} style={styles.categoryCard}>
+					<SkeletonLoader width={60} height={60} borderRadius={30} />
+					<SkeletonLoader
+						width={100}
+						height={16}
+						borderRadius={8}
+						style={{ marginTop: 12 }}
+					/>
+					<SkeletonLoader
+						width={80}
+						height={12}
+						borderRadius={6}
+						style={{ marginTop: 4 }}
+					/>
+					<SkeletonLoader
+						width={40}
+						height={12}
+						borderRadius={6}
+						style={{ marginTop: 8 }}
+					/>
+				</View>
+			))}
+		</View>
+	);
+
+	const renderCategory = (category: Category) => {
+		const isSelected = selectedCategories.includes(category.name);
 
 		return (
 			<TouchableOpacity
-				key={tag}
+				key={category.name}
 				style={[
-					styles.tagButton,
+					styles.categoryCard,
 					isSelected
 						? [
-								styles.tagButtonSelected,
-								{ backgroundColor: currentColors.primary },
+								styles.categoryCardSelected,
+								{
+									backgroundColor: currentColors.primary + '15',
+									borderColor: currentColors.primary,
+								},
 							]
 						: [
-								styles.tagButtonDefault,
+								styles.categoryCardDefault,
 								{
 									backgroundColor: currentColors.card,
 									borderColor: currentColors.border,
 								},
 							],
 				]}
-				onPress={() => toggleTag(tag)}
+				onPress={() => toggleCategory(category.name)}
 				activeOpacity={0.7}
 			>
-				<Text
+				<View
 					style={[
-						styles.tagText,
-						isSelected
-							? [
-									styles.tagTextSelected,
-									{ color: currentColors.primaryForeground },
-								]
-							: [styles.tagTextDefault, { color: currentColors.foreground }],
+						styles.categoryIcon,
+						{
+							backgroundColor: isSelected
+								? currentColors.primary
+								: category.color + '20',
+						},
 					]}
 				>
-					{tag}
+					<Ionicons
+						name={getIconName(category.icon)}
+						size={24}
+						color={
+							isSelected ? currentColors.primaryForeground : category.color
+						}
+					/>
+				</View>
+
+				<Text
+					style={[styles.categoryName, { color: currentColors.foreground }]}
+					numberOfLines={2}
+				>
+					{category.name}
+				</Text>
+
+				<Text
+					style={[
+						styles.categoryDescription,
+						{ color: currentColors.mutedForeground },
+					]}
+					numberOfLines={2}
+				>
+					{category.description}
+				</Text>
+
+				<Text style={[styles.categoryCount, { color: currentColors.primary }]}>
+					{category.count} book{category.count !== 1 ? 's' : ''}
 				</Text>
 			</TouchableOpacity>
 		);
 	};
+
+	if (error) {
+		return (
+			<SafeAreaView
+				style={[styles.safeArea, { backgroundColor: currentColors.background }]}
+			>
+				<StatusBar
+					barStyle={isDark ? 'light-content' : 'dark-content'}
+					backgroundColor={currentColors.background}
+				/>
+
+				{/* Header */}
+				<View
+					style={[
+						styles.header,
+						{
+							backgroundColor: currentColors.card,
+							borderBottomColor: currentColors.border,
+						},
+					]}
+				>
+					<TouchableOpacity
+						style={styles.backButton}
+						onPress={() => navigation.goBack()}
+					>
+						<Ionicons
+							name='arrow-back'
+							size={24}
+							color={currentColors.foreground}
+						/>
+					</TouchableOpacity>
+					<Text
+						style={[styles.headerTitle, { color: currentColors.foreground }]}
+					>
+						Discover Books
+					</Text>
+					<View style={styles.headerRight} />
+				</View>
+
+				{/* Error State */}
+				<View style={styles.errorContainer}>
+					<Ionicons
+						name='alert-circle'
+						size={48}
+						color={currentColors.mutedForeground}
+					/>
+					<Text
+						style={[styles.errorTitle, { color: currentColors.foreground }]}
+					>
+						Oops! Something went wrong
+					</Text>
+					<Text
+						style={[styles.errorText, { color: currentColors.mutedForeground }]}
+					>
+						{error}
+					</Text>
+					<TouchableOpacity
+						style={[
+							styles.retryButton,
+							{ backgroundColor: currentColors.primary },
+						]}
+						onPress={loadCategories}
+					>
+						<Text
+							style={[
+								styles.retryButtonText,
+								{ color: currentColors.primaryForeground },
+							]}
+						>
+							Try Again
+						</Text>
+					</TouchableOpacity>
+				</View>
+			</SafeAreaView>
+		);
+	}
 
 	return (
 		<SafeAreaView
@@ -188,32 +287,82 @@ export default function DiscoverScreen() {
 				barStyle={isDark ? 'light-content' : 'dark-content'}
 				backgroundColor={currentColors.background}
 			/>
+
 			{/* Header */}
-			<View style={[styles.header, { backgroundColor: currentColors.card }]}>
-				<View style={styles.headerContent}>
-					<Text style={[styles.title, { color: currentColors.foreground }]}>
-						Select Your Interests
+			<View
+				style={[
+					styles.header,
+					{
+						backgroundColor: currentColors.card,
+						borderBottomColor: currentColors.border,
+					},
+				]}
+			>
+				<TouchableOpacity
+					style={styles.backButton}
+					onPress={() => navigation.goBack()}
+				>
+					<Ionicons
+						name='arrow-back'
+						size={24}
+						color={currentColors.foreground}
+					/>
+				</TouchableOpacity>
+				<Text style={[styles.headerTitle, { color: currentColors.foreground }]}>
+					Discover Books
+				</Text>
+				<View style={styles.headerRight} />
+			</View>
+
+			{/* Fixed Header */}
+			<View
+				style={[
+					styles.fixedContent,
+					{ backgroundColor: currentColors.background },
+				]}
+			>
+				{/* Page Description */}
+				<View style={styles.descriptionContainer}>
+					<Text
+						style={[
+							styles.descriptionTitle,
+							{ color: currentColors.foreground },
+						]}
+					>
+						Explore by Genre
 					</Text>
 					<Text
-						style={[styles.subtitle, { color: currentColors.mutedForeground }]}
+						style={[
+							styles.descriptionText,
+							{ color: currentColors.mutedForeground },
+						]}
 					>
-						Choose one or more topics to help us find the perfect books for you
+						Choose your favorite genres to discover amazing books. Each category
+						shows the number of available books.
 					</Text>
 				</View>
 
 				{/* Selected count and clear button */}
-				{selectedTags.length > 0 && (
-					<View style={styles.selectedInfo}>
+				{selectedCategories.length > 0 && (
+					<View
+						style={[
+							styles.selectedInfo,
+							{ borderTopColor: currentColors.border },
+						]}
+					>
 						<Text
 							style={[
 								styles.selectedCount,
 								{ color: currentColors.foreground },
 							]}
 						>
-							{selectedTags.length} topic{selectedTags.length !== 1 ? 's' : ''}{' '}
-							selected
+							{selectedCategories.length} genre
+							{selectedCategories.length !== 1 ? 's' : ''} selected
 						</Text>
-						<TouchableOpacity onPress={clearAllTags} style={styles.clearButton}>
+						<TouchableOpacity
+							onPress={clearAllCategories}
+							style={styles.clearButton}
+						>
 							<Text
 								style={[
 									styles.clearButtonText,
@@ -227,6 +376,7 @@ export default function DiscoverScreen() {
 				)}
 			</View>
 
+			{/* Scrollable Categories Content */}
 			<ScrollView
 				style={[
 					styles.container,
@@ -235,39 +385,13 @@ export default function DiscoverScreen() {
 				contentContainerStyle={styles.scrollContent}
 				showsVerticalScrollIndicator={false}
 			>
-				{/* Tags Grid */}
-				<View style={styles.tagsContainer}>{visibleTags.map(renderTag)}</View>
-
-				{/* Load More Button */}
-				{hasMoreTags && (
-					<TouchableOpacity
-						style={[
-							styles.loadMoreButton,
-							{
-								backgroundColor: currentColors.card,
-								borderColor: currentColors.border,
-							},
-						]}
-						onPress={loadMoreTags}
-						disabled={isLoadingMore}
-						activeOpacity={0.7}
-					>
-						{isLoadingMore ? (
-							<ActivityIndicator size='small' color={currentColors.primary} />
-						) : (
-							<>
-								<Ionicons name='add' size={20} color={currentColors.primary} />
-								<Text
-									style={[
-										styles.loadMoreText,
-										{ color: currentColors.primary },
-									]}
-								>
-									Load More Topics
-								</Text>
-							</>
-						)}
-					</TouchableOpacity>
+				{/* Categories Grid */}
+				{isLoading ? (
+					renderSkeletonCategories()
+				) : (
+					<View style={styles.categoriesContainer}>
+						{categories.map(renderCategory)}
+					</View>
 				)}
 
 				{/* Bottom spacing for find books button */}
@@ -278,18 +402,21 @@ export default function DiscoverScreen() {
 			<View
 				style={[
 					styles.bottomContainer,
-					{ backgroundColor: currentColors.background },
+					{
+						backgroundColor: currentColors.background,
+						borderTopColor: currentColors.border,
+					},
 				]}
 			>
 				<TouchableOpacity
 					style={[
 						styles.findBooksButton,
-						selectedTags.length > 0
+						selectedCategories.length > 0
 							? { backgroundColor: currentColors.primary }
 							: { backgroundColor: currentColors.muted, opacity: 0.5 },
 					]}
 					onPress={handleFindBooks}
-					disabled={selectedTags.length === 0}
+					disabled={selectedCategories.length === 0}
 					activeOpacity={0.8}
 				>
 					<Text
@@ -297,19 +424,19 @@ export default function DiscoverScreen() {
 							styles.findBooksButtonText,
 							{
 								color:
-									selectedTags.length > 0
+									selectedCategories.length > 0
 										? currentColors.primaryForeground
 										: currentColors.mutedForeground,
 							},
 						]}
 					>
-						Find Books ({selectedTags.length})
+						Find Books ({selectedCategories.length})
 					</Text>
 					<Ionicons
 						name='arrow-forward'
 						size={20}
 						color={
-							selectedTags.length > 0
+							selectedCategories.length > 0
 								? currentColors.primaryForeground
 								: currentColors.mutedForeground
 						}
@@ -325,31 +452,56 @@ const styles = StyleSheet.create({
 		flex: 1,
 	},
 	header: {
-		paddingHorizontal: 20,
-		paddingTop: 20,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		paddingHorizontal: 16,
+		paddingTop: 12,
 		paddingBottom: 16,
 		borderBottomWidth: 1,
 	},
-	headerContent: {
-		alignItems: 'flex-start',
-		marginBottom: 16,
+	backButton: {
+		padding: 8,
+		marginLeft: -8,
 	},
-	title: {
+	headerTitle: {
+		fontSize: 18,
+		fontWeight: '600',
+	},
+	headerRight: {
+		width: 40,
+	},
+	fixedContent: {
+		// Fixed content that doesn't scroll
+	},
+	container: {
+		flex: 1,
+	},
+	scrollContent: {
+		paddingHorizontal: 16,
+		paddingTop: 8,
+		paddingBottom: 20,
+	},
+	descriptionContainer: {
+		paddingHorizontal: 16,
+		paddingTop: 20,
+		paddingBottom: 20,
+	},
+	descriptionTitle: {
 		fontSize: 24,
 		fontWeight: 'bold',
 		marginBottom: 8,
-		textAlign: 'left',
 	},
-	subtitle: {
-		fontSize: 16,
-		textAlign: 'left',
-		lineHeight: 22,
+	descriptionText: {
+		fontSize: 14,
+		lineHeight: 20,
 	},
 	selectedInfo: {
 		flexDirection: 'row',
 		justifyContent: 'space-between',
 		alignItems: 'center',
-		paddingTop: 8,
+		paddingHorizontal: 16,
+		paddingVertical: 12,
 		borderTopWidth: 1,
 	},
 	selectedCount: {
@@ -364,79 +516,95 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		fontWeight: '500',
 	},
-	container: {
-		flex: 1,
-	},
-	scrollContent: {
-		paddingHorizontal: 20,
-		paddingTop: 20,
-	},
-	tagsContainer: {
+	categoriesContainer: {
 		flexDirection: 'row',
 		flexWrap: 'wrap',
-		gap: 12,
+		gap: 16,
 		marginBottom: 20,
 	},
-	tagButton: {
-		paddingHorizontal: 16,
-		paddingVertical: 10,
-		borderRadius: 20,
+	categoryCard: {
+		width: (width - 48) / 2, // 2 columns with 16px margins and 16px gap
+		padding: 16,
+		borderRadius: 16,
 		borderWidth: 1,
-		minHeight: 40,
-		justifyContent: 'center',
 		alignItems: 'center',
+		minHeight: 160,
 	},
-	tagButtonDefault: {
+	categoryCardDefault: {
 		// backgroundColor and borderColor will be set dynamically
 	},
-	tagButtonSelected: {
-		// backgroundColor will be set dynamically
+	categoryCardSelected: {
+		// backgroundColor and borderColor will be set dynamically
+		borderWidth: 2,
 	},
-	tagText: {
-		fontSize: 14,
+	categoryIcon: {
+		width: 60,
+		height: 60,
+		borderRadius: 30,
+		alignItems: 'center',
+		justifyContent: 'center',
+		marginBottom: 12,
+	},
+	categoryName: {
+		fontSize: 16,
+		fontWeight: '600',
+		textAlign: 'center',
+		marginBottom: 8,
+		lineHeight: 20,
+	},
+	categoryDescription: {
+		fontSize: 12,
+		textAlign: 'center',
+		lineHeight: 16,
+		marginBottom: 8,
+		flex: 1,
+	},
+	categoryCount: {
+		fontSize: 12,
 		fontWeight: '500',
 		textAlign: 'center',
 	},
-	tagTextDefault: {
-		// color will be set dynamically
-	},
-	tagTextSelected: {
-		// color will be set dynamically
-	},
-	loadMoreButton: {
-		flexDirection: 'row',
-		alignItems: 'center',
+	errorContainer: {
+		flex: 1,
 		justifyContent: 'center',
-		paddingVertical: 12,
-		paddingHorizontal: 20,
-		borderRadius: 12,
-		borderWidth: 1,
-		marginBottom: 20,
-		gap: 8,
+		alignItems: 'center',
+		paddingHorizontal: 32,
 	},
-	loadMoreText: {
+	errorTitle: {
+		fontSize: 18,
+		fontWeight: '600',
+		marginTop: 16,
+		marginBottom: 8,
+		textAlign: 'center',
+	},
+	errorText: {
 		fontSize: 14,
-		fontWeight: '500',
+		textAlign: 'center',
+		lineHeight: 20,
+		marginBottom: 24,
+	},
+	retryButton: {
+		paddingHorizontal: 24,
+		paddingVertical: 12,
+		borderRadius: 12,
+	},
+	retryButtonText: {
+		fontSize: 14,
+		fontWeight: '600',
 	},
 	bottomSpacing: {
-		height: 100,
+		height: 20,
 	},
 	bottomContainer: {
-		position: 'absolute',
-		bottom: 0,
-		left: 0,
-		right: 0,
-		paddingHorizontal: 20,
+		paddingHorizontal: 16,
 		paddingVertical: 16,
 		borderTopWidth: 1,
-		borderTopColor: 'rgba(0, 0, 0, 0.1)',
 	},
 	findBooksButton: {
 		flexDirection: 'row',
 		alignItems: 'center',
 		justifyContent: 'center',
 		paddingVertical: 16,
-		paddingHorizontal: 24,
 		borderRadius: 12,
 		gap: 8,
 	},
