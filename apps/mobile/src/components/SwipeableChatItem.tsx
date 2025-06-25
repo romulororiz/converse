@@ -143,7 +143,11 @@ const SwipeableRow = ({
 			</View>
 
 			{/* Swipeable content */}
-			<PanGestureHandler onGestureEvent={gestureHandler}>
+			<PanGestureHandler
+				onGestureEvent={gestureHandler}
+				activeOffsetX={[-10, 10]}
+				failOffsetY={[-10, 10]}
+			>
 				<Animated.View style={animatedStyle}>
 					{renderChild && renderChild(animatedStyle)}
 				</Animated.View>
@@ -249,7 +253,7 @@ export const SwipeableChatItem: React.FC<SwipeableChatItemProps> = ({
 										styles.lastMessage,
 										{ color: currentColors.mutedForeground },
 									]}
-									numberOfLines={2}
+									numberOfLines={3}
 								>
 									{item.lastMessage}
 								</Text>
@@ -326,7 +330,6 @@ const styles = StyleSheet.create({
 		height: '100%',
 	},
 	bookTitle: {
-		paddingTop: 20,
 		fontSize: 16,
 		fontWeight: '600',
 		marginBottom: 2,
@@ -369,7 +372,7 @@ const styles = StyleSheet.create({
 		fontSize: 12,
 		fontStyle: 'italic',
 		marginTop: -2,
-		width: '70%',
+		width: '65%',
 		position: 'absolute',
 		bottom: 5,
 		left: 0,

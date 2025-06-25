@@ -5,11 +5,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Configure notification behavior
 Notifications.setNotificationHandler({
-	handleNotification: async () => ({
-		shouldShowAlert: true,
-		shouldPlaySound: true,
-		shouldSetBadge: false,
-	}),
+	handleNotification: async () => {
+		return {
+			shouldShowAlert: true,
+			shouldPlaySound: true,
+			shouldSetBadge: false,
+			shouldShowBanner: true,
+			shouldShowList: true,
+		};
+	},
 });
 
 export interface NotificationSettings {
@@ -191,6 +195,7 @@ export class NotificationService {
 			'Time to Read! 📚',
 			'Your books are waiting for you. Continue your reading journey!',
 			{
+				type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
 				seconds: hours * 3600,
 				repeats: false,
 			}
@@ -209,6 +214,7 @@ export class NotificationService {
 			'New Book Available! 🎉',
 			`"${bookTitle}" is now available in your library.`,
 			{
+				type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
 				seconds: 1,
 				repeats: false,
 			}
@@ -227,6 +233,7 @@ export class NotificationService {
 			'New Response! 💬',
 			`"${bookTitle}" has responded to your message.`,
 			{
+				type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
 				seconds: 1,
 				repeats: false,
 			}
@@ -245,6 +252,7 @@ export class NotificationService {
 			'Achievement Unlocked! 🏆',
 			`Congratulations! You've earned: ${achievement}`,
 			{
+				type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
 				seconds: 1,
 				repeats: false,
 			}

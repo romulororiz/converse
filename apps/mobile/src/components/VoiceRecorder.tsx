@@ -13,6 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import * as Speech from 'expo-speech';
 import { colors } from '../utils/colors';
+import { validateChatMessage, sanitizeInput } from '../utils/validation';
+import { secureApiRequest, apiKeyManager } from '../utils/apiSecurity';
 
 interface VoiceRecorderProps {
 	onTranscriptionComplete: (text: string) => void;
@@ -479,14 +481,19 @@ export default function VoiceRecorder({
 	};
 
 	const getAIResponse = async (userMessage: string): Promise<string> => {
+		// Validate input message
 		try {
-			const apiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
-			if (!apiKey) {
-				throw new Error('OpenAI API key not found');
-			}
+			validateChatMessage(userMessage, bookId || '');
+		} catch (error) {
+			throw new Error(`Invalid message: ${error.message}`);
+		}
 
-			// Create book-specific system prompt if book info is available
-			const systemPrompt = `You are "${bookTitle}" by ${bookAuthor}, a wise and knowledgeable book.
+		return secureApiRequest('openai', async () => {
+			try {
+				const apiKey = apiKeyManager.getOpenAIKey();
+
+				// Create book-specific system prompt if book info is available
+				const systemPrompt = `You are "${bookTitle}" by ${bookAuthor}, a wise and knowledgeable book.
 You have intimate knowledge of your own story, themes, characters, and literary significance.
 You can also discuss other books, literature, and reading in general.
 Never discuss anything outside of literary topics.
@@ -504,46 +511,47 @@ CRITICAL LANGUAGE INSTRUCTION:
 - Never mix languages in your response
 - Maintain the same level of formality and tone as the user's message`;
 
-			const response = await fetch(
-				'https://api.openai.com/v1/chat/completions',
-				{
-					method: 'POST',
-					headers: {
-						Authorization: `Bearer ${apiKey}`,
-						'Content-Type': 'application/json',
-					},
-					body: JSON.stringify({
-						model: 'gpt-4o-mini', // Faster and cheaper model
-						messages: [
-							{
-								role: 'system',
-								content: systemPrompt,
-							},
-							{
-								role: 'user',
-								content: userMessage,
-							},
-						],
-						max_tokens: 120, // Reduced for faster response
-						temperature: 0.7,
-						stream: false, // Ensure we get full response at once
-					}),
+				const apiResponse = await fetch(
+					'https://api.openai.com/v1/chat/completions',
+					{
+						method: 'POST',
+						headers: {
+							Authorization: `Bearer ${apiKey}`,
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							model: 'gpt-4o-mini', // Faster and cheaper model
+							messages: [
+								{
+									role: 'system',
+									content: systemPrompt,
+								},
+								{
+									role: 'user',
+									content: userMessage,
+								},
+							],
+							max_tokens: 120, // Reduced for faster response
+							temperature: 0.7,
+							stream: false, // Ensure we get full response at once
+						}),
+					}
+				);
+
+				if (!apiResponse.ok) {
+					throw new Error(`AI response failed: ${apiResponse.status}`);
 				}
-			);
 
-			if (!response.ok) {
-				throw new Error(`AI response failed: ${response.status}`);
+				const result = await apiResponse.json();
+				const responseText =
+					result.choices?.[0]?.message?.content ||
+					'I apologize, but I could not process your request.';
+				return sanitizeInput(responseText);
+			} catch (error) {
+				console.error('AI response error:', error);
+				return 'I apologize, but I could not process your request.';
 			}
-
-			const result = await response.json();
-			return (
-				result.choices?.[0]?.message?.content ||
-				'I apologize, but I could not process your request.'
-			);
-		} catch (error) {
-			console.error('AI response error:', error);
-			return 'I apologize, but I could not process your request.';
-		}
+		});
 	};
 
 	const playAIResponse = async (text: string) => {

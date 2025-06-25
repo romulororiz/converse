@@ -1,5 +1,7 @@
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/supabase';
+import { secureApiRequest, apiKeyManager } from '../utils/apiSecurity';
+import { validateChatMessage, sanitizeInput } from '../utils/validation';
 import { getCurrentUserProfile, getUserContextForAI } from './profile';
 
 type ChatSession = Database['public']['Tables']['chat_sessions']['Row'] & {
@@ -36,8 +38,6 @@ export async function getOrCreateChatSession(
 				{
 					user_id: userId,
 					book_id: bookId,
-					title: null,
-					content: null,
 				},
 			])
 			.select('*, books(title, cover_url)')
@@ -209,8 +209,9 @@ CRITICAL LANGUAGE INSTRUCTION:
 - Maintain the same level of formality and tone as the user's message.;
 ${
 	userContext
-		? `\nUser Information: ${userContext}\nUse this information to personalize your responses and make
- relevant book recommendations based on their preferences.`
+		? `\nUser Information: ${userContext}\nUse this information to personalize your responses. Use the ${userContext} to make your responses 
+ more personal to the user. Talk to the user as if you are a friend on first name basis.
+ `
 		: ''
 }`,
 			},
@@ -236,48 +237,48 @@ ${
 async function callOpenAI(
 	messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>
 ): Promise<string> {
-	try {
-		// Get the OpenAI API key from environment variables
-		const apiKey =
-			process.env.EXPO_PUBLIC_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+	return secureApiRequest('openai', async () => {
+		try {
+			// Get the OpenAI API key securely
+			const apiKey = apiKeyManager.getOpenAIKey();
 
-		if (!apiKey) {
-			throw new Error('OpenAI API key not found in environment variables');
+			const response = await fetch(
+				'https://api.openai.com/v1/chat/completions',
+				{
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Authorization: `Bearer ${apiKey}`,
+					},
+					body: JSON.stringify({
+						model: 'gpt-4o',
+						messages: messages,
+						max_tokens: 300,
+						temperature: 0.7,
+					}),
+				}
+			);
+
+			if (!response.ok) {
+				const errorData = await response.text();
+				console.error('OpenAI API error:', response.status, errorData);
+				throw new Error(`OpenAI API error: ${response.status} ${errorData}`);
+			}
+
+			const data = await response.json();
+			const aiContent = data.choices?.[0]?.message?.content?.trim();
+
+			if (!aiContent) {
+				throw new Error('No content received from OpenAI');
+			}
+
+			return sanitizeInput(aiContent);
+		} catch (error) {
+			console.error('Error calling OpenAI:', error);
+			// Fallback response if OpenAI fails
+			return "I apologize, but I'm having trouble connecting to my knowledge base right now. Please try again in a moment, and I'll be happy to discuss literature with you!";
 		}
-
-		const response = await fetch('https://api.openai.com/v1/chat/completions', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${apiKey}`,
-			},
-			body: JSON.stringify({
-				model: 'gpt-4o',
-				messages: messages,
-				max_tokens: 300,
-				temperature: 0.7,
-			}),
-		});
-
-		if (!response.ok) {
-			const errorData = await response.text();
-			console.error('OpenAI API error:', response.status, errorData);
-			throw new Error(`OpenAI API error: ${response.status} ${errorData}`);
-		}
-
-		const data = await response.json();
-		const aiContent = data.choices?.[0]?.message?.content?.trim();
-
-		if (!aiContent) {
-			throw new Error('No content received from OpenAI');
-		}
-
-		return aiContent;
-	} catch (error) {
-		console.error('Error calling OpenAI:', error);
-		// Fallback response if OpenAI fails
-		return "I apologize, but I'm having trouble connecting to my knowledge base right now. Please try again in a moment, and I'll be happy to discuss literature with you!";
-	}
+	});
 }
 
 export async function deleteChatSession(sessionId: string): Promise<void> {

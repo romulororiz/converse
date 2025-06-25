@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
+import { useTheme } from '../contexts/ThemeContext';
 
 type SearchBarProps = {
 	value: string;
@@ -30,31 +31,52 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 	inputStyle,
 	iconName = 'search',
 	iconSize = 20,
-	iconColor = colors.light.mutedForeground,
+	iconColor,
 }) => {
+	const { theme } = useTheme();
+	const currentColors = colors[theme];
+
 	const handleClear = () => {
 		onChangeText('');
 	};
 
+	const finalIconColor = iconColor || currentColors.mutedForeground;
+
 	return (
 		<View style={[styles.container, containerStyle]}>
-			<View style={styles.searchBar}>
+			<View
+				style={[
+					styles.searchBar,
+					{
+						backgroundColor: currentColors.card,
+						borderColor: currentColors.border,
+					},
+				]}
+			>
 				<Ionicons
 					name={iconName}
 					size={iconSize}
-					color={iconColor}
+					color={finalIconColor}
 					style={styles.searchIcon}
 				/>
 				<TextInput
-					style={[styles.searchInput, inputStyle]}
+					style={[
+						styles.searchInput,
+						{ color: currentColors.foreground },
+						inputStyle,
+					]}
 					placeholder={placeholder}
-					placeholderTextColor={colors.light.mutedForeground}
+					placeholderTextColor={currentColors.mutedForeground}
 					value={value}
 					onChangeText={onChangeText}
 				/>
 				{showClearButton && value.length > 0 && (
 					<TouchableOpacity onPress={handleClear} style={styles.clearButton}>
-						<Ionicons name='close-circle' size={iconSize} color={iconColor} />
+						<Ionicons
+							name='close-circle'
+							size={iconSize}
+							color={finalIconColor}
+						/>
 					</TouchableOpacity>
 				)}
 			</View>
@@ -70,12 +92,10 @@ const styles = StyleSheet.create({
 	searchBar: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		backgroundColor: colors.light.card,
 		borderRadius: 12,
 		paddingHorizontal: 16,
 		paddingVertical: 12,
 		borderWidth: 1,
-		borderColor: colors.light.border,
 	},
 	searchIcon: {
 		marginRight: 12,
@@ -83,7 +103,6 @@ const styles = StyleSheet.create({
 	searchInput: {
 		flex: 1,
 		fontSize: 16,
-		color: colors.light.foreground,
 		height: 24,
 	},
 	clearButton: {

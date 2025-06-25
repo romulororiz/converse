@@ -278,12 +278,13 @@ export function getVoiceInfo(voiceId: string) {
  * Get ElevenLabs API key
  */
 function getApiKey(): string | null {
-	const apiKey = process.env.EXPO_PUBLIC_ELEVENLABS_API_KEY;
-	if (!apiKey) {
+	try {
+		const { apiKeyManager } = require('../utils/apiSecurity');
+		return apiKeyManager.getElevenLabsKey();
+	} catch (error) {
 		console.warn('ElevenLabs API key not found, falling back to expo-speech');
 		return null;
 	}
-	return apiKey;
 }
 
 /**
@@ -295,59 +296,62 @@ export async function textToSpeech(
 	voiceSettings: VoiceSettings = DEFAULT_VOICE_SETTINGS
 ): Promise<string | null> {
 	try {
-		const apiKey = getApiKey();
-		if (!apiKey) {
-			return null;
-		}
-
-		// Make API call to ElevenLabs
-		const response = await fetch(
-			`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
-			{
-				method: 'POST',
-				headers: {
-					Accept: 'audio/mpeg',
-					'Content-Type': 'application/json',
-					'xi-api-key': apiKey,
-				},
-				body: JSON.stringify({
-					text,
-					model_id: 'eleven_multilingual_v2',
-					voice_settings: voiceSettings,
-				}),
+		const { secureApiRequest } = require('../utils/apiSecurity');
+		return await secureApiRequest('elevenlabs', async () => {
+			const apiKey = getApiKey();
+			if (!apiKey) {
+				return null;
 			}
-		);
 
-		if (!response.ok) {
-			console.error(
-				'ElevenLabs API error:',
-				response.status,
-				await response.text()
+			// Make API call to ElevenLabs
+			const response = await fetch(
+				`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
+				{
+					method: 'POST',
+					headers: {
+						Accept: 'audio/mpeg',
+						'Content-Type': 'application/json',
+						'xi-api-key': apiKey,
+					},
+					body: JSON.stringify({
+						text,
+						model_id: 'eleven_multilingual_v2',
+						voice_settings: voiceSettings,
+					}),
+				}
 			);
-			return null;
-		}
 
-		// Get audio data as array buffer
-		const arrayBuffer = await response.arrayBuffer();
+			if (!response.ok) {
+				console.error(
+					'ElevenLabs API error:',
+					response.status,
+					await response.text()
+				);
+				return null;
+			}
 
-		// Convert to base64 string
-		const bytes = new Uint8Array(arrayBuffer);
-		let binary = '';
-		for (let i = 0; i < bytes.length; i++) {
-			binary += String.fromCharCode(bytes[i]);
-		}
-		const base64Audio = btoaPolyfill(binary);
+			// Get audio data as array buffer
+			const arrayBuffer = await response.arrayBuffer();
 
-		// Save to temporary file
-		const tempFilename = `elevenlabs_${Date.now()}.mp3`;
-		const tempUri = `${FileSystem.cacheDirectory}${tempFilename}`;
+			// Convert to base64 string
+			const bytes = new Uint8Array(arrayBuffer);
+			let binary = '';
+			for (let i = 0; i < bytes.length; i++) {
+				binary += String.fromCharCode(bytes[i]);
+			}
+			const base64Audio = btoaPolyfill(binary);
 
-		// Write audio data to file
-		await FileSystem.writeAsStringAsync(tempUri, base64Audio, {
-			encoding: FileSystem.EncodingType.Base64,
+			// Save to temporary file
+			const tempFilename = `elevenlabs_${Date.now()}.mp3`;
+			const tempUri = `${FileSystem.cacheDirectory}${tempFilename}`;
+
+			// Write audio data to file
+			await FileSystem.writeAsStringAsync(tempUri, base64Audio, {
+				encoding: FileSystem.EncodingType.Base64,
+			});
+
+			return tempUri;
 		});
-
-		return tempUri;
 	} catch (error) {
 		console.error('ElevenLabs TTS error:', error);
 		return null;
