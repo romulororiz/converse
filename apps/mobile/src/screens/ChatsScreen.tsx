@@ -8,11 +8,13 @@ import {
 	ActivityIndicator,
 	RefreshControl,
 	SafeAreaView,
+	StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
 import { showAlert } from '../utils/alert';
 import { useAuth } from '../components/AuthProvider';
+import { useTheme } from '../contexts/ThemeContext';
 import { getRecentChats, deleteChatSession } from '../services/chat';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { SwipeableChatItem } from '../components/SwipeableChatItem';
@@ -42,6 +44,8 @@ export default function ChatsScreen() {
 	const [refreshing, setRefreshing] = useState(false);
 	const [searchQuery, setSearchQuery] = useState('');
 	const { user } = useAuth();
+	const { theme, isDark } = useTheme();
+	const currentColors = colors[theme];
 	const navigation = useNavigation<NavigationProp>();
 
 	useEffect(() => {
@@ -106,46 +110,91 @@ export default function ChatsScreen() {
 
 	if (!user) {
 		return (
-			<EmptyState
-				icon={{
-					name: 'chatbubbles-outline',
-					size: 64,
-					color: colors.light.mutedForeground,
-				}}
-				title='Please sign in'
-				subtitle='Sign in to view your conversations'
-				containerStyle={styles.centerContainer}
-			/>
+			<View
+				style={[
+					styles.centerContainer,
+					{ backgroundColor: currentColors.background },
+				]}
+			>
+				<StatusBar
+					barStyle={isDark ? 'light-content' : 'dark-content'}
+					backgroundColor={currentColors.background}
+				/>
+				<EmptyState
+					icon={{
+						name: 'chatbubbles-outline',
+						size: 64,
+						color: currentColors.mutedForeground,
+					}}
+					title='Please sign in'
+					subtitle='Sign in to view your conversations'
+					containerStyle={styles.centerContainer}
+				/>
+			</View>
 		);
 	}
 
 	if (loading) {
 		return (
-			<View style={styles.centerContainer}>
-				<ActivityIndicator size='large' color={colors.light.primary} />
+			<View
+				style={[
+					styles.centerContainer,
+					{ backgroundColor: currentColors.background },
+				]}
+			>
+				<StatusBar
+					barStyle={isDark ? 'light-content' : 'dark-content'}
+					backgroundColor={currentColors.background}
+				/>
+				<ActivityIndicator size='large' color={currentColors.primary} />
 			</View>
 		);
 	}
 
 	return (
-		<GestureHandlerRootView style={styles.container}>
-			<SafeAreaView style={styles.container}>
+		<GestureHandlerRootView
+			style={[styles.container, { backgroundColor: currentColors.background }]}
+		>
+			<SafeAreaView
+				style={[
+					styles.container,
+					{ backgroundColor: currentColors.background },
+				]}
+			>
+				<StatusBar
+					barStyle={isDark ? 'light-content' : 'dark-content'}
+					backgroundColor={currentColors.background}
+				/>
 				<View style={styles.header}>
-					<Text style={styles.title}>Your Conversations</Text>
-					<Text style={styles.subtitle}>Continue your literary journey</Text>
+					<Text style={[styles.title, { color: currentColors.foreground }]}>
+						Your Conversations
+					</Text>
+					<Text
+						style={[styles.subtitle, { color: currentColors.mutedForeground }]}
+					>
+						Continue your literary journey
+					</Text>
 				</View>
 
-				<View style={styles.searchContainer}>
+				<View
+					style={[
+						styles.searchContainer,
+						{
+							backgroundColor: currentColors.card,
+							borderColor: currentColors.border,
+						},
+					]}
+				>
 					<Ionicons
 						name='search-outline'
 						size={20}
-						color={colors.light.mutedForeground}
+						color={currentColors.mutedForeground}
 						style={styles.searchIcon}
 					/>
 					<TextInput
-						style={styles.searchInput}
+						style={[styles.searchInput, { color: currentColors.foreground }]}
 						placeholder='Search conversations...'
-						placeholderTextColor={colors.light.mutedForeground}
+						placeholderTextColor={currentColors.mutedForeground}
 						value={searchQuery}
 						onChangeText={setSearchQuery}
 					/>
@@ -156,7 +205,7 @@ export default function ChatsScreen() {
 						icon={{
 							name: 'chatbubbles-outline',
 							size: 64,
-							color: colors.light.mutedForeground,
+							color: currentColors.mutedForeground,
 						}}
 						title={
 							searchQuery ? 'No conversations found' : 'No conversations yet'
@@ -175,7 +224,12 @@ export default function ChatsScreen() {
 						keyExtractor={item => item.id}
 						contentContainerStyle={styles.chatList}
 						refreshControl={
-							<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+							<RefreshControl
+								refreshing={refreshing}
+								onRefresh={onRefresh}
+								tintColor={currentColors.primary}
+								colors={[currentColors.primary]}
+							/>
 						}
 						showsVerticalScrollIndicator={false}
 					/>
@@ -188,7 +242,6 @@ export default function ChatsScreen() {
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		backgroundColor: colors.light.background,
 	},
 	header: {
 		padding: 20,
@@ -198,24 +251,20 @@ const styles = StyleSheet.create({
 	title: {
 		fontSize: 28,
 		fontWeight: 'bold',
-		color: colors.light.foreground,
 		marginBottom: 4,
 	},
 	subtitle: {
 		fontSize: 16,
-		color: colors.light.mutedForeground,
 	},
 	searchContainer: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		backgroundColor: colors.light.card,
 		marginHorizontal: 20,
 		marginTop: 12,
 		marginBottom: 20,
 		borderRadius: 12,
 		paddingHorizontal: 16,
 		borderWidth: 1,
-		borderColor: colors.light.border,
 	},
 	searchIcon: {
 		marginRight: 12,
@@ -223,7 +272,6 @@ const styles = StyleSheet.create({
 	searchInput: {
 		flex: 1,
 		height: 48,
-		color: colors.light.foreground,
 		fontSize: 16,
 	},
 	chatList: {

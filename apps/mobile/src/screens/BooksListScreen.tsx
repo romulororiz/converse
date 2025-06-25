@@ -9,9 +9,11 @@ import {
 	ActivityIndicator,
 	TextInput,
 	SafeAreaView,
+	StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
+import { useTheme } from '../contexts/ThemeContext';
 import {
 	getAllBooks,
 	searchBooks,
@@ -27,6 +29,8 @@ export default function BooksListScreen({ navigation, route }: any) {
 	const [loading, setLoading] = useState(true);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [filteredBooks, setFilteredBooks] = useState<Book[]>([]);
+	const { theme, isDark } = useTheme();
+	const currentColors = colors[theme];
 
 	// Get route parameters
 	const { category, categoryId, tags, title } = route?.params || {};
@@ -91,7 +95,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 
 	const renderBookItem = ({ item }: { item: Book }) => (
 		<TouchableOpacity
-			style={styles.bookItem}
+			style={[styles.bookItem]}
 			onPress={() => {
 				navigation.navigate('ChatDetail', { bookId: item.id });
 			}}
@@ -102,25 +106,46 @@ export default function BooksListScreen({ navigation, route }: any) {
 				placeholderIcon='book-outline'
 				placeholderSize={24}
 			/>
-			<View style={styles.bookInfo}>
-				<Text style={styles.bookTitle} numberOfLines={2}>
+			<View style={[styles.bookInfo, { borderColor: currentColors.border }]}>
+				<Text
+					style={[
+						styles.bookTitle,
+						{
+							color: currentColors.foreground,
+						},
+					]}
+					numberOfLines={2}
+				>
 					{item.title}
 				</Text>
-				<Text style={styles.bookAuthor} numberOfLines={1}>
+				<Text
+					style={[styles.bookAuthor, { color: currentColors.mutedForeground }]}
+					numberOfLines={1}
+				>
 					{item?.author || 'Unknown Author'}
 				</Text>
 				<View style={styles.bookMeta}>
 					<View style={styles.ratingContainer}>
-						<Ionicons name='star' size={12} color={colors.light.primary} />
-						<Text style={styles.ratingText}>
+						<Ionicons name='star' size={12} color={currentColors.primary} />
+						<Text
+							style={[styles.ratingText, { color: currentColors.foreground }]}
+						>
 							{(item.metadata as any)?.rating || 'N/A'}
 						</Text>
 					</View>
-					<Text style={styles.yearText}>
+					<Text
+						style={[styles.yearText, { color: currentColors.mutedForeground }]}
+					>
 						{(item.metadata as any)?.year || 'N/A'}
 					</Text>
 				</View>
-				<Text style={styles.bookDescription} numberOfLines={2}>
+				<Text
+					style={[
+						styles.bookDescription,
+						{ color: currentColors.mutedForeground },
+					]}
+					numberOfLines={2}
+				>
 					{item.description}
 				</Text>
 			</View>
@@ -129,17 +154,36 @@ export default function BooksListScreen({ navigation, route }: any) {
 
 	if (loading) {
 		return (
-			<View style={styles.loadingContainer}>
-				<ActivityIndicator size='large' color={colors.light.primary} />
-				<Text style={styles.loadingText}>Loading books...</Text>
+			<View
+				style={[
+					styles.loadingContainer,
+					{ backgroundColor: currentColors.background },
+				]}
+			>
+				<StatusBar
+					barStyle={isDark ? 'light-content' : 'dark-content'}
+					backgroundColor={currentColors.background}
+				/>
+				<ActivityIndicator size='large' color={currentColors.primary} />
+				<Text
+					style={[styles.loadingText, { color: currentColors.mutedForeground }]}
+				>
+					Loading books...
+				</Text>
 			</View>
 		);
 	}
 
 	return (
-		<SafeAreaView style={styles.container}>
+		<SafeAreaView
+			style={[styles.container, { backgroundColor: currentColors.background }]}
+		>
+			<StatusBar
+				barStyle={isDark ? 'light-content' : 'dark-content'}
+				backgroundColor={currentColors.background}
+			/>
 			{/* Header */}
-			<View style={styles.header}>
+			<View style={[styles.header, { backgroundColor: currentColors.card }]}>
 				<TouchableOpacity
 					style={styles.backButton}
 					onPress={() => navigation.goBack()}
@@ -147,25 +191,35 @@ export default function BooksListScreen({ navigation, route }: any) {
 					<Ionicons
 						name='arrow-back'
 						size={24}
-						color={colors.light.foreground}
+						color={currentColors.foreground}
 					/>
 				</TouchableOpacity>
-				<Text style={styles.headerTitle}>{screenTitle}</Text>
+				<Text style={[styles.headerTitle, { color: currentColors.foreground }]}>
+					{screenTitle}
+				</Text>
 				<View style={styles.headerRight} />
 			</View>
 
 			{/* Search Bar */}
 			<View style={styles.searchContainer}>
-				<View style={styles.searchBar}>
+				<View
+					style={[
+						styles.searchBar,
+						{
+							backgroundColor: currentColors.card,
+							borderColor: currentColors.border,
+						},
+					]}
+				>
 					<Ionicons
 						name='search'
 						size={20}
-						color={colors.light.mutedForeground}
+						color={currentColors.mutedForeground}
 					/>
 					<TextInput
-						style={styles.searchInput}
+						style={[styles.searchInput, { color: currentColors.foreground }]}
 						placeholder='Search books or authors...'
-						placeholderTextColor={colors.light.mutedForeground}
+						placeholderTextColor={currentColors.mutedForeground}
 						value={searchQuery}
 						onChangeText={setSearchQuery}
 					/>
@@ -174,7 +228,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 							<Ionicons
 								name='close-circle'
 								size={20}
-								color={colors.light.mutedForeground}
+								color={currentColors.mutedForeground}
 							/>
 						</TouchableOpacity>
 					)}
@@ -184,13 +238,31 @@ export default function BooksListScreen({ navigation, route }: any) {
 			{/* Category Filter */}
 			{category && (
 				<View style={styles.tagsContainer}>
-					<Text style={styles.tagsTitle}>Browsing Category:</Text>
+					<Text style={[styles.tagsTitle, { color: currentColors.foreground }]}>
+						Browsing Category:
+					</Text>
 					<View style={styles.tagsWrapper}>
-						<View style={styles.tagChip}>
-							<Text style={styles.tagChipText}>{category}</Text>
+						<View
+							style={[
+								styles.tagChip,
+								{ backgroundColor: currentColors.primary + '20' },
+							]}
+						>
+							<Text
+								style={[styles.tagChipText, { color: currentColors.primary }]}
+							>
+								{category}
+							</Text>
 						</View>
-						<View style={styles.tagChip}>
-							<Text style={styles.tagChipText}>
+						<View
+							style={[styles.tagChip, { backgroundColor: currentColors.muted }]}
+						>
+							<Text
+								style={[
+									styles.tagChipText,
+									{ color: currentColors.mutedForeground },
+								]}
+							>
 								{filteredBooks.length} books
 							</Text>
 						</View>
@@ -201,11 +273,23 @@ export default function BooksListScreen({ navigation, route }: any) {
 			{/* Selected Tags */}
 			{tags && tags.length > 0 && (
 				<View style={styles.tagsContainer}>
-					<Text style={styles.tagsTitle}>Selected Topics:</Text>
+					<Text style={[styles.tagsTitle, { color: currentColors.foreground }]}>
+						Selected Topics:
+					</Text>
 					<View style={styles.tagsWrapper}>
 						{tags.map((tag: string, index: number) => (
-							<View key={index} style={styles.tagChip}>
-								<Text style={styles.tagChipText}>{tag}</Text>
+							<View
+								key={index}
+								style={[
+									styles.tagChip,
+									{ backgroundColor: currentColors.primary + '20' },
+								]}
+							>
+								<Text
+									style={[styles.tagChipText, { color: currentColors.primary }]}
+								>
+									{tag}
+								</Text>
 							</View>
 						))}
 					</View>
@@ -224,7 +308,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 						icon={{
 							name: searchQuery ? 'search-outline' : 'library-outline',
 							size: 48,
-							color: colors.light.mutedForeground,
+							color: currentColors.mutedForeground,
 						}}
 						title={
 							searchQuery
@@ -268,7 +352,6 @@ export default function BooksListScreen({ navigation, route }: any) {
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		backgroundColor: colors.light.background,
 	},
 	header: {
 		flexDirection: 'row',
@@ -276,7 +359,6 @@ const styles = StyleSheet.create({
 		justifyContent: 'space-between',
 		padding: 20,
 		paddingTop: 20,
-		backgroundColor: colors.light.cardForeground,
 	},
 	backButton: {
 		padding: 4,
@@ -284,28 +366,26 @@ const styles = StyleSheet.create({
 	headerTitle: {
 		fontSize: 20,
 		fontWeight: 'bold',
-		color: colors.light.accentForeground,
 	},
 	headerRight: {
 		width: 32,
 	},
 	searchContainer: {
 		paddingHorizontal: 20,
-		paddingTop: 20,
+		paddingVertical: 20,
 	},
 	searchBar: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		backgroundColor: colors.light.card,
 		borderRadius: 12,
 		paddingHorizontal: 16,
 		paddingVertical: 12,
+		borderWidth: 1,
 	},
 	searchInput: {
 		flex: 1,
 		marginLeft: 12,
 		fontSize: 16,
-		color: colors.light.cardForeground,
 	},
 	listContainer: {
 		paddingHorizontal: 20,
@@ -314,11 +394,12 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		padding: 10,
 		marginBottom: 16,
+		borderRadius: 8,
 	},
 	bookCover: {
 		width: 90,
 		height: 120,
-		marginRight: 16,
+		marginRight: 8,
 	},
 	bookImage: {
 		width: '100%',
@@ -328,7 +409,6 @@ const styles = StyleSheet.create({
 	bookPlaceholder: {
 		width: '100%',
 		height: '100%',
-		backgroundColor: colors.light.secondary,
 		borderRadius: 8,
 		alignItems: 'center',
 		justifyContent: 'center',
@@ -340,79 +420,54 @@ const styles = StyleSheet.create({
 		flex: 1,
 		justifyContent: 'center',
 		borderBottomWidth: 1,
-		borderColor: colors.light.border,
 	},
 	bookTitle: {
 		fontSize: 16,
 		fontWeight: '600',
-		color: colors.light.foreground,
 		marginBottom: 4,
 	},
 	bookAuthor: {
 		fontSize: 14,
-		color: colors.light.mutedForeground,
 		marginBottom: 8,
 	},
 	bookMeta: {
 		flexDirection: 'row',
 		alignItems: 'center',
 		marginBottom: 8,
+		gap: 16,
 	},
 	ratingContainer: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		marginRight: 16,
+		gap: 4,
 	},
 	ratingText: {
 		fontSize: 12,
-		color: colors.light.foreground,
-		marginLeft: 4,
+		fontWeight: '500',
 	},
 	yearText: {
 		fontSize: 12,
-		color: colors.light.mutedForeground,
 	},
 	bookDescription: {
 		fontSize: 12,
-		color: colors.light.mutedForeground,
 		lineHeight: 16,
-	},
-	loadingContainer: {
-		flex: 1,
-		justifyContent: 'center',
-		alignItems: 'center',
-		backgroundColor: colors.light.background,
-	},
-	loadingText: {
-		marginTop: 16,
-		fontSize: 16,
-		color: colors.light.mutedForeground,
-	},
-	emptyContainer: {
-		flex: 1,
-		justifyContent: 'center',
-		alignItems: 'center',
-		paddingVertical: 60,
 	},
 	tagsContainer: {
 		paddingHorizontal: 20,
-		paddingVertical: 12,
+		paddingTop: 16,
+		paddingBottom: 8,
 	},
 	tagsTitle: {
 		fontSize: 14,
 		fontWeight: '600',
-		color: colors.light.foreground,
 		marginBottom: 8,
 	},
 	tagsWrapper: {
-		display: 'flex',
 		flexDirection: 'row',
-		justifyContent: 'space-between',
 		flexWrap: 'wrap',
 		gap: 8,
 	},
 	tagChip: {
-		backgroundColor: colors.light.cardForeground,
 		paddingHorizontal: 12,
 		paddingVertical: 6,
 		borderRadius: 16,
@@ -420,6 +475,21 @@ const styles = StyleSheet.create({
 	tagChipText: {
 		fontSize: 12,
 		fontWeight: '500',
-		color: colors.light.primaryForeground,
+	},
+	loadingContainer: {
+		flex: 1,
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	loadingText: {
+		marginTop: 16,
+		fontSize: 16,
+		fontWeight: '500',
+	},
+	emptyContainer: {
+		flex: 1,
+		justifyContent: 'center',
+		alignItems: 'center',
+		paddingHorizontal: 40,
 	},
 });

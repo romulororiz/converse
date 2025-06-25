@@ -10,6 +10,7 @@ import {
 	ActivityIndicator,
 	Platform,
 	SafeAreaView,
+	StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
@@ -18,6 +19,7 @@ import { getFeaturedBooks } from '../services/books';
 import { getRecentChats, deleteChatSession } from '../services/chat';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../components/AuthProvider';
+import { useTheme } from '../contexts/ThemeContext';
 import { Book } from '../types/supabase';
 import { BookCover } from '../components/BookCover';
 import { SwipeableChatItem } from '../components/SwipeableChatItem';
@@ -46,6 +48,8 @@ export default function HomeScreen() {
 	const [chatsLoading, setChatsLoading] = useState(true);
 	const navigation = useNavigation<NavigationProp>();
 	const { user } = useAuth();
+	const { theme, isDark } = useTheme();
+	const currentColors = colors[theme];
 
 	useEffect(() => {
 		loadFeaturedBooks();
@@ -102,10 +106,16 @@ export default function HomeScreen() {
 					placeholderSize={32}
 				/>
 			</View>
-			<Text style={styles.bookTitle} numberOfLines={2}>
+			<Text
+				style={[styles.bookTitle, { color: currentColors.foreground }]}
+				numberOfLines={2}
+			>
 				{item.title}
 			</Text>
-			<Text style={styles.bookAuthor} numberOfLines={1}>
+			<Text
+				style={[styles.bookAuthor, { color: currentColors.mutedForeground }]}
+				numberOfLines={1}
+			>
 				{item?.author || 'Unknown Author'}
 			</Text>
 		</TouchableOpacity>
@@ -114,7 +124,7 @@ export default function HomeScreen() {
 	const renderCategoryCard = (category: any) => (
 		<TouchableOpacity
 			key={category.id}
-			style={styles.categoryCard}
+			style={[styles.categoryCard, { backgroundColor: currentColors.card }]}
 			onPress={() =>
 				navigation.navigate('BooksList', {
 					category: category.name,
@@ -122,14 +132,21 @@ export default function HomeScreen() {
 				})
 			}
 		>
-			<View style={styles.categoryIcon}>
+			<View
+				style={[
+					styles.categoryIcon,
+					{ backgroundColor: currentColors.primary + '20' },
+				]}
+			>
 				<Ionicons
 					name={category.icon as any}
 					size={24}
-					color={colors.light.primary}
+					color={currentColors.primary}
 				/>
 			</View>
-			<Text style={styles.categoryName}>{category.name}</Text>
+			<Text style={[styles.categoryName, { color: currentColors.foreground }]}>
+				{category.name}
+			</Text>
 		</TouchableOpacity>
 	);
 
@@ -171,29 +188,61 @@ export default function HomeScreen() {
 	};
 
 	return (
-		<GestureHandlerRootView style={styles.safeArea}>
-			<SafeAreaView style={styles.safeArea}>
+		<GestureHandlerRootView
+			style={[styles.safeArea, { backgroundColor: currentColors.background }]}
+		>
+			<SafeAreaView
+				style={[styles.safeArea, { backgroundColor: currentColors.background }]}
+			>
+				<StatusBar
+					barStyle={isDark ? 'light-content' : 'dark-content'}
+					backgroundColor={currentColors.background}
+				/>
 				<ScrollView
-					style={styles.container}
+					style={[
+						styles.container,
+						{ backgroundColor: currentColors.background },
+					]}
 					showsVerticalScrollIndicator={false}
 				>
 					{/* Header Section */}
-					<View style={styles.header}>
+					<View
+						style={[styles.header, { backgroundColor: currentColors.card }]}
+					>
 						<View style={styles.headerTop}>
-							<Text style={styles.appTitle}>ConversAI</Text>
+							<Text
+								style={[styles.appTitle, { color: currentColors.foreground }]}
+							>
+								ConversAI
+							</Text>
 						</View>
-						<Text style={styles.welcomeText}>
+						<Text
+							style={[
+								styles.welcomeText,
+								{ color: currentColors.mutedForeground },
+							]}
+						>
 							Chat with your favorite books.
 						</Text>
 						<TouchableOpacity
-							style={styles.ctaButton}
+							style={[
+								styles.ctaButton,
+								{ backgroundColor: currentColors.primary },
+							]}
 							onPress={() => navigation.navigate('Discover')}
 						>
-							<Text style={styles.ctaButtonText}>Explore Books</Text>
+							<Text
+								style={[
+									styles.ctaButtonText,
+									{ color: currentColors.primaryForeground },
+								]}
+							>
+								Explore Books
+							</Text>
 							<Ionicons
 								name='arrow-forward'
 								size={20}
-								color={colors.light.primaryForeground}
+								color={currentColors.primaryForeground}
 							/>
 						</TouchableOpacity>
 					</View>
@@ -201,17 +250,35 @@ export default function HomeScreen() {
 					{/* Featured Books Carousel */}
 					<View style={styles.section}>
 						<View style={styles.sectionHeader}>
-							<Text style={styles.sectionTitle}>Featured Books</Text>
+							<Text
+								style={[
+									styles.sectionTitle,
+									{ color: currentColors.foreground },
+								]}
+							>
+								Featured Books
+							</Text>
 							<TouchableOpacity
 								onPress={() => navigation.navigate('BooksList')}
 							>
-								<Text style={styles.seeAllText}>See All</Text>
+								<Text
+									style={[styles.seeAllText, { color: currentColors.primary }]}
+								>
+									See All
+								</Text>
 							</TouchableOpacity>
 						</View>
 						{loading ? (
 							<View style={styles.loadingContainer}>
-								<ActivityIndicator size='large' color={colors.light.primary} />
-								<Text style={styles.loadingText}>Loading books...</Text>
+								<ActivityIndicator size='large' color={currentColors.primary} />
+								<Text
+									style={[
+										styles.loadingText,
+										{ color: currentColors.mutedForeground },
+									]}
+								>
+									Loading books...
+								</Text>
 							</View>
 						) : (
 							<ScrollView
@@ -229,11 +296,22 @@ export default function HomeScreen() {
 					{/* Categories */}
 					<View style={styles.section}>
 						<View style={styles.sectionHeader}>
-							<Text style={styles.sectionTitle}>Browse Categories</Text>
+							<Text
+								style={[
+									styles.sectionTitle,
+									{ color: currentColors.foreground },
+								]}
+							>
+								Browse Categories
+							</Text>
 							<TouchableOpacity
 								onPress={() => navigation.navigate('Categories')}
 							>
-								<Text style={styles.seeAllText}>See All</Text>
+								<Text
+									style={[styles.seeAllText, { color: currentColors.primary }]}
+								>
+									See All
+								</Text>
 							</TouchableOpacity>
 						</View>
 						<ScrollView
@@ -248,16 +326,34 @@ export default function HomeScreen() {
 					{/* Recent Conversations */}
 					<View style={styles.section}>
 						<View style={styles.sectionHeader}>
-							<Text style={styles.sectionTitle}>Recent Conversations</Text>
+							<Text
+								style={[
+									styles.sectionTitle,
+									{ color: currentColors.foreground },
+								]}
+							>
+								Recent Conversations
+							</Text>
 							<TouchableOpacity onPress={() => navigation.navigate('Chats')}>
-								<Text style={styles.seeAllText}>See All</Text>
+								<Text
+									style={[styles.seeAllText, { color: currentColors.primary }]}
+								>
+									See All
+								</Text>
 							</TouchableOpacity>
 						</View>
 
 						{chatsLoading ? (
 							<View style={styles.loadingContainer}>
-								<ActivityIndicator size='small' color={colors.light.primary} />
-								<Text style={styles.loadingText}>Loading conversations...</Text>
+								<ActivityIndicator size='small' color={currentColors.primary} />
+								<Text
+									style={[
+										styles.loadingText,
+										{ color: currentColors.mutedForeground },
+									]}
+								>
+									Loading conversations...
+								</Text>
 							</View>
 						) : recentChats.length > 0 ? (
 							recentChats.map((chat, index) =>
@@ -268,7 +364,7 @@ export default function HomeScreen() {
 								icon={{
 									name: 'chatbubbles-outline',
 									size: 48,
-									color: colors.light.mutedForeground,
+									color: currentColors.mutedForeground,
 								}}
 								title='No conversations yet'
 								subtitle='Start chatting with a book to see your conversations here'
@@ -289,7 +385,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
 	safeArea: {
 		flex: 1,
-		backgroundColor: colors.light.background,
 	},
 	container: {
 		flex: 1,
@@ -297,7 +392,6 @@ const styles = StyleSheet.create({
 	header: {
 		padding: 20,
 		paddingTop: 20,
-		backgroundColor: colors.light.card,
 	},
 	headerTop: {
 		flexDirection: 'row',
@@ -308,19 +402,16 @@ const styles = StyleSheet.create({
 	appTitle: {
 		fontSize: 28,
 		fontWeight: 'bold',
-		color: colors.light.foreground,
 	},
 	profileButton: {
 		padding: 4,
 	},
 	welcomeText: {
 		fontSize: 16,
-		color: colors.light.mutedForeground,
 		marginBottom: 20,
 		lineHeight: 22,
 	},
 	ctaButton: {
-		backgroundColor: colors.light.primary,
 		flexDirection: 'row',
 		alignItems: 'center',
 		justifyContent: 'center',
@@ -329,7 +420,6 @@ const styles = StyleSheet.create({
 		gap: 8,
 	},
 	ctaButtonText: {
-		color: colors.light.primaryForeground,
 		fontSize: 16,
 		fontWeight: '600',
 	},
@@ -351,11 +441,8 @@ const styles = StyleSheet.create({
 		width: 'auto',
 		fontSize: 20,
 		fontWeight: 'bold',
-		color: colors.light.foreground,
-		height: '100%',
 	},
 	seeAllText: {
-		color: colors.light.primary,
 		fontSize: 14,
 		fontWeight: '500',
 	},
@@ -381,7 +468,6 @@ const styles = StyleSheet.create({
 		width: '100%',
 		height: 160,
 		objectFit: 'fill',
-		backgroundColor: colors.light.secondary,
 		borderRadius: 2,
 		alignItems: 'center',
 		justifyContent: 'center',
@@ -394,56 +480,43 @@ const styles = StyleSheet.create({
 		height: 40,
 		fontSize: 14,
 		fontWeight: '600',
-		color: colors.light.foreground,
 	},
 	bookTitleContinueReading: {
 		width: '70%',
 		fontSize: 14,
 		fontWeight: '600',
-		color: colors.light.foreground,
 	},
 	bookAuthor: {
 		fontSize: 12,
-		color: colors.light.mutedForeground,
 	},
 	categoryCard: {
-		alignItems: 'center',
-		backgroundColor: colors.light.card,
-		padding: 16,
+		width: 100,
+		height: 100,
+		marginRight: 16,
 		borderRadius: 12,
-		marginRight: 12,
-		minWidth: 80,
-		marginVertical: 6,
-		shadowOffset: { width: 0, height: 1 },
-		shadowOpacity: 0.25,
-		shadowRadius: 3,
-		elevation: 5,
+		alignItems: 'center',
+		justifyContent: 'center',
+		padding: 12,
 	},
 	categoryIcon: {
+		width: 40,
+		height: 40,
+		borderRadius: 20,
+		alignItems: 'center',
+		justifyContent: 'center',
 		marginBottom: 8,
 	},
 	categoryName: {
 		fontSize: 12,
 		fontWeight: '500',
-		color: colors.light.foreground,
 		textAlign: 'center',
 	},
-
 	loadingContainer: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		justifyContent: 'center',
 		padding: 20,
+		alignItems: 'center',
 	},
 	loadingText: {
-		fontSize: 16,
-		fontWeight: '500',
-		color: colors.light.primary,
-		marginLeft: 10,
-	},
-	bookImage: {
-		width: '100%',
-		height: '100%',
-		borderRadius: 8,
+		marginTop: 8,
+		fontSize: 14,
 	},
 });

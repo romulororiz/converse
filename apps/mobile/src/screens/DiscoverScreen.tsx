@@ -8,9 +8,11 @@ import {
 	TouchableOpacity,
 	Dimensions,
 	ActivityIndicator,
+	StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
+import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
@@ -98,6 +100,8 @@ type NavigationProp = {
 
 export default function DiscoverScreen() {
 	const navigation = useNavigation<NavigationProp>();
+	const { theme, isDark } = useTheme();
+	const currentColors = colors[theme];
 	const [selectedTags, setSelectedTags] = useState<string[]>([]);
 	const [visibleTagsCount, setVisibleTagsCount] = useState(TAGS_PER_PAGE);
 	const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -143,7 +147,18 @@ export default function DiscoverScreen() {
 				key={tag}
 				style={[
 					styles.tagButton,
-					isSelected ? styles.tagButtonSelected : styles.tagButtonDefault,
+					isSelected
+						? [
+								styles.tagButtonSelected,
+								{ backgroundColor: currentColors.primary },
+							]
+						: [
+								styles.tagButtonDefault,
+								{
+									backgroundColor: currentColors.card,
+									borderColor: currentColors.border,
+								},
+							],
 				]}
 				onPress={() => toggleTag(tag)}
 				activeOpacity={0.7}
@@ -151,7 +166,12 @@ export default function DiscoverScreen() {
 				<Text
 					style={[
 						styles.tagText,
-						isSelected ? styles.tagTextSelected : styles.tagTextDefault,
+						isSelected
+							? [
+									styles.tagTextSelected,
+									{ color: currentColors.primaryForeground },
+								]
+							: [styles.tagTextDefault, { color: currentColors.foreground }],
 					]}
 				>
 					{tag}
@@ -161,12 +181,22 @@ export default function DiscoverScreen() {
 	};
 
 	return (
-		<SafeAreaView style={styles.safeArea}>
+		<SafeAreaView
+			style={[styles.safeArea, { backgroundColor: currentColors.background }]}
+		>
+			<StatusBar
+				barStyle={isDark ? 'light-content' : 'dark-content'}
+				backgroundColor={currentColors.background}
+			/>
 			{/* Header */}
-			<View style={styles.header}>
+			<View style={[styles.header, { backgroundColor: currentColors.card }]}>
 				<View style={styles.headerContent}>
-					<Text style={styles.title}>Select Your Interests</Text>
-					<Text style={styles.subtitle}>
+					<Text style={[styles.title, { color: currentColors.foreground }]}>
+						Select Your Interests
+					</Text>
+					<Text
+						style={[styles.subtitle, { color: currentColors.mutedForeground }]}
+					>
 						Choose one or more topics to help us find the perfect books for you
 					</Text>
 				</View>
@@ -174,19 +204,34 @@ export default function DiscoverScreen() {
 				{/* Selected count and clear button */}
 				{selectedTags.length > 0 && (
 					<View style={styles.selectedInfo}>
-						<Text style={styles.selectedCount}>
+						<Text
+							style={[
+								styles.selectedCount,
+								{ color: currentColors.foreground },
+							]}
+						>
 							{selectedTags.length} topic{selectedTags.length !== 1 ? 's' : ''}{' '}
 							selected
 						</Text>
 						<TouchableOpacity onPress={clearAllTags} style={styles.clearButton}>
-							<Text style={styles.clearButtonText}>Clear All</Text>
+							<Text
+								style={[
+									styles.clearButtonText,
+									{ color: currentColors.primary },
+								]}
+							>
+								Clear All
+							</Text>
 						</TouchableOpacity>
 					</View>
 				)}
 			</View>
 
 			<ScrollView
-				style={styles.container}
+				style={[
+					styles.container,
+					{ backgroundColor: currentColors.background },
+				]}
 				contentContainerStyle={styles.scrollContent}
 				showsVerticalScrollIndicator={false}
 			>
@@ -196,17 +241,30 @@ export default function DiscoverScreen() {
 				{/* Load More Button */}
 				{hasMoreTags && (
 					<TouchableOpacity
-						style={styles.loadMoreButton}
+						style={[
+							styles.loadMoreButton,
+							{
+								backgroundColor: currentColors.card,
+								borderColor: currentColors.border,
+							},
+						]}
 						onPress={loadMoreTags}
 						disabled={isLoadingMore}
 						activeOpacity={0.7}
 					>
 						{isLoadingMore ? (
-							<ActivityIndicator size='small' color={colors.light.primary} />
+							<ActivityIndicator size='small' color={currentColors.primary} />
 						) : (
 							<>
-								<Ionicons name='add' size={20} color={colors.light.primary} />
-								<Text style={styles.loadMoreText}>Load More Topics</Text>
+								<Ionicons name='add' size={20} color={currentColors.primary} />
+								<Text
+									style={[
+										styles.loadMoreText,
+										{ color: currentColors.primary },
+									]}
+								>
+									Load More Topics
+								</Text>
 							</>
 						)}
 					</TouchableOpacity>
@@ -217,11 +275,18 @@ export default function DiscoverScreen() {
 			</ScrollView>
 
 			{/* Fixed Find Books Button */}
-			<View style={styles.bottomContainer}>
+			<View
+				style={[
+					styles.bottomContainer,
+					{ backgroundColor: currentColors.background },
+				]}
+			>
 				<TouchableOpacity
 					style={[
 						styles.findBooksButton,
-						selectedTags.length === 0 && styles.findBooksButtonDisabled,
+						selectedTags.length > 0
+							? { backgroundColor: currentColors.primary }
+							: { backgroundColor: currentColors.muted, opacity: 0.5 },
 					]}
 					onPress={handleFindBooks}
 					disabled={selectedTags.length === 0}
@@ -230,7 +295,12 @@ export default function DiscoverScreen() {
 					<Text
 						style={[
 							styles.findBooksButtonText,
-							selectedTags.length === 0 && styles.findBooksButtonTextDisabled,
+							{
+								color:
+									selectedTags.length > 0
+										? currentColors.primaryForeground
+										: currentColors.mutedForeground,
+							},
 						]}
 					>
 						Find Books ({selectedTags.length})
@@ -240,8 +310,8 @@ export default function DiscoverScreen() {
 						size={20}
 						color={
 							selectedTags.length > 0
-								? colors.light.primaryForeground
-								: colors.light.mutedForeground
+								? currentColors.primaryForeground
+								: currentColors.mutedForeground
 						}
 					/>
 				</TouchableOpacity>
@@ -253,15 +323,12 @@ export default function DiscoverScreen() {
 const styles = StyleSheet.create({
 	safeArea: {
 		flex: 1,
-		backgroundColor: colors.light.background,
 	},
 	header: {
-		backgroundColor: colors.light.card,
 		paddingHorizontal: 20,
 		paddingTop: 20,
 		paddingBottom: 16,
 		borderBottomWidth: 1,
-		borderBottomColor: colors.light.border,
 	},
 	headerContent: {
 		alignItems: 'flex-start',
@@ -270,13 +337,11 @@ const styles = StyleSheet.create({
 	title: {
 		fontSize: 24,
 		fontWeight: 'bold',
-		color: colors.light.foreground,
 		marginBottom: 8,
 		textAlign: 'left',
 	},
 	subtitle: {
 		fontSize: 16,
-		color: colors.light.mutedForeground,
 		textAlign: 'left',
 		lineHeight: 22,
 	},
@@ -286,12 +351,10 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		paddingTop: 8,
 		borderTopWidth: 1,
-		borderTopColor: colors.light.border,
 	},
 	selectedCount: {
 		fontSize: 14,
 		fontWeight: '500',
-		color: colors.light.primary,
 	},
 	clearButton: {
 		paddingVertical: 4,
@@ -299,7 +362,6 @@ const styles = StyleSheet.create({
 	},
 	clearButtonText: {
 		fontSize: 14,
-		color: colors.light.destructive,
 		fontWeight: '500',
 	},
 	container: {
@@ -325,12 +387,10 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 	},
 	tagButtonDefault: {
-		backgroundColor: colors.light.background,
-		borderColor: colors.light.border,
+		// backgroundColor and borderColor will be set dynamically
 	},
 	tagButtonSelected: {
-		backgroundColor: colors.light.primary,
-		borderColor: colors.light.primary,
+		// backgroundColor will be set dynamically
 	},
 	tagText: {
 		fontSize: 14,
@@ -338,10 +398,10 @@ const styles = StyleSheet.create({
 		textAlign: 'center',
 	},
 	tagTextDefault: {
-		color: colors.light.mutedForeground,
+		// color will be set dynamically
 	},
 	tagTextSelected: {
-		color: colors.light.primaryForeground,
+		// color will be set dynamically
 	},
 	loadMoreButton: {
 		flexDirection: 'row',
@@ -349,32 +409,29 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 		paddingVertical: 12,
 		paddingHorizontal: 20,
-		gap: 8,
-		alignSelf: 'center',
+		borderRadius: 12,
+		borderWidth: 1,
 		marginBottom: 20,
+		gap: 8,
 	},
 	loadMoreText: {
-		fontSize: 16,
-		color: colors.light.primary,
+		fontSize: 14,
 		fontWeight: '500',
 	},
 	bottomSpacing: {
-		height: 100, // Space for fixed button
+		height: 100,
 	},
 	bottomContainer: {
 		position: 'absolute',
 		bottom: 0,
 		left: 0,
 		right: 0,
-		backgroundColor: colors.light.card,
 		paddingHorizontal: 20,
-		paddingTop: 16,
-		paddingBottom: 20,
+		paddingVertical: 16,
 		borderTopWidth: 1,
-		borderTopColor: colors.light.border,
+		borderTopColor: 'rgba(0, 0, 0, 0.1)',
 	},
 	findBooksButton: {
-		backgroundColor: colors.light.primary,
 		flexDirection: 'row',
 		alignItems: 'center',
 		justifyContent: 'center',
@@ -383,15 +440,8 @@ const styles = StyleSheet.create({
 		borderRadius: 12,
 		gap: 8,
 	},
-	findBooksButtonDisabled: {
-		backgroundColor: colors.light.secondary,
-	},
 	findBooksButtonText: {
-		fontSize: 18,
+		fontSize: 16,
 		fontWeight: '600',
-		color: colors.light.primaryForeground,
-	},
-	findBooksButtonTextDisabled: {
-		color: colors.light.mutedForeground,
 	},
 });

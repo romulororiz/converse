@@ -10,9 +10,11 @@ import {
 	ScrollView,
 	ActivityIndicator,
 	Alert,
+	StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../utils/colors';
+import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { useNavigation } from '@react-navigation/native';
 import { signInWithGoogleDirect } from '../../services/googleAuth';
@@ -27,6 +29,8 @@ export default function LoginScreen() {
 	const [password, setPassword] = useState('');
 	const [showPassword, setShowPassword] = useState(false);
 	const [loading, setLoading] = useState(false);
+	const { theme, isDark } = useTheme();
+	const currentColors = colors[theme];
 	const navigation = useNavigation<AuthNavigationProp>();
 	const { refreshSession } = useAuth();
 
@@ -83,31 +87,47 @@ export default function LoginScreen() {
 	return (
 		<KeyboardAvoidingView
 			behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-			style={styles.container}
+			style={[styles.container, { backgroundColor: currentColors.background }]}
 		>
+			<StatusBar
+				barStyle={isDark ? 'light-content' : 'dark-content'}
+				backgroundColor={currentColors.background}
+			/>
 			<ScrollView
 				contentContainerStyle={styles.scrollContent}
 				keyboardShouldPersistTaps='handled'
 			>
 				<View style={styles.header}>
-					<Text style={styles.title}>Welcome</Text>
-					<Text style={styles.subtitle}>
+					<Text style={[styles.title, { color: currentColors.foreground }]}>
+						Welcome
+					</Text>
+					<Text
+						style={[styles.subtitle, { color: currentColors.mutedForeground }]}
+					>
 						Sign in to continue your chat journey
 					</Text>
 				</View>
 
 				<View style={styles.form}>
-					<View style={styles.inputContainer}>
+					<View
+						style={[
+							styles.inputContainer,
+							{
+								backgroundColor: currentColors.card,
+								borderColor: currentColors.border,
+							},
+						]}
+					>
 						<Ionicons
 							name='mail-outline'
 							size={20}
-							color={colors.light.mutedForeground}
+							color={currentColors.mutedForeground}
 							style={styles.inputIcon}
 						/>
 						<TextInput
-							style={styles.input}
+							style={[styles.input, { color: currentColors.foreground }]}
 							placeholder='Email'
-							placeholderTextColor={colors.light.mutedForeground}
+							placeholderTextColor={currentColors.mutedForeground}
 							keyboardType='email-address'
 							autoCapitalize='none'
 							value={email}
@@ -115,17 +135,25 @@ export default function LoginScreen() {
 						/>
 					</View>
 
-					<View style={styles.inputContainer}>
+					<View
+						style={[
+							styles.inputContainer,
+							{
+								backgroundColor: currentColors.card,
+								borderColor: currentColors.border,
+							},
+						]}
+					>
 						<Ionicons
 							name='lock-closed-outline'
 							size={20}
-							color={colors.light.mutedForeground}
+							color={currentColors.mutedForeground}
 							style={styles.inputIcon}
 						/>
 						<TextInput
-							style={styles.input}
+							style={[styles.input, { color: currentColors.foreground }]}
 							placeholder='Password'
-							placeholderTextColor={colors.light.mutedForeground}
+							placeholderTextColor={currentColors.mutedForeground}
 							secureTextEntry={!showPassword}
 							value={password}
 							onChangeText={setPassword}
@@ -137,7 +165,7 @@ export default function LoginScreen() {
 							<Ionicons
 								name={showPassword ? 'eye-off-outline' : 'eye-outline'}
 								size={20}
-								color={colors.light.mutedForeground}
+								color={currentColors.mutedForeground}
 							/>
 						</TouchableOpacity>
 					</View>
@@ -146,45 +174,103 @@ export default function LoginScreen() {
 						onPress={() => navigation.navigate('ForgotPassword')}
 						style={styles.forgotPasswordButton}
 					>
-						<Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+						<Text
+							style={[
+								styles.forgotPasswordText,
+								{ color: currentColors.primary },
+							]}
+						>
+							Forgot Password?
+						</Text>
 					</TouchableOpacity>
 
 					<TouchableOpacity
-						style={[styles.button, loading && styles.buttonDisabled]}
+						style={[
+							styles.button,
+							{ backgroundColor: currentColors.primary },
+							loading && { opacity: 0.6 },
+						]}
 						onPress={handleLogin}
 						disabled={loading}
 					>
 						{loading ? (
-							<ActivityIndicator color={colors.light.primaryForeground} />
+							<ActivityIndicator color={currentColors.primaryForeground} />
 						) : (
-							<Text style={styles.buttonText}>Sign In</Text>
+							<Text
+								style={[
+									styles.buttonText,
+									{ color: currentColors.primaryForeground },
+								]}
+							>
+								Sign In
+							</Text>
 						)}
 					</TouchableOpacity>
 
 					<View style={styles.divider}>
-						<View style={styles.dividerLine} />
-						<Text style={styles.dividerText}>or</Text>
-						<View style={styles.dividerLine} />
+						<View
+							style={[
+								styles.dividerLine,
+								{ backgroundColor: currentColors.border },
+							]}
+						/>
+						<Text
+							style={[
+								styles.dividerText,
+								{ color: currentColors.mutedForeground },
+							]}
+						>
+							or
+						</Text>
+						<View
+							style={[
+								styles.dividerLine,
+								{ backgroundColor: currentColors.border },
+							]}
+						/>
 					</View>
 
 					<TouchableOpacity
-						style={[styles.socialButton, loading && styles.buttonDisabled]}
+						style={[
+							styles.socialButton,
+							{
+								backgroundColor: currentColors.card,
+								borderColor: currentColors.border,
+							},
+							loading && { opacity: 0.6 },
+						]}
 						onPress={handleGoogleLogin}
 						disabled={loading}
 					>
 						<Ionicons
 							name='logo-google'
 							size={20}
-							color={colors.light.foreground}
+							color={currentColors.foreground}
 						/>
-						<Text style={styles.socialButtonText}>Continue with Google</Text>
+						<Text
+							style={[
+								styles.socialButtonText,
+								{ color: currentColors.foreground },
+							]}
+						>
+							Continue with Google
+						</Text>
 					</TouchableOpacity>
 				</View>
 
 				<View style={styles.footer}>
-					<Text style={styles.footerText}>Don't have an account? </Text>
+					<Text
+						style={[
+							styles.footerText,
+							{ color: currentColors.mutedForeground },
+						]}
+					>
+						Don't have an account?{' '}
+					</Text>
 					<TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
-						<Text style={styles.footerLink}>Sign Up</Text>
+						<Text style={[styles.footerLink, { color: currentColors.primary }]}>
+							Sign Up
+						</Text>
 					</TouchableOpacity>
 				</View>
 			</ScrollView>
@@ -195,7 +281,6 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		backgroundColor: colors.light.background,
 	},
 	scrollContent: {
 		flexGrow: 1,
@@ -210,12 +295,9 @@ const styles = StyleSheet.create({
 	title: {
 		fontSize: 32,
 		fontWeight: 'bold',
-		color: colors.light.foreground,
-		marginBottom: 8,
 	},
 	subtitle: {
 		fontSize: 16,
-		color: colors.light.mutedForeground,
 	},
 	form: {
 		gap: 16,
@@ -223,10 +305,8 @@ const styles = StyleSheet.create({
 	inputContainer: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		backgroundColor: colors.light.card,
 		borderRadius: 12,
 		borderWidth: 1,
-		borderColor: colors.light.border,
 		paddingHorizontal: 16,
 	},
 	inputIcon: {
@@ -235,8 +315,6 @@ const styles = StyleSheet.create({
 	input: {
 		flex: 1,
 		height: 50,
-		color: colors.light.foreground,
-		fontSize: 16,
 	},
 	showPasswordButton: {
 		padding: 8,
@@ -245,22 +323,18 @@ const styles = StyleSheet.create({
 		alignSelf: 'flex-end',
 	},
 	forgotPasswordText: {
-		color: colors.light.primary,
 		fontSize: 14,
 	},
 	button: {
-		backgroundColor: colors.light.primary,
 		height: 50,
 		borderRadius: 12,
 		alignItems: 'center',
 		justifyContent: 'center',
-		marginTop: 8,
 	},
 	buttonDisabled: {
 		opacity: 0.7,
 	},
 	buttonText: {
-		color: colors.light.primaryForeground,
 		fontSize: 16,
 		fontWeight: '600',
 	},
@@ -272,25 +346,20 @@ const styles = StyleSheet.create({
 	dividerLine: {
 		flex: 1,
 		height: 1,
-		backgroundColor: colors.light.border,
 	},
 	dividerText: {
-		color: colors.light.mutedForeground,
 		paddingHorizontal: 16,
 	},
 	socialButton: {
 		flexDirection: 'row',
 		alignItems: 'center',
 		justifyContent: 'center',
-		backgroundColor: colors.light.card,
 		height: 50,
 		borderRadius: 12,
 		borderWidth: 1,
-		borderColor: colors.light.border,
 		gap: 12,
 	},
 	socialButtonText: {
-		color: colors.light.foreground,
 		fontSize: 16,
 	},
 	footer: {
@@ -300,11 +369,9 @@ const styles = StyleSheet.create({
 		marginTop: 32,
 	},
 	footerText: {
-		color: colors.light.mutedForeground,
 		fontSize: 14,
 	},
 	footerLink: {
-		color: colors.light.primary,
 		fontSize: 14,
 		fontWeight: '600',
 	},
