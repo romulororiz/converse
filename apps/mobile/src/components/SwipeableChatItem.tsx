@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
+import { useTheme } from '../contexts/ThemeContext';
 import { formatDistanceToNow } from 'date-fns';
 import { BookCover } from './BookCover';
 import {
@@ -125,17 +126,6 @@ const SwipeableRow = ({
 		transform: [{ translateX: translateX.value }],
 	}));
 
-	const animatedBorderStyle = useAnimatedStyle(() => ({
-		borderRadius: 8,
-		borderTopRightRadius: translateX.value < -10 ? 0 : 8,
-		borderBottomRightRadius: translateX.value < -10 ? 0 : 8,
-	}));
-
-	const animatedInnerBorderStyle = useAnimatedStyle(() => ({
-		borderTopRightRadius: translateX.value < -10 ? 0 : 8,
-		borderBottomRightRadius: translateX.value < -10 ? 0 : 8,
-	}));
-
 	const deleteButtonStyle = useAnimatedStyle(() => ({
 		transform: [{ scale: deleteButtonScale.value }],
 		opacity: deleteButtonOpacity.value,
@@ -154,8 +144,8 @@ const SwipeableRow = ({
 
 			{/* Swipeable content */}
 			<PanGestureHandler onGestureEvent={gestureHandler}>
-				<Animated.View style={[animatedStyle, animatedBorderStyle]}>
-					{renderChild ? renderChild(animatedInnerBorderStyle) : children}
+				<Animated.View style={animatedStyle}>
+					{renderChild && renderChild(animatedStyle)}
 				</Animated.View>
 			</PanGestureHandler>
 		</View>
@@ -167,6 +157,9 @@ export const SwipeableChatItem: React.FC<SwipeableChatItemProps> = ({
 	onPress,
 	onDelete,
 }) => {
+	const { theme } = useTheme();
+	const currentColors = colors[theme];
+
 	const handleDeleteChat = async (
 		chatId: string,
 		resetPosition?: () => void
@@ -230,22 +223,44 @@ export const SwipeableChatItem: React.FC<SwipeableChatItemProps> = ({
 							placeholderSize={24}
 						/>
 
-						<View style={styles.chatInfo}>
-							<Text style={styles.bookTitle} numberOfLines={1}>
+						<View
+							style={[styles.chatInfo, { borderColor: currentColors.border }]}
+						>
+							<Text
+								style={[styles.bookTitle, { color: currentColors.foreground }]}
+								numberOfLines={1}
+							>
 								{item.books?.title || 'Unknown Book'}
 							</Text>
 							{item.books?.author && (
-								<Text style={styles.bookAuthor} numberOfLines={1}>
+								<Text
+									style={[
+										styles.bookAuthor,
+										{ color: currentColors.mutedForeground },
+									]}
+									numberOfLines={1}
+								>
 									{item.books.author}
 								</Text>
 							)}
 							{item.lastMessage && (
-								<Text style={styles.lastMessage} numberOfLines={2}>
+								<Text
+									style={[
+										styles.lastMessage,
+										{ color: currentColors.mutedForeground },
+									]}
+									numberOfLines={2}
+								>
 									{item.lastMessage}
 								</Text>
 							)}
 							<View style={styles.timeContainer}>
-								<Text style={styles.chatDate}>
+								<Text
+									style={[
+										styles.chatDate,
+										{ color: currentColors.mutedForeground },
+									]}
+								>
 									{formatDistanceToNow(new Date(item.updated_at), {
 										addSuffix: true,
 									})}
@@ -262,7 +277,7 @@ export const SwipeableChatItem: React.FC<SwipeableChatItemProps> = ({
 const styles = StyleSheet.create({
 	// Swipe-to-delete styles
 	swipeContainer: {
-		backgroundColor: colors.light.background,
+		// backgroundColor will be set dynamically
 	},
 	deleteBackground: {
 		position: 'absolute',
@@ -277,7 +292,7 @@ const styles = StyleSheet.create({
 		width: 50,
 		height: 50,
 		borderRadius: 30,
-		backgroundColor: colors.light.destructive,
+		backgroundColor: '#ef4444', // Red color for delete
 		justifyContent: 'center',
 		alignItems: 'center',
 	},
@@ -289,8 +304,8 @@ const styles = StyleSheet.create({
 		position: 'relative',
 	},
 	bookCover: {
-		width: 70,
-		height: 100,
+		width: 90,
+		height: 120,
 		borderRadius: 2,
 		overflow: 'hidden',
 		marginRight: 8,
@@ -302,26 +317,22 @@ const styles = StyleSheet.create({
 	bookPlaceholder: {
 		width: '100%',
 		height: '100%',
-		backgroundColor: colors.light.muted,
 		alignItems: 'center',
 		justifyContent: 'center',
 	},
 	chatInfo: {
 		flex: 1,
 		borderBottomWidth: 1,
-		borderColor: colors.light.border,
-		height: 100,
+		height: '100%',
 	},
 	bookTitle: {
-		paddingTop: 10,
+		paddingTop: 20,
 		fontSize: 16,
 		fontWeight: '600',
-		color: colors.light.foreground,
 		marginBottom: 2,
 	},
 	bookAuthor: {
 		fontSize: 14,
-		color: colors.light.mutedForeground,
 		marginBottom: 4,
 	},
 	timeContainer: {
@@ -334,7 +345,6 @@ const styles = StyleSheet.create({
 	},
 	chatDate: {
 		fontSize: 10,
-		color: colors.light.mutedForeground,
 		textAlign: 'right',
 	},
 	centerContainer: {
@@ -346,23 +356,20 @@ const styles = StyleSheet.create({
 	centerTitle: {
 		fontSize: 20,
 		fontWeight: '600',
-		color: colors.light.foreground,
 		marginTop: 16,
 		marginBottom: 8,
 		textAlign: 'center',
 	},
 	centerSubtitle: {
 		fontSize: 16,
-		color: colors.light.mutedForeground,
 		textAlign: 'center',
 		lineHeight: 22,
 	},
 	lastMessage: {
 		fontSize: 12,
-		color: colors.light.mutedForeground,
 		fontStyle: 'italic',
 		marginTop: -2,
-		width: '60%',
+		width: '70%',
 		position: 'absolute',
 		bottom: 5,
 		left: 0,
