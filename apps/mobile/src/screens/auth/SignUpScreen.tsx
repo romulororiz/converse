@@ -39,6 +39,16 @@ export default function SignUpScreen() {
 			return;
 		}
 
+		// Validate inputs
+		try {
+			validateEmail(email);
+			validatePassword(password);
+			validateName(fullName);
+		} catch (error) {
+			Alert.alert('Validation Error', error.message);
+			return;
+		}
+
 		if (password !== confirmPassword) {
 			Alert.alert('Error', 'Passwords do not match');
 			return;

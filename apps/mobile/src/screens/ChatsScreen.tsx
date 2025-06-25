@@ -4,11 +4,12 @@ import {
 	Text,
 	StyleSheet,
 	FlatList,
-	TextInput,
 	ActivityIndicator,
 	RefreshControl,
 	SafeAreaView,
 	StatusBar,
+	Dimensions,
+	TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
@@ -19,7 +20,11 @@ import { getRecentChats, deleteChatSession } from '../services/chat';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { SwipeableChatItem } from '../components/SwipeableChatItem';
 import { EmptyState } from '../components/EmptyState';
+import { SearchBar } from '../components/SearchBar';
+import { SkeletonLoader } from '../components/SkeletonLoader';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
+const { width } = Dimensions.get('window');
 
 type ChatSession = {
 	id: string;
@@ -36,6 +41,7 @@ type ChatSession = {
 
 type NavigationProp = {
 	navigate: (screen: string, params?: any) => void;
+	goBack: () => void;
 };
 
 export default function ChatsScreen() {
@@ -95,8 +101,40 @@ export default function ChatsScreen() {
 
 	const filteredChats = chats.filter(chat => {
 		const title = chat.books?.title || '';
-		return title.toLowerCase().includes(searchQuery.toLowerCase());
+		const author = chat.books?.author || '';
+		return (
+			title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			author.toLowerCase().includes(searchQuery.toLowerCase())
+		);
 	});
+
+	const renderSkeletonList = () => (
+		<View style={styles.skeletonContainer}>
+			{Array.from({ length: 5 }).map((_, index) => (
+				<View key={index} style={styles.skeletonItem}>
+					<SkeletonLoader
+						width={60}
+						height={80}
+						borderRadius={4}
+						style={{ marginRight: 12 }}
+					/>
+					<View style={styles.skeletonInfo}>
+						<SkeletonLoader
+							width={180}
+							height={18}
+							style={{ marginBottom: 8 }}
+						/>
+						<SkeletonLoader
+							width={120}
+							height={14}
+							style={{ marginBottom: 12 }}
+						/>
+						<SkeletonLoader width={200} height={16} />
+					</View>
+				</View>
+			))}
+		</View>
+	);
 
 	const renderChatItem = ({ item }: { item: any }) => (
 		<SwipeableChatItem
@@ -110,9 +148,9 @@ export default function ChatsScreen() {
 
 	if (!user) {
 		return (
-			<View
+			<SafeAreaView
 				style={[
-					styles.centerContainer,
+					styles.container,
 					{ backgroundColor: currentColors.background },
 				]}
 			>
@@ -130,15 +168,15 @@ export default function ChatsScreen() {
 					subtitle='Sign in to view your conversations'
 					containerStyle={styles.centerContainer}
 				/>
-			</View>
+			</SafeAreaView>
 		);
 	}
 
-	if (loading) {
+	if (loading && chats.length === 0) {
 		return (
-			<View
+			<SafeAreaView
 				style={[
-					styles.centerContainer,
+					styles.container,
 					{ backgroundColor: currentColors.background },
 				]}
 			>
@@ -146,8 +184,32 @@ export default function ChatsScreen() {
 					barStyle={isDark ? 'light-content' : 'dark-content'}
 					backgroundColor={currentColors.background}
 				/>
-				<ActivityIndicator size='large' color={currentColors.primary} />
-			</View>
+
+				{/* Fixed Header */}
+				<View
+					style={[
+						styles.fixedContent,
+						{ backgroundColor: currentColors.background },
+					]}
+				>
+					<View style={styles.descriptionContainer}>
+						<SkeletonLoader
+							width={250}
+							height={28}
+							style={{ marginBottom: 8 }}
+						/>
+						<SkeletonLoader width={200} height={16} />
+					</View>
+
+					{/* Search Bar Skeleton */}
+					<View style={styles.searchContainer}>
+						<SkeletonLoader width={width - 32} height={48} borderRadius={12} />
+					</View>
+				</View>
+
+				{/* Scrollable Content Skeleton */}
+				<View style={styles.scrollableContent}>{renderSkeletonList()}</View>
+			</SafeAreaView>
 		);
 	}
 
@@ -165,75 +227,144 @@ export default function ChatsScreen() {
 					barStyle={isDark ? 'light-content' : 'dark-content'}
 					backgroundColor={currentColors.background}
 				/>
-				<View style={styles.header}>
-					<Text style={[styles.title, { color: currentColors.foreground }]}>
-						Your Conversations
-					</Text>
-					<Text
-						style={[styles.subtitle, { color: currentColors.mutedForeground }]}
-					>
-						Continue your literary journey
-					</Text>
-				</View>
 
+				{/* Header */}
 				<View
 					style={[
-						styles.searchContainer,
+						styles.header,
 						{
 							backgroundColor: currentColors.card,
-							borderColor: currentColors.border,
+							borderBottomColor: currentColors.border,
 						},
 					]}
 				>
-					<Ionicons
-						name='search-outline'
-						size={20}
-						color={currentColors.mutedForeground}
-						style={styles.searchIcon}
-					/>
-					<TextInput
-						style={[styles.searchInput, { color: currentColors.foreground }]}
-						placeholder='Search conversations...'
-						placeholderTextColor={currentColors.mutedForeground}
-						value={searchQuery}
-						onChangeText={setSearchQuery}
-					/>
+					<TouchableOpacity
+						style={styles.backButton}
+						onPress={() => navigation.goBack()}
+					>
+						<Ionicons
+							name='arrow-back'
+							size={24}
+							color={currentColors.foreground}
+						/>
+					</TouchableOpacity>
+					<Text
+						style={[styles.headerTitle, { color: currentColors.foreground }]}
+					>
+						Your Conversations
+					</Text>
+					<View style={styles.headerRight} />
 				</View>
 
-				{filteredChats.length === 0 ? (
-					<EmptyState
-						icon={{
-							name: 'chatbubbles-outline',
-							size: 64,
-							color: currentColors.mutedForeground,
-						}}
-						title={
-							searchQuery ? 'No conversations found' : 'No conversations yet'
-						}
-						subtitle={
-							searchQuery
-								? 'Try adjusting your search terms'
-								: 'Start a new conversation by selecting a book from your library'
-						}
-						containerStyle={styles.centerContainer}
+				{/* Fixed Content */}
+				<View
+					style={[
+						styles.fixedContent,
+						{ backgroundColor: currentColors.background },
+					]}
+				>
+					{/* Page Description */}
+					<View style={styles.descriptionContainer}>
+						<Text
+							style={[
+								styles.descriptionTitle,
+								{ color: currentColors.foreground },
+							]}
+						>
+							Your Conversations
+						</Text>
+						<Text
+							style={[
+								styles.descriptionText,
+								{ color: currentColors.mutedForeground },
+							]}
+						>
+							Continue your literary journey. Manage and revisit your book
+							conversations.
+						</Text>
+					</View>
+
+					{/* Search Bar */}
+					<SearchBar
+						value={searchQuery}
+						onChangeText={setSearchQuery}
+						placeholder='Search conversations...'
+						containerStyle={[
+							styles.searchContainer,
+							{ backgroundColor: currentColors.background },
+						]}
+						inputStyle={{ color: currentColors.foreground }}
+						iconColor={currentColors.mutedForeground}
 					/>
-				) : (
-					<FlatList
-						data={filteredChats}
-						renderItem={renderChatItem}
-						keyExtractor={item => item.id}
-						contentContainerStyle={styles.chatList}
-						refreshControl={
-							<RefreshControl
-								refreshing={refreshing}
-								onRefresh={onRefresh}
-								tintColor={currentColors.primary}
-								colors={[currentColors.primary]}
-							/>
-						}
-						showsVerticalScrollIndicator={false}
-					/>
-				)}
+
+					{/* Results Info */}
+					<View style={styles.resultsContainer}>
+						<Text
+							style={[
+								styles.resultsText,
+								{ color: currentColors.mutedForeground },
+							]}
+						>
+							{filteredChats.length} conversation
+							{filteredChats.length === 1 ? '' : 's'}
+							{searchQuery ? ` matching "${searchQuery}"` : ''}
+						</Text>
+					</View>
+				</View>
+
+				{/* Scrollable Chat List */}
+				<FlatList
+					style={styles.scrollableContent}
+					data={filteredChats}
+					renderItem={renderChatItem}
+					keyExtractor={item => item.id}
+					showsVerticalScrollIndicator={false}
+					scrollEnabled={true}
+					nestedScrollEnabled={true}
+					contentInsetAdjustmentBehavior='automatic'
+					refreshControl={
+						<RefreshControl
+							refreshing={refreshing}
+							onRefresh={onRefresh}
+							tintColor={currentColors.primary}
+							colors={[currentColors.primary]}
+						/>
+					}
+					ListEmptyComponent={
+						<EmptyState
+							icon={{
+								name: searchQuery ? 'search-outline' : 'chatbubbles-outline',
+								size: 64,
+								color: currentColors.mutedForeground,
+							}}
+							title={
+								searchQuery ? 'No conversations found' : 'No conversations yet'
+							}
+							subtitle={
+								searchQuery
+									? 'Try adjusting your search terms'
+									: 'Start a new conversation by selecting a book from your library'
+							}
+							button={
+								!searchQuery
+									? {
+											text: 'Explore Books',
+											onPress: () => navigation.navigate('Discover'),
+											style: 'primary',
+										}
+									: {
+											text: 'Clear Search',
+											onPress: () => setSearchQuery(''),
+											style: 'secondary',
+										}
+							}
+							containerStyle={styles.centerContainer}
+						/>
+					}
+					contentContainerStyle={
+						filteredChats.length === 0 ? { flex: 1 } : styles.chatList
+					}
+				/>
 			</SafeAreaView>
 		</GestureHandlerRootView>
 	);
@@ -243,45 +374,85 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 	},
-	header: {
-		padding: 20,
+	fixedContent: {
+		// Fixed content that doesn't scroll
+	},
+	scrollableContent: {
+		flex: 1,
+	},
+	skeletonContainer: {
+		paddingHorizontal: 16,
+		paddingTop: 8,
+	},
+	skeletonItem: {
+		flexDirection: 'row',
+		padding: 12,
+		marginBottom: 12,
+	},
+	skeletonInfo: {
+		flex: 1,
+	},
+	descriptionContainer: {
+		paddingHorizontal: 16,
 		paddingTop: 20,
-		paddingBottom: 16,
+		paddingBottom: 20,
 	},
-	title: {
-		fontSize: 28,
+	descriptionTitle: {
+		fontSize: 24,
 		fontWeight: 'bold',
-		marginBottom: 4,
+		marginBottom: 8,
 	},
-	subtitle: {
-		fontSize: 16,
+	descriptionText: {
+		fontSize: 14,
 	},
 	searchContainer: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		marginHorizontal: 20,
-		marginTop: 12,
-		marginBottom: 20,
-		borderRadius: 12,
 		paddingHorizontal: 16,
-		borderWidth: 1,
+		paddingBottom: 15,
+		paddingTop: -10,
 	},
-	searchIcon: {
-		marginRight: 12,
+	resultsContainer: {
+		paddingHorizontal: 16,
+		paddingBottom: 8,
 	},
-	searchInput: {
-		flex: 1,
-		height: 48,
-		fontSize: 16,
+	resultsText: {
+		fontSize: 14,
+		fontStyle: 'italic',
 	},
 	chatList: {
-		paddingHorizontal: 20,
+		paddingHorizontal: 16,
+		paddingTop: 8,
+		paddingBottom: 100,
+	},
+	emptyContainer: {
+		flex: 1,
+		justifyContent: 'center',
+		alignItems: 'center',
+		paddingHorizontal: 32,
 	},
 	centerContainer: {
 		flex: 1,
-		marginTop: -100,
 		justifyContent: 'center',
 		alignItems: 'center',
 		paddingHorizontal: 40,
+	},
+	header: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		paddingHorizontal: 16,
+		paddingTop: 12,
+		paddingBottom: 16,
+		borderBottomWidth: 1,
+	},
+	backButton: {
+		padding: 8,
+		marginLeft: -8,
+	},
+	headerTitle: {
+		fontSize: 18,
+		fontWeight: '600',
+	},
+	headerRight: {
+		width: 40,
 	},
 });

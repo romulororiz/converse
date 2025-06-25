@@ -13,9 +13,11 @@ import {
 	Platform,
 	StyleProp,
 	TextStyle,
+	StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
+import { useTheme } from '../contexts/ThemeContext';
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '@react-navigation/native';
 import { updateUserProfile } from '../services/profile';
@@ -45,6 +47,8 @@ export default function AccountSettingsScreen() {
 	const [confirmPassword, setConfirmPassword] = useState('');
 
 	const navigation = useNavigation<NavigationProp>();
+	const { theme, isDark } = useTheme();
+	const currentColors = colors[theme];
 
 	useEffect(() => {
 		loadProfile();
@@ -177,19 +181,36 @@ export default function AccountSettingsScreen() {
 	}) => (
 		<View style={styles.fieldContainer}>
 			<View style={styles.fieldHeader}>
-				<Text style={[styles.fieldLabel, label === 'Full Name' && { marginTop: 10 }]}>{label}</Text>
-				{required && <Text style={styles.required}>*</Text>}
+				<Text
+					style={[
+						styles.fieldLabel,
+						{ color: currentColors.foreground },
+						label === 'Full Name' && { marginTop: 10 },
+					]}
+				>
+					{label}
+				</Text>
+				{required && (
+					<Text style={[styles.required, { color: currentColors.destructive }]}>
+						*
+					</Text>
+				)}
 			</View>
 			<TextInput
 				style={[
 					styles.textInput,
+					{
+						borderColor: currentColors.border,
+						color: currentColors.foreground,
+						backgroundColor: currentColors.background,
+					},
 					multiline && styles.multilineInput,
 					labelStyle,
 				]}
 				value={value}
 				onChangeText={onChangeText}
 				placeholder={placeholder}
-				placeholderTextColor={colors.light.mutedForeground}
+				placeholderTextColor={currentColors.mutedForeground}
 				multiline={multiline}
 				numberOfLines={multiline ? 3 : 1}
 				textAlignVertical={multiline ? 'top' : 'center'}
@@ -200,36 +221,75 @@ export default function AccountSettingsScreen() {
 
 	if (loading) {
 		return (
-			<View style={styles.loadingContainer}>
-				<ActivityIndicator size='large' color={colors.light.primary} />
-			</View>
+			<SafeAreaView
+				style={[styles.safeArea, { backgroundColor: currentColors.background }]}
+			>
+				<StatusBar
+					barStyle={isDark ? 'light-content' : 'dark-content'}
+					backgroundColor={currentColors.background}
+				/>
+				<View
+					style={[
+						styles.loadingContainer,
+						{ backgroundColor: currentColors.background },
+					]}
+				>
+					<ActivityIndicator size='large' color={currentColors.primary} />
+				</View>
+			</SafeAreaView>
 		);
 	}
 
 	return (
-		<SafeAreaView style={styles.safeArea}>
+		<SafeAreaView
+			style={[styles.safeArea, { backgroundColor: currentColors.background }]}
+		>
+			<StatusBar
+				barStyle={isDark ? 'light-content' : 'dark-content'}
+				backgroundColor={currentColors.background}
+			/>
 			<KeyboardAvoidingView
 				behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-				style={styles.container}
+				style={[
+					styles.container,
+					{ backgroundColor: currentColors.background },
+				]}
 			>
 				<ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
 					{/* Edit Profile Section */}
-					<View style={styles.section}>
+					<View
+						style={[styles.section, { backgroundColor: currentColors.card }]}
+					>
 						<View style={styles.sectionHeader}>
 							<View style={styles.sectionTitleContainer}>
 								<Ionicons
 									name='person-outline'
 									size={24}
-									color={colors.light.primary}
+									color={currentColors.primary}
 								/>
-								<Text style={styles.sectionTitle}>Profile Information</Text>
+								<Text
+									style={[
+										styles.sectionTitle,
+										{ color: currentColors.foreground },
+									]}
+								>
+									Profile Information
+								</Text>
 							</View>
 							<TouchableOpacity
-								style={styles.editButton}
+								style={[
+									styles.editButton,
+									{ backgroundColor: currentColors.primary + '10' },
+								]}
 								onPress={() => setEditingProfile(!editingProfile)}
 								disabled={loading}
 							>
-								<Text style={styles.editButtonText}>
+								<Text
+									style={[
+										styles.editButtonText,
+										{ color: currentColors.primary },
+									]}
+								>
 									{editingProfile ? 'Cancel' : 'Edit'}
 								</Text>
 							</TouchableOpacity>
@@ -273,12 +333,20 @@ export default function AccountSettingsScreen() {
 								<TouchableOpacity
 									style={[
 										styles.saveButton,
-										saving && styles.saveButtonDisabled,
+										{
+											backgroundColor: currentColors.primary,
+										},
+										saving && { opacity: 0.6 },
 									]}
 									onPress={handleSaveProfile}
 									disabled={saving}
 								>
-									<Text style={styles.saveButtonText}>
+									<Text
+										style={[
+											styles.saveButtonText,
+											{ color: currentColors.primaryForeground },
+										]}
+									>
 										{saving ? 'Saving...' : 'Save Changes'}
 									</Text>
 								</TouchableOpacity>
@@ -286,23 +354,61 @@ export default function AccountSettingsScreen() {
 						) : (
 							<View style={styles.profileDisplay}>
 								<View style={styles.profileRow}>
-									<Text style={styles.profileLabel}>Full Name</Text>
-									<Text style={styles.profileValue}>
+									<Text
+										style={[
+											styles.profileLabel,
+											{ color: currentColors.mutedForeground },
+										]}
+									>
+										Full Name
+									</Text>
+									<Text
+										style={[
+											styles.profileValue,
+											{ color: currentColors.foreground },
+										]}
+									>
 										{fullName || 'Not set'}
 									</Text>
 								</View>
 
 								{bio && (
 									<View style={styles.profileRow}>
-										<Text style={styles.profileLabel}>Bio</Text>
-										<Text style={styles.profileValue}>{bio}</Text>
+										<Text
+											style={[
+												styles.profileLabel,
+												{ color: currentColors.mutedForeground },
+											]}
+										>
+											Bio
+										</Text>
+										<Text
+											style={[
+												styles.profileValue,
+												{ color: currentColors.foreground },
+											]}
+										>
+											{bio}
+										</Text>
 									</View>
 								)}
 
 								{readingPreferences && (
 									<View style={styles.profileRow}>
-										<Text style={styles.profileLabel}>Reading Preferences</Text>
-										<Text style={styles.profileValue}>
+										<Text
+											style={[
+												styles.profileLabel,
+												{ color: currentColors.mutedForeground },
+											]}
+										>
+											Reading Preferences
+										</Text>
+										<Text
+											style={[
+												styles.profileValue,
+												{ color: currentColors.foreground },
+											]}
+										>
 											{readingPreferences}
 										</Text>
 									</View>
@@ -310,15 +416,43 @@ export default function AccountSettingsScreen() {
 
 								{favoriteGenres && (
 									<View style={styles.profileRow}>
-										<Text style={styles.profileLabel}>Favorite Genres</Text>
-										<Text style={styles.profileValue}>{favoriteGenres}</Text>
+										<Text
+											style={[
+												styles.profileLabel,
+												{ color: currentColors.mutedForeground },
+											]}
+										>
+											Favorite Genres
+										</Text>
+										<Text
+											style={[
+												styles.profileValue,
+												{ color: currentColors.foreground },
+											]}
+										>
+											{favoriteGenres}
+										</Text>
 									</View>
 								)}
 
 								{readingGoals && (
 									<View style={styles.profileRow}>
-										<Text style={styles.profileLabel}>Reading Goals</Text>
-										<Text style={styles.profileValue}>{readingGoals}</Text>
+										<Text
+											style={[
+												styles.profileLabel,
+												{ color: currentColors.mutedForeground },
+											]}
+										>
+											Reading Goals
+										</Text>
+										<Text
+											style={[
+												styles.profileValue,
+												{ color: currentColors.foreground },
+											]}
+										>
+											{readingGoals}
+										</Text>
 									</View>
 								)}
 							</View>
@@ -326,22 +460,39 @@ export default function AccountSettingsScreen() {
 					</View>
 
 					{/* Change Password Section */}
-					<View style={styles.section}>
+					<View
+						style={[styles.section, { backgroundColor: currentColors.card }]}
+					>
 						<View style={styles.sectionHeader}>
 							<View style={styles.sectionTitleContainer}>
 								<Ionicons
 									name='lock-closed-outline'
 									size={24}
-									color={colors.light.primary}
+									color={currentColors.primary}
 								/>
-								<Text style={styles.sectionTitle}>Security</Text>
+								<Text
+									style={[
+										styles.sectionTitle,
+										{ color: currentColors.foreground },
+									]}
+								>
+									Security
+								</Text>
 							</View>
 							<TouchableOpacity
-								style={styles.editButton}
+								style={[
+									styles.editButton,
+									{ backgroundColor: currentColors.primary + '10' },
+								]}
 								onPress={() => setChangingPassword(!changingPassword)}
 								disabled={loading}
 							>
-								<Text style={styles.editButtonText}>
+								<Text
+									style={[
+										styles.editButtonText,
+										{ color: currentColors.primary },
+									]}
+								>
 									{changingPassword ? 'Cancel' : 'Change Password'}
 								</Text>
 							</TouchableOpacity>
@@ -379,12 +530,20 @@ export default function AccountSettingsScreen() {
 								<TouchableOpacity
 									style={[
 										styles.saveButton,
-										saving && styles.saveButtonDisabled,
+										{
+											backgroundColor: currentColors.primary,
+										},
+										saving && { opacity: 0.6 },
 									]}
 									onPress={handleChangePassword}
 									disabled={saving}
 								>
-									<Text style={styles.saveButtonText}>
+									<Text
+										style={[
+											styles.saveButtonText,
+											{ color: currentColors.primaryForeground },
+										]}
+									>
 										{saving ? 'Updating...' : 'Update Password'}
 									</Text>
 								</TouchableOpacity>
@@ -395,16 +554,29 @@ export default function AccountSettingsScreen() {
 					{/* Sign Out Section */}
 					<View style={styles.signOutSection}>
 						<TouchableOpacity
-							style={styles.signOutButton}
+							style={[
+								styles.signOutButton,
+								{
+									backgroundColor: currentColors.destructive + '10',
+									borderColor: currentColors.destructive + '40',
+								},
+							]}
 							onPress={handleSignOut}
 							disabled={saving}
 						>
 							<Ionicons
 								name='log-out-outline'
 								size={20}
-								color={colors.light.destructive}
+								color={currentColors.destructive}
 							/>
-							<Text style={styles.signOutText}>Sign Out</Text>
+							<Text
+								style={[
+									styles.signOutText,
+									{ color: currentColors.destructive },
+								]}
+							>
+								Sign Out
+							</Text>
 						</TouchableOpacity>
 					</View>
 				</ScrollView>
@@ -416,7 +588,6 @@ export default function AccountSettingsScreen() {
 const styles = StyleSheet.create({
 	safeArea: {
 		flex: 1,
-		backgroundColor: colors.light.background,
 	},
 	container: {
 		flex: 1,
@@ -425,7 +596,6 @@ const styles = StyleSheet.create({
 		flex: 1,
 		justifyContent: 'center',
 		alignItems: 'center',
-		backgroundColor: colors.light.background,
 	},
 	header: {
 		flexDirection: 'row',
@@ -433,9 +603,7 @@ const styles = StyleSheet.create({
 		justifyContent: 'space-between',
 		padding: 20,
 		paddingTop: 20,
-		backgroundColor: colors.light.cardForeground,
 		borderBottomWidth: 1,
-		borderBottomColor: colors.light.border,
 	},
 	backButton: {
 		padding: 4,
@@ -443,7 +611,6 @@ const styles = StyleSheet.create({
 	headerTitle: {
 		fontSize: 20,
 		fontWeight: 'bold',
-		color: colors.light.accentForeground,
 	},
 	headerRight: {
 		width: 32,
@@ -452,11 +619,15 @@ const styles = StyleSheet.create({
 		flex: 1,
 	},
 	section: {
-		backgroundColor: colors.light.card,
 		marginTop: 20,
 		marginHorizontal: 20,
 		borderRadius: 12,
 		padding: 20,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.1,
+		shadowRadius: 4,
+		elevation: 3,
 	},
 	sectionHeader: {
 		flexDirection: 'row',
@@ -471,17 +642,14 @@ const styles = StyleSheet.create({
 	sectionTitle: {
 		fontSize: 18,
 		fontWeight: '600',
-		color: colors.light.foreground,
 	},
 	editButton: {
 		paddingHorizontal: 12,
 		paddingVertical: 6,
 		borderRadius: 8,
-		backgroundColor: colors.light.primary + '10',
 	},
 	editButtonText: {
 		fontSize: 14,
-		color: colors.light.primary,
 		fontWeight: '500',
 	},
 	editForm: {
@@ -498,27 +666,21 @@ const styles = StyleSheet.create({
 	fieldLabel: {
 		fontSize: 14,
 		fontWeight: '500',
-		color: colors.light.foreground,
 	},
 	fieldLabelFullName: {
 		fontSize: 14,
 		fontWeight: '500',
-		color: colors.light.foreground,
 	},
 	required: {
-		color: colors.light.destructive,
 		fontSize: 14,
 		fontWeight: '500',
 	},
 	textInput: {
 		borderWidth: 1,
-		borderColor: colors.light.border,
 		borderRadius: 12,
 		paddingHorizontal: 16,
 		paddingVertical: 12,
 		fontSize: 16,
-		color: colors.light.foreground,
-		backgroundColor: colors.light.background,
 	},
 	multilineInput: {
 		paddingTop: 12,
@@ -526,7 +688,6 @@ const styles = StyleSheet.create({
 		minHeight: 80,
 	},
 	saveButton: {
-		backgroundColor: colors.light.primary,
 		paddingVertical: 14,
 		paddingHorizontal: 24,
 		borderRadius: 12,
@@ -537,7 +698,6 @@ const styles = StyleSheet.create({
 		opacity: 0.6,
 	},
 	saveButtonText: {
-		color: colors.light.primaryForeground,
 		fontSize: 16,
 		fontWeight: '600',
 	},
@@ -550,13 +710,11 @@ const styles = StyleSheet.create({
 	profileLabel: {
 		fontSize: 12,
 		fontWeight: '500',
-		color: colors.light.mutedForeground,
 		textTransform: 'uppercase',
 		marginTop: 10,
 	},
 	profileValue: {
 		fontSize: 16,
-		color: colors.light.foreground,
 		lineHeight: 22,
 	},
 	passwordForm: {
@@ -575,13 +733,10 @@ const styles = StyleSheet.create({
 		gap: 8,
 		paddingVertical: 16,
 		borderRadius: 8,
-		backgroundColor: colors.light.destructive + '10',
 		borderWidth: 1,
-		borderColor: colors.light.destructive + '40',
 	},
 	signOutText: {
 		fontSize: 16,
-		color: colors.light.destructive,
 		fontWeight: '600',
 	},
 });
