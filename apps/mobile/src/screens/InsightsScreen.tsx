@@ -17,27 +17,13 @@ import { useAuth } from '../components/AuthProvider';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { SkeletonLoader } from '../components/SkeletonLoader';
 import { EmptyState } from '../components/EmptyState';
+import {
+	getUserInsights,
+	type InsightCard,
+	type ChatGoal,
+} from '../services/insights';
 
 const { width } = Dimensions.get('window');
-
-type InsightCard = {
-	id: string;
-	title: string;
-	value: string | number;
-	change?: string;
-	trend?: 'up' | 'down' | 'neutral';
-	icon: string;
-	description: string;
-};
-
-type ReadingGoal = {
-	id: string;
-	title: string;
-	target: number;
-	current: number;
-	period: 'weekly' | 'monthly' | 'yearly';
-	unit: 'books' | 'hours' | 'pages';
-};
 
 type NavigationProp = {
 	navigate: (screen: string, params?: any) => void;
@@ -51,102 +37,35 @@ export default function InsightsScreen() {
 	const currentColors = colors[theme];
 	const [loading, setLoading] = useState(true);
 	const [insights, setInsights] = useState<InsightCard[]>([]);
-	const [goals, setGoals] = useState<ReadingGoal[]>([]);
+	const [goals, setGoals] = useState<ChatGoal[]>([]);
 	const [selectedPeriod, setSelectedPeriod] = useState<
 		'week' | 'month' | 'year'
 	>('month');
 
-	// Mock data for demonstration
-	const mockInsights: InsightCard[] = [
-		{
-			id: '1',
-			title: 'Books Read',
-			value: 12,
-			change: '+3 this month',
-			trend: 'up',
-			icon: 'book-outline',
-			description: 'Total books completed across all genres',
-		},
-		{
-			id: '2',
-			title: 'Reading Time',
-			value: '47h',
-			change: '+12h this month',
-			trend: 'up',
-			icon: 'time-outline',
-			description: 'Time spent reading and listening',
-		},
-		{
-			id: '3',
-			title: 'Conversations',
-			value: 34,
-			change: '+8 this week',
-			trend: 'up',
-			icon: 'chatbubbles-outline',
-			description: 'Interactive book discussions started',
-		},
-		{
-			id: '4',
-			title: 'Favorite Genre',
-			value: 'Psychology',
-			change: '28% of reads',
-			trend: 'neutral',
-			icon: 'library-outline',
-			description: 'Your most explored topic',
-		},
-		{
-			id: '5',
-			title: 'Streak',
-			value: '18 days',
-			change: 'New record!',
-			trend: 'up',
-			icon: 'flame-outline',
-			description: 'Consecutive days with reading activity',
-		},
-		{
-			id: '6',
-			title: 'Average Rating',
-			value: '4.2',
-			change: '+0.3 vs last month',
-			trend: 'up',
-			icon: 'star-outline',
-			description: 'Your average book rating',
-		},
-	];
-
-	const mockGoals: ReadingGoal[] = [
-		{
-			id: '1',
-			title: 'Monthly Reading Goal',
-			target: 4,
-			current: 3,
-			period: 'monthly',
-			unit: 'books',
-		},
-		{
-			id: '2',
-			title: 'Weekly Reading Time',
-			target: 10,
-			current: 7.5,
-			period: 'weekly',
-			unit: 'hours',
-		},
-	];
-
 	useFocusEffect(
 		React.useCallback(() => {
-			loadInsights();
-		}, [user?.id])
+			if (user?.id) {
+				loadInsights();
+			}
+		}, [user?.id, selectedPeriod])
 	);
 
 	const loadInsights = async () => {
+		if (!user?.id) return;
+
 		setLoading(true);
-		// Simulate API call
-		setTimeout(() => {
-			setInsights(mockInsights);
-			setGoals(mockGoals);
+		try {
+			const data = await getUserInsights(user.id, selectedPeriod);
+			setInsights(data.insights);
+			setGoals(data.goals);
+		} catch (error) {
+			console.error('Error loading insights:', error);
+			// Fallback to empty arrays if there's an error
+			setInsights([]);
+			setGoals([]);
+		} finally {
 			setLoading(false);
-		}, 1000);
+		}
 	};
 
 	const renderSkeletonCards = () => (
@@ -245,7 +164,7 @@ export default function InsightsScreen() {
 		);
 	};
 
-	const renderGoalCard = (goal: ReadingGoal) => {
+	const renderGoalCard = (goal: ChatGoal) => {
 		const progress = Math.min((goal.current / goal.target) * 100, 100);
 		const isCompleted = goal.current >= goal.target;
 
@@ -315,8 +234,8 @@ export default function InsightsScreen() {
 						size: 64,
 						color: currentColors.mutedForeground,
 					}}
-					title='Please sign in'
-					subtitle='Sign in to view your reading insights and progress'
+					title="Please sign in"
+					subtitle="Sign in to view your chat insights and progress"
 					containerStyle={styles.centerContainer}
 				/>
 			</SafeAreaView>
@@ -347,7 +266,7 @@ export default function InsightsScreen() {
 					onPress={() => navigation.goBack()}
 				>
 					<Ionicons
-						name='arrow-back'
+						name="arrow-back"
 						size={24}
 						color={currentColors.foreground}
 					/>
@@ -373,7 +292,7 @@ export default function InsightsScreen() {
 							{ color: currentColors.foreground },
 						]}
 					>
-						Your Insights
+						Your Chat Insights
 					</Text>
 					<Text
 						style={[
@@ -381,8 +300,8 @@ export default function InsightsScreen() {
 							{ color: currentColors.mutedForeground },
 						]}
 					>
-						Track your reading progress, discover patterns, and celebrate your
-						literary journey.
+						Track your conversations with books, discover patterns, and
+						celebrate your literary journey through chat.
 					</Text>
 				</View>
 
@@ -470,7 +389,7 @@ export default function InsightsScreen() {
 							{insights.map(renderInsightCard)}
 						</View>
 
-						{/* Reading Goals */}
+						{/* Chat Goals */}
 						<View style={styles.goalsSection}>
 							<Text
 								style={[
@@ -478,7 +397,7 @@ export default function InsightsScreen() {
 									{ color: currentColors.foreground },
 								]}
 							>
-								Reading Goals
+								Chat Goals
 							</Text>
 							{goals.map(renderGoalCard)}
 						</View>

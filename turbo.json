@@ -1,15 +1,55 @@
 {
 	"$schema": "https://turbo.build/schema.json",
 	"globalDependencies": ["**/.env.*local"],
-	"tasks": {
+	"pipeline": {
 		"build": {
-			"outputs": [".next/**", "!.next/cache/**"],
-			"dependsOn": ["^build"]
+			"dependsOn": ["^build"],
+			"outputs": [".next/**", "!.next/cache/**", "dist/**"]
+		},
+		"lint": {
+			"dependsOn": ["^lint"],
+			"outputs": []
+		},
+		"lint:fix": {
+			"dependsOn": ["^lint:fix"],
+			"outputs": []
+		},
+		"test": {
+			"dependsOn": ["^test"],
+			"outputs": ["coverage/**"]
+		},
+		"test:watch": {
+			"dependsOn": ["^test:watch"],
+			"outputs": ["coverage/**"],
+			"persistent": true
+		},
+		"test:coverage": {
+			"dependsOn": ["^test:coverage"],
+			"outputs": ["coverage/**"]
+		},
+		"test:ci": {
+			"dependsOn": ["^test:ci"],
+			"outputs": ["coverage/**"]
+		},
+		"type-check": {
+			"dependsOn": ["^type-check"],
+			"outputs": []
+		},
+		"format": {
+			"dependsOn": ["^format"],
+			"outputs": []
+		},
+		"format:check": {
+			"dependsOn": ["^format:check"],
+			"outputs": []
 		},
 		"dev": {
 			"cache": false,
 			"persistent": true
 		},
-		"lint": {}
+		"start": {
+			"cache": false,
+			"persistent": true
+		}
 	}
 }
