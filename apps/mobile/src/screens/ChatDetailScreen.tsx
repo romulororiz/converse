@@ -16,6 +16,7 @@ import {
 	Dimensions,
 	NativeScrollEvent,
 	NativeSyntheticEvent,
+	ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
@@ -66,8 +67,8 @@ import type { Book, ChatMessage } from '../types/supabase';
 import { PremiumPaywallDrawer } from '../components/PremiumPaywallDrawer';
 import { LinearGradient } from 'expo-linear-gradient';
 import { formatDistanceToNow } from 'date-fns';
-import { canSendMessage } from '../services/subscription';
-import { toast } from 'sonner';
+import { canSendMessage, upgradeToPremium } from '../services/subscription';
+import { useToast } from '../components/ui/toast';
 import { checkRateLimit } from '../utils/rateLimit';
 
 type RootStackParamList = {
@@ -119,6 +120,7 @@ export default function ChatDetailScreen() {
 	const [showDropdown, setShowDropdown] = useState(false);
 	const { user } = useAuth();
 	const { theme, isDark } = useTheme();
+	const { toast } = useToast();
 	const currentColors = colors[theme];
 	const route = useRoute<ChatDetailScreenRouteProp>();
 	const navigation = useNavigation<ChatDetailScreenNavigationProp>();
@@ -126,6 +128,7 @@ export default function ChatDetailScreen() {
 	const chatContainerRef = useRef<View>(null);
 	const textInputRef = useRef<TextInput>(null);
 	const scrollY = useRef(0);
+	const [keyboardHeight, setKeyboardHeight] = useState(0);
 
 	const { bookId } = route.params;
 
@@ -218,6 +221,18 @@ export default function ChatDetailScreen() {
 		}
 	}, [showDropdown]);
 
+	useEffect(() => {
+		const onKeyboardShow = (e: any) =>
+			setKeyboardHeight(e.endCoordinates.height);
+		const onKeyboardHide = () => setKeyboardHeight(0);
+		const showSub = Keyboard.addListener('keyboardDidShow', onKeyboardShow);
+		const hideSub = Keyboard.addListener('keyboardDidHide', onKeyboardHide);
+		return () => {
+			showSub.remove();
+			hideSub.remove();
+		};
+	}, []);
+
 	const loadChatData = async () => {
 		try {
 			setLoading(true);
@@ -265,91 +280,114 @@ export default function ChatDetailScreen() {
 	};
 
 	const handleSendMessage = async () => {
-		if (!newMessage.trim() || sending) return;
-
-		const userMessage = newMessage.trim();
-
-		// Validate message using Zod
-		try {
-			validateChatMessage(userMessage, bookId);
-		} catch (error) {
-			toast.error(error.message || 'Invalid message');
-			return;
-		}
-
-		// Rate limit: 10 messages per minute per user
-		try {
-			await checkRateLimit({ key: user.id, window: 60, max: 10 });
-		} catch (error) {
-			toast.error(
-				'You are sending messages too quickly. Please wait a minute.'
-			);
-			return;
-		}
-
-		// Clear input immediately and focus management
-		setNewMessage('');
-		textInputRef.current?.clear();
-		setSending(true);
+		if (!user?.id || !bookId || !newMessage.trim() || sending) return;
 
 		try {
-			// Check message limit before sending
-			const messageLimit = await canSendMessage(user!.id);
-			if (!messageLimit.canSend) {
-				if (messageLimit.plan === 'free') {
-					// Show paywall for free users who reached their limit
-					setShowPaywall(true);
-					return;
-				} else {
-					throw new Error('Unable to send message. Please try again.');
+			// Validate message using Zod
+			const userMessage = newMessage.trim();
+			try {
+				validateChatMessage(userMessage, bookId);
+			} catch (error) {
+				toast({
+					title: 'Invalid Message',
+					description: error.message || 'Invalid message',
+					variant: 'destructive',
+				});
+				return;
+			}
+
+			// Check rate limit
+			try {
+				await checkRateLimit({ key: user.id, window: 60, max: 10 });
+			} catch (error) {
+				toast({
+					title: 'Rate Limit Exceeded',
+					description:
+						'You are sending messages too quickly. Please wait a minute.',
+					variant: 'destructive',
+				});
+				return;
+			}
+
+			// Clear input immediately and focus management
+			setNewMessage('');
+			textInputRef.current?.clear();
+			setSending(true);
+
+			try {
+				// Check message limit before sending
+				const messageLimit = await canSendMessage(user!.id);
+				if (!messageLimit.canSend) {
+					if (messageLimit.plan === 'free') {
+						// Show paywall for free users who reached their limit
+						setShowPaywall(true);
+						return;
+					} else {
+						throw new Error('Unable to send message. Please try again.');
+					}
 				}
+
+				// Create session if it doesn't exist
+				let currentSessionId = sessionId;
+				if (!currentSessionId) {
+					const session = await getOrCreateChatSession(user!.id, bookId);
+					currentSessionId = session.id;
+					setSessionId(currentSessionId);
+				}
+
+				// Create temporary user message for immediate UI display
+				const tempUserMessage: ChatMessage = {
+					id: `temp-${Date.now()}`,
+					content: userMessage,
+					role: 'user',
+					created_at: new Date().toISOString(),
+					session_id: currentSessionId,
+					metadata: {},
+				};
+
+				// Add user message to UI immediately
+				setMessages(prev => [...prev, tempUserMessage]);
+
+				// Send message and get AI response in one call
+				const { userMessage: userMsg, aiMessage: aiMsg } =
+					await sendMessageAndGetAIResponse(currentSessionId, userMessage);
+
+				// Replace temp message with real user message and add AI response
+				setMessages(prev => [
+					...prev.slice(0, -1), // Remove temp message
+					userMsg as ChatMessage,
+					aiMsg as ChatMessage,
+				]);
+			} catch (error) {
+				console.error('Error sending message:', error);
+				// Remove the temp message on error and restore input
+				setMessages(prev => prev.slice(0, -1));
+				setNewMessage(userMessage); // Restore the message if there was an error
+
+				// Check if it's a message limit error
+				if (error.message?.includes('daily message limit')) {
+					setShowPaywall(true);
+				} else {
+					toast({
+						title: 'Error',
+						description: 'Failed to send message',
+						variant: 'destructive',
+					});
+				}
+			} finally {
+				setSending(false);
 			}
-
-			// Create session if it doesn't exist
-			let currentSessionId = sessionId;
-			if (!currentSessionId) {
-				const session = await getOrCreateChatSession(user!.id, bookId);
-				currentSessionId = session.id;
-				setSessionId(currentSessionId);
-			}
-
-			// Create temporary user message for immediate UI display
-			const tempUserMessage: ChatMessage = {
-				id: `temp-${Date.now()}`,
-				content: userMessage,
-				role: 'user',
-				created_at: new Date().toISOString(),
-				session_id: currentSessionId,
-				metadata: {},
-			};
-
-			// Add user message to UI immediately
-			setMessages(prev => [...prev, tempUserMessage]);
-
-			// Send message and get AI response in one call
-			const { userMessage: userMsg, aiMessage: aiMsg } =
-				await sendMessageAndGetAIResponse(currentSessionId, userMessage);
-
-			// Replace temp message with real user message and add AI response
-			setMessages(prev => [
-				...prev.slice(0, -1), // Remove temp message
-				userMsg as ChatMessage,
-				aiMsg as ChatMessage,
-			]);
 		} catch (error) {
 			console.error('Error sending message:', error);
-			// Remove the temp message on error and restore input
-			setMessages(prev => prev.slice(0, -1));
-			setNewMessage(userMessage); // Restore the message if there was an error
-
-			// Check if it's a message limit error
-			if (error.message?.includes('daily message limit')) {
+			if (error.message?.includes('message limit')) {
 				setShowPaywall(true);
 			} else {
-				toast.error('Failed to send message');
+				toast({
+					title: 'Error',
+					description: 'Failed to send message',
+					variant: 'destructive',
+				});
 			}
-		} finally {
-			setSending(false);
 		}
 	};
 
@@ -757,27 +795,33 @@ export default function ChatDetailScreen() {
 		if (!sending) return null;
 
 		return (
-			<View style={[styles.messageContainer, styles.aiMessage]}>
-				<View style={[styles.messageBubble, styles.aiBubble]}>
+			<View style={[styles.messageContainer, styles.aiMessageContainer]}>
+				<View
+					style={[
+						styles.messageBubble,
+						styles.aiBubble,
+						{
+							backgroundColor: currentColors.card,
+							borderColor: currentColors.border,
+						},
+					]}
+				>
 					<View style={styles.typingIndicator}>
-						<LoadingDots color={colors.light.foreground} size={8} />
+						<LoadingDots color={currentColors.foreground} size={8} />
 					</View>
 				</View>
 			</View>
 		);
-	}, [sending]);
+	}, [sending, currentColors]);
 
 	const renderSampleQuestions = React.useCallback(() => {
-		// Only show sample questions when there are no messages
 		if (messages.length > 0) return null;
-
 		const sampleQuestions = [
 			{ text: 'What are the main themes in this book?', icon: 'bulb-outline' },
 			{ text: 'Tell me about the main character', icon: 'person-outline' },
 			{ text: 'What is the historical context?', icon: 'time-outline' },
 			{ text: 'What lesson can I learn from this?', icon: 'school-outline' },
 		];
-
 		return (
 			<View style={styles.sampleQuestionsContainer}>
 				<Text
@@ -829,17 +873,6 @@ export default function ChatDetailScreen() {
 			</View>
 		);
 	}, [messages.length, sending, handleSampleQuestionPress, currentColors]);
-
-	// Memoize the ListFooterComponent to prevent hooks order issues
-	const listFooterComponent = React.useMemo(
-		() => () => (
-			<>
-				{renderSampleQuestions()}
-				{renderTypingIndicator()}
-			</>
-		),
-		[renderSampleQuestions, renderTypingIndicator]
-	);
 
 	const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
 		const currentScrollY = event.nativeEvent.contentOffset.y;
@@ -944,220 +977,199 @@ export default function ChatDetailScreen() {
 	}
 
 	return (
-		<GestureHandlerRootView
-			style={[styles.safeArea, { backgroundColor: currentColors.background }]}
-		>
-			<IconPreloader />
-			<SafeAreaView
-				style={[styles.safeArea, { backgroundColor: currentColors.background }]}
-			>
+		<GestureHandlerRootView style={{ flex: 1 }}>
+			<SafeAreaView style={styles.safeArea}>
 				<KeyboardAvoidingView
-					behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-					style={[
-						styles.container,
-						{ backgroundColor: currentColors.background },
-					]}
-					keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-					enabled={true}
+					style={{ flex: 1 }}
+					behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+					keyboardVerticalOffset={0}
 				>
+					<IconPreloader />
 					<View
-						ref={chatContainerRef}
 						style={[
-							styles.chatCaptureContainer,
+							styles.chatContainer,
 							{ backgroundColor: currentColors.background },
 						]}
 					>
-						{/* Enhanced Header with Gradient */}
-						<LinearGradient
-							colors={
-								isDark
-									? [currentColors.card, currentColors.card]
-									: [currentColors.card, currentColors.background]
-							}
-							style={[
-								styles.header,
-								{ borderBottomColor: currentColors.border },
-							]}
-						>
-							<TouchableOpacity
-								style={styles.backButton}
-								onPress={() => {
-									// Ensure clean navigation back
-									Keyboard.dismiss();
-									setShowDropdown(false);
-									setShowVoiceRecorder(false);
-									setShowConversationalVoice(false);
-									setShowPaywall(false);
-
-									// Use a more explicit navigation method
-									if (navigation.canGoBack()) {
-										navigation.goBack();
-									} else {
-										// Fallback to navigate to home if can't go back
-										navigation.navigate('Home' as any);
-									}
-								}}
-							>
-								<Ionicons
-									name="chevron-back"
-									size={24}
-									color={currentColors.foreground}
-								/>
-							</TouchableOpacity>
-
-							<View style={styles.bookInfo}>
-								<BookCover
-									uri={book?.cover_url}
-									style={styles.bookCover}
-									placeholderIcon="book-outline"
-									placeholderSize={20}
-								/>
-								<View style={styles.bookDetails}>
-									<Text
-										style={[
-											styles.bookTitle,
-											{ color: currentColors.foreground },
-										]}
-										numberOfLines={2}
-									>
-										{book?.title || 'Unknown Book'}
-									</Text>
-									<Text
-										style={[
-											styles.bookAuthor,
-											{ color: currentColors.mutedForeground },
-										]}
-										numberOfLines={2}
-									>
-										{book?.author || 'Unknown Author'} •{' '}
-										{formatYear(book?.year)}
-									</Text>
-								</View>
-								<TouchableOpacity
-									style={styles.menuButton}
-									onPress={() => setShowDropdown(true)}
-								>
-									<Ionicons
-										name="ellipsis-vertical"
-										size={28}
-										color={currentColors.foreground}
-									/>
-								</TouchableOpacity>
-							</View>
-						</LinearGradient>
-
-						{/* Content Container */}
 						<View
 							style={[
-								styles.contentContainer,
+								styles.chatCaptureContainer,
 								{ backgroundColor: currentColors.background },
 							]}
 						>
-							{/* Messages */}
-							<ChatErrorBoundary>
-								<View
-									style={[
-										styles.messagesContainer,
-										{ backgroundColor: currentColors.background },
-									]}
-								>
-									{messages.length === 0 ? (
-										// Empty state without FlatList to prevent scrolling
-										<View style={styles.emptyStateContainer}>
-											<View style={styles.emptyContainer}>
-												<View
-													style={[
-														styles.emptyIconContainer,
-														{ backgroundColor: currentColors.primary + '15' },
-													]}
-												>
-													<Ionicons
-														name="chatbubbles-outline"
-														size={48}
-														color={currentColors.primary}
-													/>
-												</View>
-												<Text
-													style={[
-														styles.emptyTitle,
-														{ color: currentColors.foreground },
-													]}
-												>
-													Start the conversation!
-												</Text>
-												<Text
-													style={[
-														styles.emptySubtitle,
-														{ color: currentColors.mutedForeground },
-													]}
-												>
-													Ask questions about this book, discuss themes, or
-													explore its meaning
-												</Text>
-											</View>
-											{renderSampleQuestions()}
-										</View>
-									) : (
-										// Messages FlatList
-										<FlatList
-											ref={flatListRef}
-											data={messages}
-											renderItem={renderMessage}
-											keyExtractor={item => item.id}
-											contentContainerStyle={styles.messagesList}
-											showsVerticalScrollIndicator={false}
-											keyboardShouldPersistTaps="always"
-											onScroll={handleScroll}
-											scrollEventThrottle={32}
-											removeClippedSubviews={true}
-											maxToRenderPerBatch={10}
-											windowSize={10}
-											initialNumToRender={15}
-											getItemLayout={null}
-											maintainVisibleContentPosition={{
-												minIndexForVisible: 0,
-												autoscrollToTopThreshold: 10,
-											}}
-											ListFooterComponent={() => (
-												<>
-													{renderTypingIndicator()}
-													<View style={{ height: 80 }} />
-												</>
-											)}
-											keyboardDismissMode={
-												Platform.OS === 'ios' ? 'interactive' : 'on-drag'
-											}
-										/>
-									)}
-								</View>
-							</ChatErrorBoundary>
-
-							{/* Enhanced Input Container - Positioned Absolutely */}
-							<PanGestureHandler
-								onGestureEvent={event => {
-									if (
-										Platform.OS === 'android' &&
-										event.nativeEvent.translationY > 50 &&
-										event.nativeEvent.state === State.ACTIVE
-									) {
-										Keyboard.dismiss();
-									}
-								}}
+							<LinearGradient
+								colors={
+									isDark
+										? [currentColors.card, currentColors.card]
+										: [currentColors.card, currentColors.background]
+								}
+								style={[
+									styles.header,
+									{ borderBottomColor: currentColors.border },
+								]}
 							>
-								<View
-									style={[
-										styles.inputContainer,
-										{
-											backgroundColor: currentColors.card,
-											borderTopColor: currentColors.border,
-										},
-									]}
+								<TouchableOpacity
+									style={styles.backButton}
+									onPress={() => {
+										// Ensure clean navigation back
+										Keyboard.dismiss();
+										setShowDropdown(false);
+										setShowVoiceRecorder(false);
+										setShowConversationalVoice(false);
+										setShowPaywall(false);
+
+										// Use a more explicit navigation method
+										if (navigation.canGoBack()) {
+											navigation.goBack();
+										} else {
+											// Fallback to navigate to home if can't go back
+											navigation.navigate('Home' as any);
+										}
+									}}
 								>
+									<Ionicons
+										name="chevron-back"
+										size={24}
+										color={currentColors.foreground}
+									/>
+								</TouchableOpacity>
+
+								<View style={styles.bookInfo}>
+									<BookCover
+										uri={book?.cover_url}
+										style={styles.bookCover}
+										placeholderIcon="book-outline"
+										placeholderSize={20}
+									/>
+									<View style={styles.bookDetails}>
+										<Text
+											style={[
+												styles.bookTitle,
+												{ color: currentColors.foreground },
+											]}
+											numberOfLines={2}
+										>
+											{book?.title || 'Unknown Book'}
+										</Text>
+										<Text
+											style={[
+												styles.bookAuthor,
+												{ color: currentColors.mutedForeground },
+											]}
+											numberOfLines={2}
+										>
+											{book?.author || 'Unknown Author'} •{' '}
+											{formatYear(book?.year)}
+										</Text>
+									</View>
+									<TouchableOpacity
+										style={styles.menuButton}
+										onPress={() => setShowDropdown(true)}
+									>
+										<Ionicons
+											name="ellipsis-vertical"
+											size={28}
+											color={currentColors.foreground}
+										/>
+									</TouchableOpacity>
+								</View>
+							</LinearGradient>
+
+							<View
+								style={[
+									styles.contentContainer,
+									{ backgroundColor: currentColors.background },
+								]}
+							>
+								<ChatErrorBoundary>
+									<View
+										style={[
+											styles.messagesContainer,
+											{ backgroundColor: currentColors.background },
+										]}
+									>
+										{messages.length === 0 ? (
+											<View
+												style={{
+													flex: 1,
+													justifyContent: 'center',
+													alignItems: 'center',
+												}}
+											>
+												<View style={styles.emptyContainer}>
+													<View
+														style={[
+															styles.emptyIconContainer,
+															{ backgroundColor: currentColors.primary + '15' },
+														]}
+													>
+														<Ionicons
+															name="chatbubbles-outline"
+															size={48}
+															color={currentColors.primary}
+														/>
+													</View>
+													<Text
+														style={[
+															styles.emptyTitle,
+															{ color: currentColors.foreground },
+														]}
+													>
+														Start the conversation!
+													</Text>
+													<Text
+														style={[
+															styles.emptySubtitle,
+															{ color: currentColors.mutedForeground },
+														]}
+													>
+														Ask questions about this book, discuss themes, or
+														explore its meaning
+													</Text>
+												</View>
+												{renderSampleQuestions()}
+											</View>
+										) : (
+											<FlatList
+												ref={flatListRef}
+												data={messages}
+												renderItem={renderMessage}
+												keyExtractor={item => item.id}
+												contentContainerStyle={styles.messagesList}
+												showsVerticalScrollIndicator={false}
+												keyboardShouldPersistTaps="always"
+												onScroll={handleScroll}
+												scrollEventThrottle={32}
+												removeClippedSubviews={true}
+												maxToRenderPerBatch={10}
+												windowSize={10}
+												initialNumToRender={15}
+												getItemLayout={null}
+												maintainVisibleContentPosition={{
+													minIndexForVisible: 0,
+													autoscrollToTopThreshold: 10,
+												}}
+												ListFooterComponent={() => (
+													<>
+														{renderTypingIndicator()}
+														{renderSampleQuestions()}
+														<View style={{ height: 80 }} />
+													</>
+												)}
+												keyboardDismissMode={
+													Platform.OS === 'ios' ? 'interactive' : 'on-drag'
+												}
+											/>
+										)}
+									</View>
+								</ChatErrorBoundary>
+
+								<View style={styles.floatingInputContainer}>
 									<View
 										style={[
 											styles.inputWrapper,
 											{
-												backgroundColor: currentColors.background,
+												backgroundColor: currentColors.card,
 												borderColor: currentColors.border,
 											},
 										]}
@@ -1168,7 +1180,7 @@ export default function ChatDetailScreen() {
 												styles.textInput,
 												{ color: currentColors.foreground },
 											]}
-											placeholder="Type your message..."
+											placeholder="Type a message..."
 											placeholderTextColor={currentColors.mutedForeground}
 											value={newMessage}
 											onChangeText={setNewMessage}
@@ -1177,49 +1189,19 @@ export default function ChatDetailScreen() {
 											onSubmitEditing={Keyboard.dismiss}
 										/>
 										<TouchableOpacity
-											style={[
-												styles.sendButton,
-												{
-													backgroundColor:
-														newMessage.trim() && !sending
-															? currentColors.primary
-															: currentColors.muted,
-												},
-											]}
+											style={styles.sendButton}
 											onPress={handleSendMessage}
 											disabled={!newMessage.trim() || sending}
 										>
 											<Ionicons
 												name="send"
 												size={20}
-												color={
-													newMessage.trim() && !sending
-														? currentColors.primaryForeground
-														: currentColors.mutedForeground
-												}
-											/>
-										</TouchableOpacity>
-										<TouchableOpacity
-											style={[
-												styles.micButton,
-												{ backgroundColor: currentColors.primary },
-											]}
-											onPress={() => setShowConversationalVoice(true)}
-											disabled={sending}
-										>
-											<Ionicons
-												name="mic"
-												size={20}
-												color={
-													sending
-														? currentColors.mutedForeground
-														: currentColors.primaryForeground
-												}
+												color={currentColors.primary}
 											/>
 										</TouchableOpacity>
 									</View>
 								</View>
-							</PanGestureHandler>
+							</View>
 						</View>
 					</View>
 				</KeyboardAvoidingView>
@@ -1365,7 +1347,6 @@ const styles = StyleSheet.create({
 	},
 	messagesContainer: {
 		flex: 1,
-		paddingBottom: 90, // Space for input container
 	},
 	emptyStateContainer: {
 		flex: 1,
@@ -1581,39 +1562,29 @@ const styles = StyleSheet.create({
 		backgroundColor: 'transparent',
 		borderWidth: 1,
 	},
-	inputContainer: {
+	floatingInputContainer: {
 		position: 'absolute',
-		bottom: 0,
 		left: 0,
 		right: 0,
+		bottom: 0,
 		paddingHorizontal: 16,
-		paddingTop: 16,
-		paddingBottom: Platform.OS === 'ios' ? 20 : 16,
-		borderTopWidth: 1,
-		zIndex: 10, // Ensure input stays on top
-		elevation: 5, // Android shadow for proper layering
-		shadowColor: '#000', // iOS shadow
-		shadowOffset: { width: 0, height: -2 },
-		shadowOpacity: 0.1,
-		shadowRadius: 4,
-	},
-	gestureIndicator: {
-		width: 40,
-		height: 4,
-		borderRadius: 2,
-		opacity: 0.2,
-		alignSelf: 'center',
-		marginBottom: 8,
+		paddingBottom: Platform.OS === 'ios' ? 24 : 16,
+		backgroundColor: 'transparent',
+		zIndex: 100,
 	},
 	inputWrapper: {
 		flexDirection: 'row',
-		alignItems: 'flex-end',
+		alignItems: 'center',
 		borderRadius: 24,
-		paddingHorizontal: 16,
-		paddingVertical: 8,
 		borderWidth: 1,
-		minHeight: 50,
-		maxHeight: 120,
+		paddingHorizontal: 16,
+		paddingVertical: 10,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.08,
+		shadowRadius: 8,
+		elevation: 8,
+		backgroundColor: '#fff', // will be overridden by dynamic color
 	},
 	textInput: {
 		flex: 1,

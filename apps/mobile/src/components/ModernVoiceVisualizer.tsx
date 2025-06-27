@@ -74,7 +74,7 @@ export const ModernVoiceVisualizer: React.FC<ModernVoiceVisualizerProps> = ({
 					// Listening/Speaking: more subtle voice pattern
 					const baseLevel = 0.15; // Lower base level
 					const voice1 = Math.sin(time * 1.5) * 0.1; // Gentler main frequency
-					const voice2 = Math.sin(time * 3) * 0.05; // Subtle overlay
+					const voice2 = Math.sin(time * 3) * 0.05; // pnpm  overlay
 					const breathing = Math.sin(time * 0.5) * 0.08; // Slow breathing
 					const randomNoise = (Math.random() - 0.5) * 0.03; // Less random noise
 

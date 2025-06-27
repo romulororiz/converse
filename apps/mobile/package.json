@@ -7,6 +7,9 @@
 		"android": "expo start --android",
 		"ios": "expo start --ios",
 		"web": "expo start --web",
+		"build:dev": "eas build --profile development --platform all",
+		"build:preview": "eas build --profile preview --platform all",
+		"build:prod": "eas build --profile production --platform all",
 		"test": "jest",
 		"test:watch": "jest --watch",
 		"test:coverage": "jest --coverage",
@@ -57,7 +60,6 @@
 		"react-native-view-shot": "^4.0.3",
 		"react-native-voice-recorder": "^1.0.2",
 		"react-native-web": "~0.20.0",
-		"sonner": "^2.0.5",
 		"web-streams-polyfill": "3.3.3",
 		"zod": "^3.25.67"
 	},

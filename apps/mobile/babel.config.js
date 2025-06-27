@@ -2,11 +2,15 @@
 module.exports = function (api) {
 	api.cache(true);
 	return {
-		presets: ['babel-preset-expo'],
-		plugins: [
-			'@babel/plugin-transform-react-jsx',
-			'react-native-reanimated/plugin',
+		presets: [
+			[
+				'babel-preset-expo',
+				{
+					jsxRuntime: 'automatic',
+				},
+			],
 		],
+		plugins: ['react-native-reanimated/plugin'],
 		env: {
 			test: {
 				plugins: ['@babel/plugin-transform-modules-commonjs'],

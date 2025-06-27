@@ -28,6 +28,7 @@ export const colors = {
 		sidebarAccentForeground: '#322e28',
 		sidebarBorder: '#e0ddd6',
 		sidebarRing: '#b6aa97',
+		success: '#76b900',
 	},
 	// Dark theme colors
 	dark: {

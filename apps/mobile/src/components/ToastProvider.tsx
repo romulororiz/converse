@@ -1,11 +1,6 @@
-import { ReactNode } from 'react';
-import { Toaster } from 'sonner';
+import React, { ReactNode } from 'react';
+import { ToastProvider as CustomToastProvider } from './ui/toast';
 
 export function ToastProvider({ children }: { children: ReactNode }) {
-  return (
-    <>
-      <Toaster position="top-center" richColors closeButton />
-      {children}
-    </>
-  );
-} 
+	return <CustomToastProvider>{children}</CustomToastProvider>;
+}
