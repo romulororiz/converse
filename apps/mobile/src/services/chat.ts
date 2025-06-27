@@ -140,6 +140,24 @@ export async function sendMessage(
 	role: 'user' | 'assistant' = 'user'
 ): Promise<Message> {
 	try {
+		// Validate message content if it's a user message
+		if (role === 'user') {
+			try {
+				// For user messages, we need a bookId to validate properly
+				// Since we don't have it here, we'll do basic validation
+				if (!content || content.trim().length === 0) {
+					throw new Error('Message cannot be empty');
+				}
+				if (content.length > 2000) {
+					throw new Error('Message too long (max 2000 characters)');
+				}
+			} catch (error) {
+				throw new Error(
+					error instanceof Error ? error.message : 'Message validation failed'
+				);
+			}
+		}
+
 		const { data, error } = await supabase
 			.from('messages')
 			.insert([

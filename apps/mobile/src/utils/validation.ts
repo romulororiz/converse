@@ -17,7 +17,8 @@ export const chatMessageSchema = z.object({
 export const emailSchema = z
 	.string()
 	.email('Invalid email address')
-	.min(1, 'Email is required');
+	.min(1, 'Email is required')
+	.max(254, 'Email too long');
 
 export const passwordSchema = z
 	.string()
@@ -27,6 +28,16 @@ export const passwordSchema = z
 		/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
 		'Password must contain at least one lowercase letter, one uppercase letter, and one number'
 	);
+
+export const confirmPasswordSchema = z
+	.object({
+		password: passwordSchema,
+		confirmPassword: z.string(),
+	})
+	.refine(data => data.password === data.confirmPassword, {
+		message: "Passwords don't match",
+		path: ['confirmPassword'],
+	});
 
 export const nameSchema = z
 	.string()
@@ -43,7 +54,34 @@ export const profileUpdateSchema = z.object({
 		.optional()
 		.nullable(),
 	avatar_url: z.string().url('Invalid avatar URL').optional().nullable(),
+	reading_preferences: z
+		.string()
+		.max(300, 'Reading preferences too long (max 300 characters)')
+		.optional()
+		.nullable(),
+	favorite_genres: z
+		.string()
+		.max(200, 'Favorite genres too long (max 200 characters)')
+		.optional()
+		.nullable(),
+	reading_goals: z
+		.string()
+		.max(200, 'Reading goals too long (max 200 characters)')
+		.optional()
+		.nullable(),
 });
+
+// Password change validation
+export const passwordChangeSchema = z
+	.object({
+		currentPassword: z.string().min(1, 'Current password is required'),
+		newPassword: passwordSchema,
+		confirmPassword: z.string().min(1, 'Please confirm your new password'),
+	})
+	.refine(data => data.newPassword === data.confirmPassword, {
+		message: "New passwords don't match",
+		path: ['confirmPassword'],
+	});
 
 // Search validation
 export const searchQuerySchema = z
@@ -68,6 +106,58 @@ export const insightSchema = z.object({
 		.string()
 		.min(1, 'Content is required')
 		.max(300, 'Content too long (max 300 characters)'),
+});
+
+// Login validation
+export const loginSchema = z.object({
+	email: emailSchema,
+	password: z.string().min(1, 'Password is required'),
+});
+
+// Sign up validation
+export const signUpSchema = z
+	.object({
+		fullName: nameSchema,
+		email: emailSchema,
+		password: passwordSchema,
+		confirmPassword: z.string().min(1, 'Please confirm your password'),
+	})
+	.refine(data => data.password === data.confirmPassword, {
+		message: "Passwords don't match",
+		path: ['confirmPassword'],
+	});
+
+// Forgot password validation
+export const forgotPasswordSchema = z.object({
+	email: emailSchema,
+});
+
+// Voice transcription validation
+export const voiceTranscriptionSchema = z
+	.string()
+	.min(1, 'Transcription cannot be empty')
+	.max(2000, 'Transcription too long (max 2000 characters)')
+	.refine(
+		text => text.trim().length > 0,
+		'Transcription cannot be only whitespace'
+	);
+
+// File upload validation
+export const fileUploadSchema = z.object({
+	fileName: z
+		.string()
+		.min(1, 'File name is required')
+		.max(255, 'File name too long'),
+	fileSize: z
+		.number()
+		.max(10 * 1024 * 1024, 'File size must be less than 10MB'), // 10MB limit
+	fileType: z
+		.string()
+		.refine(
+			type =>
+				['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(type),
+			'Only JPEG, PNG, GIF, and WebP images are allowed'
+		),
 });
 
 // Data sanitization utilities
@@ -170,6 +260,114 @@ export function validateInsight(title: string, content: string) {
 		return insightSchema.parse({
 			title: sanitizeInput(title),
 			content: sanitizeInput(content),
+		});
+	} catch (error) {
+		if (error instanceof z.ZodError) {
+			throw new Error(error.errors[0].message);
+		}
+		throw error;
+	}
+}
+
+export function validateLogin(email: string, password: string) {
+	try {
+		return loginSchema.parse({
+			email: sanitizeInput(email),
+			password,
+		});
+	} catch (error) {
+		if (error instanceof z.ZodError) {
+			throw new Error(error.errors[0].message);
+		}
+		throw error;
+	}
+}
+
+export function validateSignUp(
+	fullName: string,
+	email: string,
+	password: string,
+	confirmPassword: string
+) {
+	try {
+		return signUpSchema.parse({
+			fullName: sanitizeInput(fullName),
+			email: sanitizeInput(email),
+			password,
+			confirmPassword,
+		});
+	} catch (error) {
+		if (error instanceof z.ZodError) {
+			throw new Error(error.errors[0].message);
+		}
+		throw error;
+	}
+}
+
+export function validateForgotPassword(email: string) {
+	try {
+		return forgotPasswordSchema.parse({
+			email: sanitizeInput(email),
+		});
+	} catch (error) {
+		if (error instanceof z.ZodError) {
+			throw new Error(error.errors[0].message);
+		}
+		throw error;
+	}
+}
+
+export function validatePasswordChange(
+	currentPassword: string,
+	newPassword: string,
+	confirmPassword: string
+) {
+	try {
+		return passwordChangeSchema.parse({
+			currentPassword,
+			newPassword,
+			confirmPassword,
+		});
+	} catch (error) {
+		if (error instanceof z.ZodError) {
+			throw new Error(error.errors[0].message);
+		}
+		throw error;
+	}
+}
+
+export function validateProfileUpdate(profile: any) {
+	try {
+		return profileUpdateSchema.parse(profile);
+	} catch (error) {
+		if (error instanceof z.ZodError) {
+			throw new Error(error.errors[0].message);
+		}
+		throw error;
+	}
+}
+
+export function validateVoiceTranscription(text: string) {
+	try {
+		return voiceTranscriptionSchema.parse(sanitizeInput(text));
+	} catch (error) {
+		if (error instanceof z.ZodError) {
+			throw new Error(error.errors[0].message);
+		}
+		throw error;
+	}
+}
+
+export function validateFileUpload(
+	fileName: string,
+	fileSize: number,
+	fileType: string
+) {
+	try {
+		return fileUploadSchema.parse({
+			fileName,
+			fileSize,
+			fileType,
 		});
 	} catch (error) {
 		if (error instanceof z.ZodError) {

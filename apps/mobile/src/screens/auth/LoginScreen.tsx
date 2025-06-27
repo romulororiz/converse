@@ -19,6 +19,7 @@ import { supabase } from '../../lib/supabase';
 import { useNavigation } from '@react-navigation/native';
 import { signInWithGoogleDirect } from '../../services/googleAuth';
 import { useAuth } from '../../components/AuthProvider';
+import { validateLogin } from '../../utils/validation';
 
 type AuthNavigationProp = {
 	navigate: (screen: 'Login' | 'SignUp' | 'ForgotPassword') => void;
@@ -37,6 +38,14 @@ export default function LoginScreen() {
 	const handleLogin = async () => {
 		if (!email || !password) {
 			Alert.alert('Error', 'Please fill in all fields');
+			return;
+		}
+
+		// Validate inputs using Zod
+		try {
+			validateLogin(email, password);
+		} catch (error) {
+			Alert.alert('Validation Error', error.message);
 			return;
 		}
 
@@ -95,7 +104,7 @@ export default function LoginScreen() {
 			/>
 			<ScrollView
 				contentContainerStyle={styles.scrollContent}
-				keyboardShouldPersistTaps='handled'
+				keyboardShouldPersistTaps="handled"
 			>
 				<View style={styles.header}>
 					<Text style={[styles.title, { color: currentColors.foreground }]}>
@@ -119,17 +128,17 @@ export default function LoginScreen() {
 						]}
 					>
 						<Ionicons
-							name='mail-outline'
+							name="mail-outline"
 							size={20}
 							color={currentColors.mutedForeground}
 							style={styles.inputIcon}
 						/>
 						<TextInput
 							style={[styles.input, { color: currentColors.foreground }]}
-							placeholder='Email'
+							placeholder="Email"
 							placeholderTextColor={currentColors.mutedForeground}
-							keyboardType='email-address'
-							autoCapitalize='none'
+							keyboardType="email-address"
+							autoCapitalize="none"
 							value={email}
 							onChangeText={setEmail}
 						/>
@@ -145,14 +154,14 @@ export default function LoginScreen() {
 						]}
 					>
 						<Ionicons
-							name='lock-closed-outline'
+							name="lock-closed-outline"
 							size={20}
 							color={currentColors.mutedForeground}
 							style={styles.inputIcon}
 						/>
 						<TextInput
 							style={[styles.input, { color: currentColors.foreground }]}
-							placeholder='Password'
+							placeholder="Password"
 							placeholderTextColor={currentColors.mutedForeground}
 							secureTextEntry={!showPassword}
 							value={password}
@@ -243,7 +252,7 @@ export default function LoginScreen() {
 						disabled={loading}
 					>
 						<Ionicons
-							name='logo-google'
+							name="logo-google"
 							size={20}
 							color={currentColors.foreground}
 						/>

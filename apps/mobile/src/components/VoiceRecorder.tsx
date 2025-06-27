@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import * as Speech from 'expo-speech';
 import { colors } from '../utils/colors';
-import { validateChatMessage, sanitizeInput } from '../utils/validation';
+import { validateChatMessage, sanitizeInput, validateVoiceTranscription } from '../utils/validation';
 import { secureApiRequest, apiKeyManager } from '../utils/apiSecurity';
 
 interface VoiceRecorderProps {
@@ -573,7 +573,13 @@ CRITICAL LANGUAGE INSTRUCTION:
 
 	const handleComplete = () => {
 		if (transcribedText && aiResponse) {
-			onTranscriptionComplete(transcribedText);
+			// Validate transcription before completing
+			try {
+				validateVoiceTranscription(transcribedText);
+				onTranscriptionComplete(transcribedText);
+			} catch (error) {
+				Alert.alert('Validation Error', error.message);
+			}
 		}
 	};
 

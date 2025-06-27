@@ -27,7 +27,10 @@ import VoiceRecorder from '../components/VoiceRecorder';
 import ConversationalVoiceChat from '../components/ConversationalVoiceChat';
 import { useAuth } from '../components/AuthProvider';
 import { ChatErrorBoundary } from '../components/ErrorBoundary';
-import { validateChatMessage } from '../utils/validation';
+import {
+	validateChatMessage,
+	validateVoiceTranscription,
+} from '../utils/validation';
 import {
 	useRoute,
 	useNavigation,
@@ -64,6 +67,8 @@ import { PremiumPaywallDrawer } from '../components/PremiumPaywallDrawer';
 import { LinearGradient } from 'expo-linear-gradient';
 import { formatDistanceToNow } from 'date-fns';
 import { canSendMessage } from '../services/subscription';
+import { toast } from 'sonner';
+import { checkRateLimit } from '../utils/rateLimit';
 
 type RootStackParamList = {
 	ChatDetail: { bookId: string };
@@ -264,6 +269,24 @@ export default function ChatDetailScreen() {
 
 		const userMessage = newMessage.trim();
 
+		// Validate message using Zod
+		try {
+			validateChatMessage(userMessage, bookId);
+		} catch (error) {
+			toast.error(error.message || 'Invalid message');
+			return;
+		}
+
+		// Rate limit: 10 messages per minute per user
+		try {
+			await checkRateLimit({ key: user.id, window: 60, max: 10 });
+		} catch (error) {
+			toast.error(
+				'You are sending messages too quickly. Please wait a minute.'
+			);
+			return;
+		}
+
 		// Clear input immediately and focus management
 		setNewMessage('');
 		textInputRef.current?.clear();
@@ -323,7 +346,7 @@ export default function ChatDetailScreen() {
 			if (error.message?.includes('daily message limit')) {
 				setShowPaywall(true);
 			} else {
-				showAlert('Error', 'Failed to send message');
+				toast.error('Failed to send message');
 			}
 		} finally {
 			setSending(false);
@@ -332,6 +355,14 @@ export default function ChatDetailScreen() {
 
 	const handleSampleQuestionPress = async (question: string) => {
 		if (sending) return;
+
+		// Validate question using Zod
+		try {
+			validateChatMessage(question, bookId);
+		} catch (error) {
+			Alert.alert('Validation Error', error.message);
+			return;
+		}
 
 		setSending(true);
 
@@ -398,6 +429,14 @@ export default function ChatDetailScreen() {
 	const handleVoiceTranscriptionComplete = async (transcribedText: string) => {
 		setShowVoiceRecorder(false);
 
+		// Validate transcription using Zod
+		try {
+			validateVoiceTranscription(transcribedText);
+		} catch (error) {
+			Alert.alert('Validation Error', error.message);
+			return;
+		}
+
 		// Set the transcribed text as the new message
 		setNewMessage(transcribedText);
 
@@ -452,7 +491,7 @@ export default function ChatDetailScreen() {
 					aiMsg as ChatMessage,
 				]);
 			} catch (error) {
-				console.error('Error sending voice message:', error);
+				console.error('Error sending transcribed message:', error);
 				// Remove the temp message on error
 				setMessages(prev => prev.slice(0, -1));
 
@@ -460,7 +499,7 @@ export default function ChatDetailScreen() {
 				if (error.message?.includes('daily message limit')) {
 					setShowPaywall(true);
 				} else {
-					showAlert('Error', 'Failed to send voice message');
+					showAlert('Error', 'Failed to send message');
 				}
 			} finally {
 				setSending(false);

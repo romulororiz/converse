@@ -21,6 +21,10 @@ import { useTheme } from '../contexts/ThemeContext';
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '@react-navigation/native';
 import { updateUserProfile } from '../services/profile';
+import {
+	validateProfileUpdate,
+	validatePasswordChange,
+} from '../utils/validation';
 
 type NavigationProp = {
 	navigate: (screen: string, params?: any) => void;
@@ -91,6 +95,20 @@ export default function AccountSettingsScreen() {
 			return;
 		}
 
+		// Validate profile data using Zod
+		try {
+			validateProfileUpdate({
+				full_name: fullName,
+				bio: bio,
+				reading_preferences: readingPreferences,
+				favorite_genres: favoriteGenres,
+				reading_goals: readingGoals,
+			});
+		} catch (error) {
+			Alert.alert('Validation Error', error.message);
+			return;
+		}
+
 		setSaving(true);
 		try {
 			await updateUserProfile({
@@ -116,13 +134,11 @@ export default function AccountSettingsScreen() {
 			return;
 		}
 
-		if (newPassword !== confirmPassword) {
-			Alert.alert('Error', 'New passwords do not match');
-			return;
-		}
-
-		if (newPassword.length < 6) {
-			Alert.alert('Error', 'New password must be at least 6 characters');
+		// Validate password change using Zod
+		try {
+			validatePasswordChange(currentPassword, newPassword, confirmPassword);
+		} catch (error) {
+			Alert.alert('Validation Error', error.message);
 			return;
 		}
 
@@ -234,7 +250,7 @@ export default function AccountSettingsScreen() {
 						{ backgroundColor: currentColors.background },
 					]}
 				>
-					<ActivityIndicator size='large' color={currentColors.primary} />
+					<ActivityIndicator size="large" color={currentColors.primary} />
 				</View>
 			</SafeAreaView>
 		);
@@ -263,7 +279,7 @@ export default function AccountSettingsScreen() {
 						<View style={styles.sectionHeader}>
 							<View style={styles.sectionTitleContainer}>
 								<Ionicons
-									name='person-outline'
+									name="person-outline"
 									size={24}
 									color={currentColors.primary}
 								/>
@@ -298,35 +314,35 @@ export default function AccountSettingsScreen() {
 						{editingProfile ? (
 							<View style={styles.editForm}>
 								<ProfileField
-									label='Full Name'
+									label="Full Name"
 									value={fullName}
 									onChangeText={setFullName}
-									placeholder='Enter your full name'
+									placeholder="Enter your full name"
 									labelStyle={styles.fieldLabelFullName}
 									required
 								/>
 
 								<ProfileField
-									label='Bio'
+									label="Bio"
 									value={bio}
 									onChangeText={setBio}
-									placeholder='Tell us about yourself...'
+									placeholder="Tell us about yourself..."
 									multiline
 								/>
 
 								<ProfileField
-									label='Reading Preferences'
+									label="Reading Preferences"
 									value={readingPreferences}
 									onChangeText={setReadingPreferences}
-									placeholder='e.g., Fiction, Non-fiction, Mystery...'
+									placeholder="e.g., Fiction, Non-fiction, Mystery..."
 									multiline
 								/>
 
 								<ProfileField
-									label='Reading Goals'
+									label="Reading Goals"
 									value={readingGoals}
 									onChangeText={setReadingGoals}
-									placeholder='e.g., Read 20 books this year...'
+									placeholder="e.g., Read 20 books this year..."
 									multiline
 								/>
 
@@ -466,7 +482,7 @@ export default function AccountSettingsScreen() {
 						<View style={styles.sectionHeader}>
 							<View style={styles.sectionTitleContainer}>
 								<Ionicons
-									name='lock-closed-outline'
+									name="lock-closed-outline"
 									size={24}
 									color={currentColors.primary}
 								/>
@@ -501,28 +517,28 @@ export default function AccountSettingsScreen() {
 						{changingPassword && (
 							<View style={styles.passwordForm}>
 								<ProfileField
-									label='Current Password'
+									label="Current Password"
 									value={currentPassword}
 									onChangeText={setCurrentPassword}
-									placeholder='Enter current password'
+									placeholder="Enter current password"
 									required
 									secureTextEntry
 								/>
 
 								<ProfileField
-									label='New Password'
+									label="New Password"
 									value={newPassword}
 									onChangeText={setNewPassword}
-									placeholder='Enter new password'
+									placeholder="Enter new password"
 									required
 									secureTextEntry
 								/>
 
 								<ProfileField
-									label='Confirm New Password'
+									label="Confirm New Password"
 									value={confirmPassword}
 									onChangeText={setConfirmPassword}
-									placeholder='Confirm new password'
+									placeholder="Confirm new password"
 									required
 									secureTextEntry
 								/>
@@ -565,7 +581,7 @@ export default function AccountSettingsScreen() {
 							disabled={saving}
 						>
 							<Ionicons
-								name='log-out-outline'
+								name="log-out-outline"
 								size={20}
 								color={currentColors.destructive}
 							/>

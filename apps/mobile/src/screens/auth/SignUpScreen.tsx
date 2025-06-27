@@ -17,6 +17,7 @@ import { supabase } from '../../lib/supabase';
 import { useNavigation } from '@react-navigation/native';
 import { signInWithGoogleDirect } from '../../services/googleAuth';
 import { useAuth } from '../../components/AuthProvider';
+import { validateSignUp } from '../../utils/validation';
 
 type AuthNavigationProp = {
 	navigate: (screen: 'Login' | 'SignUp' | 'ForgotPassword') => void;
@@ -39,18 +40,11 @@ export default function SignUpScreen() {
 			return;
 		}
 
-		// Validate inputs
+		// Validate inputs using Zod
 		try {
-			validateEmail(email);
-			validatePassword(password);
-			validateName(fullName);
+			validateSignUp(fullName, email, password, confirmPassword);
 		} catch (error) {
 			Alert.alert('Validation Error', error.message);
-			return;
-		}
-
-		if (password !== confirmPassword) {
-			Alert.alert('Error', 'Passwords do not match');
 			return;
 		}
 
@@ -125,7 +119,7 @@ export default function SignUpScreen() {
 		>
 			<ScrollView
 				contentContainerStyle={styles.scrollContent}
-				keyboardShouldPersistTaps='handled'
+				keyboardShouldPersistTaps="handled"
 			>
 				<View style={styles.header}>
 					<Text style={styles.title}>Create Account</Text>
@@ -135,14 +129,14 @@ export default function SignUpScreen() {
 				<View style={styles.form}>
 					<View style={styles.inputContainer}>
 						<Ionicons
-							name='person-outline'
+							name="person-outline"
 							size={20}
 							color={colors.light.mutedForeground}
 							style={styles.inputIcon}
 						/>
 						<TextInput
 							style={styles.input}
-							placeholder='Full Name'
+							placeholder="Full Name"
 							placeholderTextColor={colors.light.mutedForeground}
 							value={fullName}
 							onChangeText={setFullName}
@@ -151,17 +145,17 @@ export default function SignUpScreen() {
 
 					<View style={styles.inputContainer}>
 						<Ionicons
-							name='mail-outline'
+							name="mail-outline"
 							size={20}
 							color={colors.light.mutedForeground}
 							style={styles.inputIcon}
 						/>
 						<TextInput
 							style={styles.input}
-							placeholder='Email'
+							placeholder="Email"
 							placeholderTextColor={colors.light.mutedForeground}
-							keyboardType='email-address'
-							autoCapitalize='none'
+							keyboardType="email-address"
+							autoCapitalize="none"
 							value={email}
 							onChangeText={setEmail}
 						/>
@@ -169,14 +163,14 @@ export default function SignUpScreen() {
 
 					<View style={styles.inputContainer}>
 						<Ionicons
-							name='lock-closed-outline'
+							name="lock-closed-outline"
 							size={20}
 							color={colors.light.mutedForeground}
 							style={styles.inputIcon}
 						/>
 						<TextInput
 							style={styles.input}
-							placeholder='Password'
+							placeholder="Password"
 							placeholderTextColor={colors.light.mutedForeground}
 							secureTextEntry={!showPassword}
 							value={password}
@@ -196,14 +190,14 @@ export default function SignUpScreen() {
 
 					<View style={styles.inputContainer}>
 						<Ionicons
-							name='lock-closed-outline'
+							name="lock-closed-outline"
 							size={20}
 							color={colors.light.mutedForeground}
 							style={styles.inputIcon}
 						/>
 						<TextInput
 							style={styles.input}
-							placeholder='Confirm Password'
+							placeholder="Confirm Password"
 							placeholderTextColor={colors.light.mutedForeground}
 							secureTextEntry={!showConfirmPassword}
 							value={confirmPassword}
@@ -245,7 +239,7 @@ export default function SignUpScreen() {
 						disabled={loading}
 					>
 						<Ionicons
-							name='logo-google'
+							name="logo-google"
 							size={20}
 							color={colors.light.foreground}
 						/>

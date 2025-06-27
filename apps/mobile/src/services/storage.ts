@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { validateFileUpload } from '../utils/validation';
 
 export interface UploadResult {
 	url: string;
@@ -29,6 +30,18 @@ export async function uploadFile(
 			type: file.type,
 			lastModified: (file as File).lastModified || 'N/A',
 		});
+
+		// Validate file using Zod
+		try {
+			validateFileUpload(fileName, file.size, file.type);
+		} catch (error) {
+			return {
+				url: '',
+				path: '',
+				error:
+					error instanceof Error ? error.message : 'File validation failed',
+			};
+		}
 
 		// Validate file
 		if (!file || file.size === 0) {

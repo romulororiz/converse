@@ -24,6 +24,7 @@ import {
 	VOICE_CONFIGS,
 	selectVoiceForBook,
 } from '../services/elevenlabs';
+import { validateVoiceTranscription } from '../utils/validation';
 
 interface ConversationalVoiceChatProps {
 	onConversationComplete: (conversation: ConversationMessage[]) => void;
@@ -764,6 +765,16 @@ export default function ConversationalVoiceChat({
 				return;
 			}
 
+			// Validate transcription using Zod
+			try {
+				validateVoiceTranscription(transcription);
+			} catch (error) {
+				console.error('Transcription validation error:', error);
+				setIsProcessing(false);
+				startListening(); // Continue listening if validation fails
+				return;
+			}
+
 			// Add user message to conversation (no transcription display)
 			const userMessage: ConversationMessage = {
 				id: `user-${Date.now()}`,
@@ -1036,10 +1047,10 @@ Current conversation context: This is an ongoing voice conversation, so respond 
 		<Modal
 			transparent
 			visible={visible}
-			animationType='fade'
+			animationType="fade"
 			onRequestClose={handleClose}
 		>
-			<StatusBar barStyle='light-content' backgroundColor='rgba(0,0,0,0.9)' />
+			<StatusBar barStyle="light-content" backgroundColor="rgba(0,0,0,0.9)" />
 			<Animated.View
 				style={[
 					styles.overlay,
@@ -1050,7 +1061,7 @@ Current conversation context: This is an ongoing voice conversation, so respond 
 			>
 				{/* Close button */}
 				<TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-					<Ionicons name='close' size={24} color='#FFFFFF' />
+					<Ionicons name="close" size={24} color="#FFFFFF" />
 				</TouchableOpacity>
 
 				{/* Main content */}

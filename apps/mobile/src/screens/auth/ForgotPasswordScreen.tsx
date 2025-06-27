@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../utils/colors';
 import { supabase } from '../../lib/supabase';
 import { useNavigation } from '@react-navigation/native';
+import { validateForgotPassword } from '../../utils/validation';
 
 export default function ForgotPasswordScreen() {
 	const [email, setEmail] = useState('');
@@ -24,6 +25,14 @@ export default function ForgotPasswordScreen() {
 	const handleResetPassword = async () => {
 		if (!email) {
 			Alert.alert('Error', 'Please enter your email address');
+			return;
+		}
+
+		// Validate email using Zod
+		try {
+			validateForgotPassword(email);
+		} catch (error) {
+			Alert.alert('Validation Error', error.message);
 			return;
 		}
 
@@ -54,14 +63,14 @@ export default function ForgotPasswordScreen() {
 		>
 			<ScrollView
 				contentContainerStyle={styles.scrollContent}
-				keyboardShouldPersistTaps='handled'
+				keyboardShouldPersistTaps="handled"
 			>
 				<TouchableOpacity
 					style={styles.backButton}
 					onPress={() => navigation.goBack()}
 				>
 					<Ionicons
-						name='arrow-back'
+						name="arrow-back"
 						size={24}
 						color={colors.light.foreground}
 					/>
@@ -78,17 +87,17 @@ export default function ForgotPasswordScreen() {
 				<View style={styles.form}>
 					<View style={styles.inputContainer}>
 						<Ionicons
-							name='mail-outline'
+							name="mail-outline"
 							size={20}
 							color={colors.light.mutedForeground}
 							style={styles.inputIcon}
 						/>
 						<TextInput
 							style={styles.input}
-							placeholder='Email'
+							placeholder="Email"
 							placeholderTextColor={colors.light.mutedForeground}
-							keyboardType='email-address'
-							autoCapitalize='none'
+							keyboardType="email-address"
+							autoCapitalize="none"
 							value={email}
 							onChangeText={setEmail}
 						/>
@@ -204,4 +213,3 @@ const styles = StyleSheet.create({
 		fontWeight: '600',
 	},
 });
- 

@@ -9,6 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
 import { useTheme } from '../contexts/ThemeContext';
+import { validateSearchQuery } from '../utils/validation';
 
 type SearchBarProps = {
 	value: string;
@@ -20,6 +21,7 @@ type SearchBarProps = {
 	iconName?: keyof typeof Ionicons.glyphMap;
 	iconSize?: number;
 	iconColor?: string;
+	validateInput?: boolean;
 };
 
 export const SearchBar: React.FC<SearchBarProps> = ({
@@ -32,12 +34,28 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 	iconName = 'search',
 	iconSize = 20,
 	iconColor,
+	validateInput = true,
 }) => {
 	const { theme } = useTheme();
 	const currentColors = colors[theme];
 
 	const handleClear = () => {
 		onChangeText('');
+	};
+
+	const handleChangeText = (text: string) => {
+		if (validateInput && text.trim()) {
+			try {
+				validateSearchQuery(text);
+				onChangeText(text);
+			} catch (error) {
+				// Silently ignore validation errors for search input
+				// as users should be able to type freely
+				onChangeText(text);
+			}
+		} else {
+			onChangeText(text);
+		}
 	};
 
 	const finalIconColor = iconColor || currentColors.mutedForeground;
@@ -68,12 +86,12 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 					placeholder={placeholder}
 					placeholderTextColor={currentColors.mutedForeground}
 					value={value}
-					onChangeText={onChangeText}
+					onChangeText={handleChangeText}
 				/>
 				{showClearButton && value.length > 0 && (
 					<TouchableOpacity onPress={handleClear} style={styles.clearButton}>
 						<Ionicons
-							name='close-circle'
+							name="close-circle"
 							size={iconSize}
 							color={finalIconColor}
 						/>
