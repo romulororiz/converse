@@ -51,4 +51,29 @@ export type ChatSession = {
 	created_at: string;
 	updated_at: string;
 };
- 
+
+export type UserProfile = {
+	id: string;
+	email: string;
+	full_name: string | null;
+	avatar_url: string | null;
+	bio: string | null;
+	reading_preferences: string | null;
+	favorite_genres: string | null;
+	reading_goals: string | null;
+	preferences: {
+		notifications: boolean;
+		darkMode: boolean;
+		emailUpdates: boolean;
+		readingGoals: boolean;
+	} | null;
+	// Subscription fields
+	subscription_plan: 'free' | 'premium' | 'trial';
+	subscription_status: 'active' | 'inactive' | 'cancelled';
+	subscription_expires_at: string | null;
+	message_count: number;
+	message_limit: number;
+	last_message_reset_date: string;
+	created_at: string;
+	updated_at: string;
+};

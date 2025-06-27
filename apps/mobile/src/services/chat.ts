@@ -3,6 +3,7 @@ import type { Database } from '../lib/supabase';
 import { secureApiRequest, apiKeyManager } from '../utils/apiSecurity';
 import { validateChatMessage, sanitizeInput } from '../utils/validation';
 import { getCurrentUserProfile, getUserContextForAI } from './profile';
+import { canSendMessage, incrementMessageCount } from './subscription';
 
 type ChatSession = Database['public']['Tables']['chat_sessions']['Row'] & {
 	books?: {
@@ -165,8 +166,30 @@ export async function sendMessageAndGetAIResponse(
 	userMessage: string
 ): Promise<{ userMessage: Message; aiMessage: Message }> {
 	try {
+		// Get current user
+		const {
+			data: { user },
+		} = await supabase.auth.getUser();
+
+		if (!user) {
+			throw new Error('User not authenticated');
+		}
+
+		// Check message limit before sending
+		const messageLimit = await canSendMessage(user.id);
+		if (!messageLimit.canSend) {
+			throw new Error(
+				messageLimit.plan === 'free'
+					? `You've reached your daily message limit of ${messageLimit.limit} messages. Upgrade to premium for unlimited messages!`
+					: 'Unable to send message. Please try again.'
+			);
+		}
+
 		// First, save the user message
 		const userMsg = await sendMessage(sessionId, userMessage, 'user');
+
+		// Increment message count for free users
+		await incrementMessageCount(user.id, sessionId);
 
 		// Get session with book data
 		const { data: session, error: sessionError } = await supabase

@@ -2,6 +2,14 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
+import { useTheme } from '../contexts/ThemeContext';
+
+// Props for the header
+// - showBackButton: show/hide back button
+// - onBackPress: handler for back button
+// - rightComponent: e.g., MessageCounterBadge
+// - containerStyle, titleStyle, etc. for overrides
+// - backgroundColor, backButtonIconName, etc. for customizations
 
 type ScreenHeaderProps = {
 	title: string;
@@ -25,13 +33,24 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
 	containerStyle,
 	titleStyle,
 	backButtonStyle,
-	backgroundColor = colors.light.cardForeground,
 	backButtonIconName = 'arrow-back',
 	backButtonIconSize = 24,
-	backButtonIconColor = colors.light.foreground,
 }) => {
+	const { theme } = useTheme();
+	const currentColors = colors[theme];
+
 	return (
-		<View style={[styles.header, { backgroundColor }, containerStyle]}>
+		<View
+			style={[
+				styles.header,
+				{
+					backgroundColor: currentColors.card,
+					borderBottomColor: currentColors.border,
+				},
+				containerStyle,
+			]}
+		>
+			{/* Left: Back button or placeholder */}
 			{showBackButton ? (
 				<TouchableOpacity
 					style={[styles.backButton, backButtonStyle]}
@@ -40,15 +59,26 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
 					<Ionicons
 						name={backButtonIconName}
 						size={backButtonIconSize}
-						color={backButtonIconColor}
+						color={currentColors.foreground}
 					/>
 				</TouchableOpacity>
 			) : (
 				<View style={styles.backButton} />
 			)}
 
-			<Text style={[styles.headerTitle, titleStyle]}>{title}</Text>
+			{/* Center: Title */}
+			<Text
+				style={[
+					styles.headerTitle,
+					titleStyle,
+					{ color: currentColors.foreground },
+				]}
+				numberOfLines={1}
+			>
+				{title}
+			</Text>
 
+			{/* Right: Custom component or placeholder */}
 			{rightComponent ? (
 				<View style={styles.rightComponent}>{rightComponent}</View>
 			) : (
@@ -67,7 +97,6 @@ const styles = StyleSheet.create({
 		paddingVertical: 16,
 		paddingTop: 20,
 		borderBottomWidth: 1,
-		borderBottomColor: colors.light.border,
 	},
 	backButton: {
 		padding: 4,
@@ -77,7 +106,6 @@ const styles = StyleSheet.create({
 	headerTitle: {
 		fontSize: 18,
 		fontWeight: '600',
-		color: colors.light.foreground,
 		textAlign: 'center',
 		flex: 1,
 	},

@@ -22,7 +22,10 @@ import { SwipeableChatItem } from '../components/SwipeableChatItem';
 import { EmptyState } from '../components/EmptyState';
 import { SearchBar } from '../components/SearchBar';
 import { SkeletonLoader } from '../components/SkeletonLoader';
+import { MessageCounterBadge } from '../components/MessageCounterBadge';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { PremiumPaywallDrawer } from '../components/PremiumPaywallDrawer';
+import { ScreenHeader } from '../components';
 
 const { width } = Dimensions.get('window');
 
@@ -53,6 +56,8 @@ export default function ChatsScreen() {
 	const { theme, isDark } = useTheme();
 	const currentColors = colors[theme];
 	const navigation = useNavigation<NavigationProp>();
+	const [badgeRefreshKey, setBadgeRefreshKey] = useState(0);
+	const [showPaywall, setShowPaywall] = useState(false);
 
 	useEffect(() => {
 		if (user?.id) {
@@ -65,6 +70,7 @@ export default function ChatsScreen() {
 		React.useCallback(() => {
 			if (user?.id) {
 				loadChats();
+				setBadgeRefreshKey(k => k + 1); // Force badge refresh on focus
 			}
 		}, [user?.id])
 	);
@@ -164,8 +170,8 @@ export default function ChatsScreen() {
 						size: 64,
 						color: currentColors.mutedForeground,
 					}}
-					title='Please sign in'
-					subtitle='Sign in to view your conversations'
+					title="Please sign in"
+					subtitle="Sign in to view your conversations"
 					containerStyle={styles.centerContainer}
 				/>
 			</SafeAreaView>
@@ -229,32 +235,20 @@ export default function ChatsScreen() {
 				/>
 
 				{/* Header */}
-				<View
-					style={[
-						styles.header,
-						{
-							backgroundColor: currentColors.card,
-							borderBottomColor: currentColors.border,
-						},
-					]}
-				>
-					<TouchableOpacity
-						style={styles.backButton}
-						onPress={() => navigation.goBack()}
-					>
-						<Ionicons
-							name='arrow-back'
-							size={24}
-							color={currentColors.foreground}
+				<ScreenHeader
+					title="Your Conversations"
+					showBackButton={true}
+					onBackPress={() => navigation.goBack()}
+					rightComponent={
+						<MessageCounterBadge
+							variant="pill"
+							label="FREE MESSAGES"
+							refreshKey={badgeRefreshKey}
+							onPress={() => setShowPaywall(true)}
+							style={{ marginRight: 8 }}
 						/>
-					</TouchableOpacity>
-					<Text
-						style={[styles.headerTitle, { color: currentColors.foreground }]}
-					>
-						Your Conversations
-					</Text>
-					<View style={styles.headerRight} />
-				</View>
+					}
+				/>
 
 				{/* Fixed Content */}
 				<View
@@ -288,7 +282,7 @@ export default function ChatsScreen() {
 					<SearchBar
 						value={searchQuery}
 						onChangeText={setSearchQuery}
-						placeholder='Search conversations...'
+						placeholder="Search conversations..."
 						containerStyle={[
 							styles.searchContainer,
 							{ backgroundColor: currentColors.background },
@@ -321,7 +315,7 @@ export default function ChatsScreen() {
 					showsVerticalScrollIndicator={false}
 					scrollEnabled={true}
 					nestedScrollEnabled={true}
-					contentInsetAdjustmentBehavior='automatic'
+					contentInsetAdjustmentBehavior="automatic"
 					refreshControl={
 						<RefreshControl
 							refreshing={refreshing}
@@ -366,6 +360,13 @@ export default function ChatsScreen() {
 					}
 				/>
 			</SafeAreaView>
+			<PremiumPaywallDrawer
+				visible={showPaywall}
+				onClose={() => setShowPaywall(false)}
+				onPurchase={() => setShowPaywall(false)}
+				onRestore={() => setShowPaywall(false)}
+				onPrivacyPolicy={() => setShowPaywall(false)}
+			/>
 		</GestureHandlerRootView>
 	);
 }
@@ -440,19 +441,22 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		justifyContent: 'space-between',
 		paddingHorizontal: 16,
-		paddingTop: 12,
-		paddingBottom: 16,
+		paddingVertical: 12,
 		borderBottomWidth: 1,
+		maxHeight: 70,
 	},
 	backButton: {
 		padding: 8,
 		marginLeft: -8,
+		flex: 0.3,
 	},
 	headerTitle: {
 		fontSize: 18,
 		fontWeight: '600',
+		flex: 0.75,
 	},
 	headerRight: {
 		width: 40,
+		flex: 0.55,
 	},
 });

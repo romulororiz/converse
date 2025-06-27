@@ -8,6 +8,7 @@ export { VoiceRecorder } from './VoiceRecorder';
 export { ConversationalVoiceChat } from './ConversationalVoiceChat';
 export { PremiumPaywallDrawer } from './PremiumPaywallDrawer';
 export { ModernVoiceVisualizer } from './ModernVoiceVisualizer';
+export { MessageCounterBadge } from './MessageCounterBadge';
 
 // New reusable components
 export { LoadingState } from './LoadingState';

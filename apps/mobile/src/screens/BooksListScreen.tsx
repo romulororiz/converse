@@ -31,6 +31,9 @@ import { BookCover } from '../components/BookCover';
 import { EmptyState } from '../components/EmptyState';
 import { SearchBar } from '../components/SearchBar';
 import { SkeletonLoader } from '../components/SkeletonLoader';
+import { MessageCounterBadge } from '../components/MessageCounterBadge';
+import { PremiumPaywallDrawer } from '../components/PremiumPaywallDrawer';
+import { ScreenHeader } from '../components';
 
 const { width } = Dimensions.get('window');
 
@@ -43,6 +46,8 @@ export default function BooksListScreen({ navigation, route }: any) {
 	const [searchQuery, setSearchQuery] = useState('');
 	const [sortBy, setSortBy] = useState<SortOption>('title');
 	const [error, setError] = useState<string | null>(null);
+	const [badgeRefreshKey, setBadgeRefreshKey] = useState(0);
+	const [showPaywall, setShowPaywall] = useState(false);
 
 	const { theme, isDark } = useTheme();
 	const currentColors = colors[theme];
@@ -107,6 +112,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 			if (books.length === 0) {
 				loadBooks();
 			}
+			setBadgeRefreshKey(k => k + 1); // Force badge refresh on focus
 		}, [])
 	);
 
@@ -273,7 +279,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 			<BookCover
 				uri={item.cover_url}
 				style={styles.bookCover}
-				placeholderIcon='book-outline'
+				placeholderIcon="book-outline"
 				placeholderSize={24}
 			/>
 			<View style={[styles.bookInfo, { borderColor: currentColors.border }]}>
@@ -296,7 +302,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 				</Text>
 				<View style={styles.bookMeta}>
 					<View style={styles.ratingContainer}>
-						<Ionicons name='star' size={12} color={currentColors.primary} />
+						<Ionicons name="star" size={12} color={currentColors.primary} />
 						<Text
 							style={[styles.ratingText, { color: currentColors.foreground }]}
 						>
@@ -352,7 +358,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 						onPress={() => navigation.goBack()}
 					>
 						<Ionicons
-							name='arrow-back'
+							name="arrow-back"
 							size={24}
 							color={currentColors.foreground}
 						/>
@@ -422,7 +428,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 						onPress={() => navigation.goBack()}
 					>
 						<Ionicons
-							name='arrow-back'
+							name="arrow-back"
 							size={24}
 							color={currentColors.foreground}
 						/>
@@ -442,7 +448,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 							size: 64,
 							color: currentColors.mutedForeground,
 						}}
-						title='Unable to load books'
+						title="Unable to load books"
 						subtitle={error}
 						button={{
 							text: 'Try Again',
@@ -465,7 +471,21 @@ export default function BooksListScreen({ navigation, route }: any) {
 			/>
 
 			{/* Header */}
-			<View
+			<ScreenHeader
+				title={screenTitle}
+				showBackButton={true}
+				onBackPress={() => navigation.goBack()}
+				rightComponent={
+					<MessageCounterBadge
+						variant="pill"
+						label="FREE MESSAGES"
+						refreshKey={badgeRefreshKey}
+						onPress={() => setShowPaywall(true)}
+						style={{ marginRight: 8 }}
+					/>
+				}
+			/>
+			{/* <View
 				style={[
 					styles.header,
 					{
@@ -479,7 +499,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 					onPress={() => navigation.goBack()}
 				>
 					<Ionicons
-						name='arrow-back'
+						name="arrow-back"
 						size={24}
 						color={currentColors.foreground}
 					/>
@@ -487,14 +507,23 @@ export default function BooksListScreen({ navigation, route }: any) {
 				<Text style={[styles.headerTitle, { color: currentColors.foreground }]}>
 					{screenTitle}
 				</Text>
-				<TouchableOpacity style={styles.sortButton} onPress={handleSortPress}>
-					<Ionicons
-						name={getSortIcon()}
-						size={20}
-						color={currentColors.primary}
+				<View style={styles.headerRight}>
+					<MessageCounterBadge
+						variant="pill"
+						label="FREE MESSAGES"
+						refreshKey={badgeRefreshKey}
+						onPress={() => setShowPaywall(true)}
+						style={{ marginRight: 8 }}
 					/>
-				</TouchableOpacity>
-			</View>
+					<TouchableOpacity style={styles.sortButton} onPress={handleSortPress}>
+						<Ionicons
+							name={getSortIcon()}
+							size={20}
+							color={currentColors.primary}
+						/>
+					</TouchableOpacity>
+				</View>
+			</View> */}
 
 			{/* Fixed Content */}
 			<View
@@ -527,7 +556,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 				<SearchBar
 					value={searchQuery}
 					onChangeText={setSearchQuery}
-					placeholder='Search books, authors or topics...'
+					placeholder="Search books, authors or topics..."
 					containerStyle={[
 						styles.searchContainer,
 						{ backgroundColor: currentColors.background },
@@ -717,6 +746,15 @@ export default function BooksListScreen({ navigation, route }: any) {
 						: styles.listContainer
 				}
 			/>
+
+			{/* Add PremiumPaywallDrawer at the end of the component */}
+			<PremiumPaywallDrawer
+				visible={showPaywall}
+				onClose={() => setShowPaywall(false)}
+				onPurchase={() => setShowPaywall(false)}
+				onRestore={() => setShowPaywall(false)}
+				onPrivacyPolicy={() => setShowPaywall(false)}
+			/>
 		</SafeAreaView>
 	);
 }
@@ -730,20 +768,23 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		justifyContent: 'space-between',
 		paddingHorizontal: 16,
-		paddingTop: 12,
-		paddingBottom: 16,
+		paddingVertical: 12,
 		borderBottomWidth: 1,
+		maxHeight: 70,
 	},
 	backButton: {
 		padding: 8,
 		marginLeft: -8,
+		flex: 0.3,
 	},
 	headerTitle: {
 		fontSize: 18,
 		fontWeight: '600',
+		flex: 0.75,
 	},
 	headerRight: {
 		width: 40,
+		flex: 0.55,
 	},
 	sortButton: {
 		padding: 8,

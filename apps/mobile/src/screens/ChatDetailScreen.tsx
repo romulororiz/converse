@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
 	View,
 	Text,
@@ -49,6 +49,8 @@ import Animated, {
 	withTiming,
 	withSpring,
 	runOnJS,
+	interpolate,
+	Extrapolate,
 } from 'react-native-reanimated';
 import {
 	getOrCreateChatSession,
@@ -61,6 +63,7 @@ import type { Book, ChatMessage } from '../types/supabase';
 import { PremiumPaywallDrawer } from '../components/PremiumPaywallDrawer';
 import { LinearGradient } from 'expo-linear-gradient';
 import { formatDistanceToNow } from 'date-fns';
+import { canSendMessage } from '../services/subscription';
 
 type RootStackParamList = {
 	ChatDetail: { bookId: string };
@@ -267,6 +270,18 @@ export default function ChatDetailScreen() {
 		setSending(true);
 
 		try {
+			// Check message limit before sending
+			const messageLimit = await canSendMessage(user!.id);
+			if (!messageLimit.canSend) {
+				if (messageLimit.plan === 'free') {
+					// Show paywall for free users who reached their limit
+					setShowPaywall(true);
+					return;
+				} else {
+					throw new Error('Unable to send message. Please try again.');
+				}
+			}
+
 			// Create session if it doesn't exist
 			let currentSessionId = sessionId;
 			if (!currentSessionId) {
@@ -303,7 +318,13 @@ export default function ChatDetailScreen() {
 			// Remove the temp message on error and restore input
 			setMessages(prev => prev.slice(0, -1));
 			setNewMessage(userMessage); // Restore the message if there was an error
-			showAlert('Error', 'Failed to send message');
+
+			// Check if it's a message limit error
+			if (error.message?.includes('daily message limit')) {
+				setShowPaywall(true);
+			} else {
+				showAlert('Error', 'Failed to send message');
+			}
 		} finally {
 			setSending(false);
 		}
@@ -315,6 +336,18 @@ export default function ChatDetailScreen() {
 		setSending(true);
 
 		try {
+			// Check message limit before sending
+			const messageLimit = await canSendMessage(user!.id);
+			if (!messageLimit.canSend) {
+				if (messageLimit.plan === 'free') {
+					// Show paywall for free users who reached their limit
+					setShowPaywall(true);
+					return;
+				} else {
+					throw new Error('Unable to send message. Please try again.');
+				}
+			}
+
 			// Create session if it doesn't exist
 			let currentSessionId = sessionId;
 			if (!currentSessionId) {
@@ -350,7 +383,13 @@ export default function ChatDetailScreen() {
 			console.error('Error sending sample question:', error);
 			// Remove the temp message on error
 			setMessages(prev => prev.slice(0, -1));
-			showAlert('Error', 'Failed to send message');
+
+			// Check if it's a message limit error
+			if (error.message?.includes('daily message limit')) {
+				setShowPaywall(true);
+			} else {
+				showAlert('Error', 'Failed to send message');
+			}
 		} finally {
 			setSending(false);
 		}
@@ -369,6 +408,18 @@ export default function ChatDetailScreen() {
 			setSending(true);
 
 			try {
+				// Check message limit before sending
+				const messageLimit = await canSendMessage(user!.id);
+				if (!messageLimit.canSend) {
+					if (messageLimit.plan === 'free') {
+						// Show paywall for free users who reached their limit
+						setShowPaywall(true);
+						return;
+					} else {
+						throw new Error('Unable to send message. Please try again.');
+					}
+				}
+
 				// Create session if it doesn't exist
 				let currentSessionId = sessionId;
 				if (!currentSessionId) {
@@ -404,7 +455,13 @@ export default function ChatDetailScreen() {
 				console.error('Error sending voice message:', error);
 				// Remove the temp message on error
 				setMessages(prev => prev.slice(0, -1));
-				showAlert('Error', 'Failed to send voice message');
+
+				// Check if it's a message limit error
+				if (error.message?.includes('daily message limit')) {
+					setShowPaywall(true);
+				} else {
+					showAlert('Error', 'Failed to send voice message');
+				}
 			} finally {
 				setSending(false);
 			}
@@ -613,7 +670,7 @@ export default function ChatDetailScreen() {
 								]}
 							>
 								<Ionicons
-									name='library-outline'
+									name="library-outline"
 									size={16}
 									color={currentColors.primary}
 								/>
@@ -772,26 +829,26 @@ export default function ChatDetailScreen() {
 	// Hidden icon preloader to ensure icons are loaded
 	const IconPreloader = () => (
 		<View style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}>
-			<Ionicons name='send' size={20} color={colors.light.primaryForeground} />
-			<Ionicons name='mic' size={20} color={colors.light.primary} />
-			<Ionicons name='chevron-back' size={24} color={colors.light.foreground} />
+			<Ionicons name="send" size={20} color={colors.light.primaryForeground} />
+			<Ionicons name="mic" size={20} color={colors.light.primary} />
+			<Ionicons name="chevron-back" size={24} color={colors.light.foreground} />
 			<Ionicons
-				name='ellipsis-vertical'
+				name="ellipsis-vertical"
 				size={20}
 				color={colors.light.foreground}
 			/>
 			<Ionicons
-				name='share-social-outline'
+				name="share-social-outline"
 				size={20}
 				color={colors.light.foreground}
 			/>
 			<Ionicons
-				name='reload-circle-outline'
+				name="reload-circle-outline"
 				size={20}
 				color={colors.light.foreground}
 			/>
 			<Ionicons
-				name='chatbubbles-outline'
+				name="chatbubbles-outline"
 				size={48}
 				color={colors.light.mutedForeground}
 			/>
@@ -806,6 +863,34 @@ export default function ChatDetailScreen() {
 		setShowConversationalVoice(true);
 	};
 
+	// Add paywall handlers
+	const handlePremiumPurchase = async (
+		plan: 'weekly' | 'monthly' | 'yearly'
+	) => {
+		try {
+			await upgradeToPremium(user!.id, plan === 'weekly' ? 'monthly' : plan);
+			setShowPaywall(false);
+			showAlert(
+				'Success',
+				'Premium features activated! You now have unlimited messages.'
+			);
+		} catch (error) {
+			console.error('Error upgrading to premium:', error);
+			showAlert('Error', 'Failed to upgrade. Please try again.');
+		}
+	};
+
+	const handlePremiumRestore = () => {
+		// TODO: Implement restore purchase logic
+		setShowPaywall(false);
+		showAlert('Success', 'Premium features restored!');
+	};
+
+	const handlePrivacyPolicy = () => {
+		// TODO: Navigate to privacy policy or open web view
+		showAlert('Privacy Policy', 'Privacy policy would open here');
+	};
+
 	if (loading) {
 		return (
 			<SafeAreaView
@@ -814,7 +899,7 @@ export default function ChatDetailScreen() {
 					{ backgroundColor: currentColors.background },
 				]}
 			>
-				<ActivityIndicator size='large' color={currentColors.primary} />
+				<ActivityIndicator size="large" color={currentColors.primary} />
 			</SafeAreaView>
 		);
 	}
@@ -875,7 +960,7 @@ export default function ChatDetailScreen() {
 								}}
 							>
 								<Ionicons
-									name='chevron-back'
+									name="chevron-back"
 									size={24}
 									color={currentColors.foreground}
 								/>
@@ -885,7 +970,7 @@ export default function ChatDetailScreen() {
 								<BookCover
 									uri={book?.cover_url}
 									style={styles.bookCover}
-									placeholderIcon='book-outline'
+									placeholderIcon="book-outline"
 									placeholderSize={20}
 								/>
 								<View style={styles.bookDetails}>
@@ -914,7 +999,7 @@ export default function ChatDetailScreen() {
 									onPress={() => setShowDropdown(true)}
 								>
 									<Ionicons
-										name='ellipsis-vertical'
+										name="ellipsis-vertical"
 										size={28}
 										color={currentColors.foreground}
 									/>
@@ -948,7 +1033,7 @@ export default function ChatDetailScreen() {
 													]}
 												>
 													<Ionicons
-														name='chatbubbles-outline'
+														name="chatbubbles-outline"
 														size={48}
 														color={currentColors.primary}
 													/>
@@ -982,7 +1067,7 @@ export default function ChatDetailScreen() {
 											keyExtractor={item => item.id}
 											contentContainerStyle={styles.messagesList}
 											showsVerticalScrollIndicator={false}
-											keyboardShouldPersistTaps='always'
+											keyboardShouldPersistTaps="always"
 											onScroll={handleScroll}
 											scrollEventThrottle={32}
 											removeClippedSubviews={true}
@@ -1044,7 +1129,7 @@ export default function ChatDetailScreen() {
 												styles.textInput,
 												{ color: currentColors.foreground },
 											]}
-											placeholder='Type your message...'
+											placeholder="Type your message..."
 											placeholderTextColor={currentColors.mutedForeground}
 											value={newMessage}
 											onChangeText={setNewMessage}
@@ -1066,7 +1151,7 @@ export default function ChatDetailScreen() {
 											disabled={!newMessage.trim() || sending}
 										>
 											<Ionicons
-												name='send'
+												name="send"
 												size={20}
 												color={
 													newMessage.trim() && !sending
@@ -1084,7 +1169,7 @@ export default function ChatDetailScreen() {
 											disabled={sending}
 										>
 											<Ionicons
-												name='mic'
+												name="mic"
 												size={20}
 												color={
 													sending
@@ -1145,7 +1230,7 @@ export default function ChatDetailScreen() {
 							activeOpacity={0.7}
 						>
 							<Ionicons
-								name='share-social-outline'
+								name="share-social-outline"
 								size={20}
 								color={currentColors.foreground}
 								style={styles.dropdownIcon}
@@ -1173,7 +1258,7 @@ export default function ChatDetailScreen() {
 							activeOpacity={0.7}
 						>
 							<Ionicons
-								name='reload-circle-outline'
+								name="reload-circle-outline"
 								size={20}
 								color={currentColors.foreground}
 								style={styles.dropdownIcon}
@@ -1191,23 +1276,14 @@ export default function ChatDetailScreen() {
 				</Animated.View>
 			)}
 
-			{/* ** TODO: Add premium paywall drawer ***/}
-			{/* <PremiumPaywallDrawer
+			{/* Premium Paywall Drawer */}
+			<PremiumPaywallDrawer
 				visible={showPaywall}
 				onClose={() => setShowPaywall(false)}
-				onPurchase={plan => {
-					// TODO: Integrate real purchase logic
-					setShowPaywall(false);
-					// Optionally set isPremium to true after purchase
-				}}
-				onRestore={() => {
-					// TODO: Integrate restore purchase logic
-					setShowPaywall(false);
-				}}
-				onPrivacyPolicy={() => {
-					// TODO: Show privacy policy
-				}}
-			/> */}
+				onPurchase={handlePremiumPurchase}
+				onRestore={handlePremiumRestore}
+				onPrivacyPolicy={handlePrivacyPolicy}
+			/>
 		</GestureHandlerRootView>
 	);
 }

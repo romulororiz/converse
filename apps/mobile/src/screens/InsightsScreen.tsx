@@ -22,6 +22,7 @@ import {
 	type InsightCard,
 	type ChatGoal,
 } from '../services/insights';
+import { ScreenHeader } from '../components';
 
 const { width } = Dimensions.get('window');
 
@@ -252,30 +253,11 @@ export default function InsightsScreen() {
 			/>
 
 			{/* Header */}
-			<View
-				style={[
-					styles.header,
-					{
-						backgroundColor: currentColors.card,
-						borderBottomColor: currentColors.border,
-					},
-				]}
-			>
-				<TouchableOpacity
-					style={styles.backButton}
-					onPress={() => navigation.goBack()}
-				>
-					<Ionicons
-						name="arrow-back"
-						size={24}
-						color={currentColors.foreground}
-					/>
-				</TouchableOpacity>
-				<Text style={[styles.headerTitle, { color: currentColors.foreground }]}>
-					Insights
-				</Text>
-				<View style={styles.headerRight} />
-			</View>
+			<ScreenHeader
+				title="Insights"
+				showBackButton={true}
+				onBackPress={() => navigation.goBack()}
+			/>
 
 			{/* Fixed Header */}
 			<View
