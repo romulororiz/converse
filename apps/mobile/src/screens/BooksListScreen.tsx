@@ -34,6 +34,7 @@ import { SkeletonLoader } from '../components/SkeletonLoader';
 import { MessageCounterBadge } from '../components/MessageCounterBadge';
 import { PremiumPaywallDrawer } from '../components/PremiumPaywallDrawer';
 import { ScreenHeader } from '../components';
+import { useSubscription } from '../contexts/SubscriptionContext';
 
 const { width } = Dimensions.get('window');
 
@@ -51,6 +52,11 @@ export default function BooksListScreen({ navigation, route }: any) {
 
 	const { theme, isDark } = useTheme();
 	const currentColors = colors[theme];
+	const {
+		subscription,
+		loading: subLoading,
+		refreshSubscription,
+	} = useSubscription();
 
 	// Get route parameters
 	const { category, categoryId, categories, tags, title } = route?.params || {};
@@ -330,6 +336,18 @@ export default function BooksListScreen({ navigation, route }: any) {
 
 	const description = getDescription();
 
+	const handleBadgePress = () => {
+		if (subscription?.subscription_plan === 'free') {
+			setShowPaywall(true);
+		}
+		// else: optionally show a toast "You're already premium!"
+	};
+
+	const handlePaywallPurchase = () => {
+		setShowPaywall(false);
+		refreshSubscription();
+	};
+
 	if (loading && books.length === 0) {
 		return (
 			<SafeAreaView
@@ -368,7 +386,25 @@ export default function BooksListScreen({ navigation, route }: any) {
 					>
 						{screenTitle}
 					</Text>
-					<View style={styles.headerRight} />
+					<View style={styles.headerRight}>
+						<MessageCounterBadge
+							variant="pill"
+							label="FREE MESSAGES"
+							refreshKey={badgeRefreshKey}
+							onPress={handleBadgePress}
+							style={{ marginRight: 8 }}
+						/>
+						<TouchableOpacity
+							style={styles.sortButton}
+							onPress={handleSortPress}
+						>
+							<Ionicons
+								name={getSortIcon()}
+								size={20}
+								color={currentColors.primary}
+							/>
+						</TouchableOpacity>
+					</View>
 				</View>
 
 				{/* Fixed Content */}
@@ -438,7 +474,25 @@ export default function BooksListScreen({ navigation, route }: any) {
 					>
 						{screenTitle}
 					</Text>
-					<View style={styles.headerRight} />
+					<View style={styles.headerRight}>
+						<MessageCounterBadge
+							variant="pill"
+							label="FREE MESSAGES"
+							refreshKey={badgeRefreshKey}
+							onPress={handleBadgePress}
+							style={{ marginRight: 8 }}
+						/>
+						<TouchableOpacity
+							style={styles.sortButton}
+							onPress={handleSortPress}
+						>
+							<Ionicons
+								name={getSortIcon()}
+								size={20}
+								color={currentColors.primary}
+							/>
+						</TouchableOpacity>
+					</View>
 				</View>
 
 				<View style={styles.errorContainer}>
@@ -480,50 +534,11 @@ export default function BooksListScreen({ navigation, route }: any) {
 						variant="pill"
 						label="FREE MESSAGES"
 						refreshKey={badgeRefreshKey}
-						onPress={() => setShowPaywall(true)}
+						onPress={handleBadgePress}
 						style={{ marginRight: 8 }}
 					/>
 				}
 			/>
-			{/* <View
-				style={[
-					styles.header,
-					{
-						backgroundColor: currentColors.card,
-						borderBottomColor: currentColors.border,
-					},
-				]}
-			>
-				<TouchableOpacity
-					style={styles.backButton}
-					onPress={() => navigation.goBack()}
-				>
-					<Ionicons
-						name="arrow-back"
-						size={24}
-						color={currentColors.foreground}
-					/>
-				</TouchableOpacity>
-				<Text style={[styles.headerTitle, { color: currentColors.foreground }]}>
-					{screenTitle}
-				</Text>
-				<View style={styles.headerRight}>
-					<MessageCounterBadge
-						variant="pill"
-						label="FREE MESSAGES"
-						refreshKey={badgeRefreshKey}
-						onPress={() => setShowPaywall(true)}
-						style={{ marginRight: 8 }}
-					/>
-					<TouchableOpacity style={styles.sortButton} onPress={handleSortPress}>
-						<Ionicons
-							name={getSortIcon()}
-							size={20}
-							color={currentColors.primary}
-						/>
-					</TouchableOpacity>
-				</View>
-			</View> */}
 
 			{/* Fixed Content */}
 			<View
@@ -751,7 +766,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 			<PremiumPaywallDrawer
 				visible={showPaywall}
 				onClose={() => setShowPaywall(false)}
-				onPurchase={() => setShowPaywall(false)}
+				onPurchase={handlePaywallPurchase}
 				onRestore={() => setShowPaywall(false)}
 				onPrivacyPolicy={() => setShowPaywall(false)}
 			/>

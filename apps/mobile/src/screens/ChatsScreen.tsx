@@ -26,6 +26,7 @@ import { MessageCounterBadge } from '../components/MessageCounterBadge';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PremiumPaywallDrawer } from '../components/PremiumPaywallDrawer';
 import { ScreenHeader } from '../components';
+import { useSubscription } from '../contexts/SubscriptionContext';
 
 const { width } = Dimensions.get('window');
 
@@ -57,6 +58,11 @@ export default function ChatsScreen() {
 	const currentColors = colors[theme];
 	const navigation = useNavigation<NavigationProp>();
 	const [badgeRefreshKey, setBadgeRefreshKey] = useState(0);
+	const {
+		subscription,
+		loading: subLoading,
+		refreshSubscription,
+	} = useSubscription();
 	const [showPaywall, setShowPaywall] = useState(false);
 
 	useEffect(() => {
@@ -152,6 +158,18 @@ export default function ChatsScreen() {
 		/>
 	);
 
+	const handleBadgePress = () => {
+		if (subscription?.subscription_plan === 'free') {
+			setShowPaywall(true);
+		}
+		// else: optionally show a toast "You're already premium!"
+	};
+
+	const handlePaywallPurchase = () => {
+		setShowPaywall(false);
+		refreshSubscription();
+	};
+
 	if (!user) {
 		return (
 			<SafeAreaView
@@ -240,13 +258,15 @@ export default function ChatsScreen() {
 					showBackButton={true}
 					onBackPress={() => navigation.goBack()}
 					rightComponent={
-						<MessageCounterBadge
-							variant="pill"
-							label="FREE MESSAGES"
-							refreshKey={badgeRefreshKey}
-							onPress={() => setShowPaywall(true)}
-							style={{ marginRight: 8 }}
-						/>
+						<View style={styles.headerRight}>
+							<MessageCounterBadge
+								variant="pill"
+								label="FREE MESSAGES"
+								refreshKey={badgeRefreshKey}
+								onPress={handleBadgePress}
+								style={{ marginRight: 8 }}
+							/>
+						</View>
 					}
 				/>
 
@@ -363,7 +383,7 @@ export default function ChatsScreen() {
 			<PremiumPaywallDrawer
 				visible={showPaywall}
 				onClose={() => setShowPaywall(false)}
-				onPurchase={() => setShowPaywall(false)}
+				onPurchase={handlePaywallPurchase}
 				onRestore={() => setShowPaywall(false)}
 				onPrivacyPolicy={() => setShowPaywall(false)}
 			/>
@@ -456,7 +476,6 @@ const styles = StyleSheet.create({
 		flex: 0.75,
 	},
 	headerRight: {
-		width: 40,
 		flex: 0.55,
 	},
 });
