@@ -427,6 +427,7 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 	},
 	searchContainer: {
+		
 		paddingHorizontal: 16,
 		paddingBottom: 15,
 		paddingTop: -10,

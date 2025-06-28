@@ -31,6 +31,68 @@ type NavigationProp = {
 	goBack: () => void;
 };
 
+// Move ProfileField component outside to prevent recreation on every render
+const ProfileField = ({
+	label,
+	value,
+	onChangeText,
+	placeholder,
+	multiline = false,
+	required = false,
+	secureTextEntry = false,
+	labelStyle = {},
+	currentColors,
+}: {
+	label: string;
+	value: string;
+	onChangeText: (text: string) => void;
+	placeholder: string;
+	multiline?: boolean;
+	required?: boolean;
+	secureTextEntry?: boolean;
+	labelStyle?: StyleProp<TextStyle>;
+	currentColors: any;
+}) => (
+	<View style={styles.fieldContainer}>
+		<View style={styles.fieldHeader}>
+			<Text
+				style={[
+					styles.fieldLabel,
+					{ color: currentColors.foreground },
+					label === 'Full Name' && { marginTop: 10 },
+				]}
+			>
+				{label}
+			</Text>
+			{required && (
+				<Text style={[styles.required, { color: currentColors.destructive }]}>
+					*
+				</Text>
+			)}
+		</View>
+		<TextInput
+			style={[
+				styles.textInput,
+				{
+					borderColor: currentColors.border,
+					color: currentColors.foreground,
+					backgroundColor: currentColors.background,
+				},
+				multiline && styles.multilineInput,
+				labelStyle,
+			]}
+			value={value}
+			onChangeText={onChangeText}
+			placeholder={placeholder}
+			placeholderTextColor={currentColors.mutedForeground}
+			multiline={multiline}
+			numberOfLines={multiline ? 3 : 1}
+			textAlignVertical={multiline ? 'top' : 'center'}
+			secureTextEntry={secureTextEntry}
+		/>
+	</View>
+);
+
 export default function AccountSettingsScreen() {
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
@@ -176,65 +238,6 @@ export default function AccountSettingsScreen() {
 		]);
 	};
 
-	const ProfileField = ({
-		label,
-		value,
-		onChangeText,
-		placeholder,
-		multiline = false,
-		required = false,
-		secureTextEntry = false,
-		labelStyle = {},
-	}: {
-		label: string;
-		value: string;
-		onChangeText: (text: string) => void;
-		placeholder: string;
-		multiline?: boolean;
-		required?: boolean;
-		secureTextEntry?: boolean;
-		labelStyle?: StyleProp<TextStyle>;
-	}) => (
-		<View style={styles.fieldContainer}>
-			<View style={styles.fieldHeader}>
-				<Text
-					style={[
-						styles.fieldLabel,
-						{ color: currentColors.foreground },
-						label === 'Full Name' && { marginTop: 10 },
-					]}
-				>
-					{label}
-				</Text>
-				{required && (
-					<Text style={[styles.required, { color: currentColors.destructive }]}>
-						*
-					</Text>
-				)}
-			</View>
-			<TextInput
-				style={[
-					styles.textInput,
-					{
-						borderColor: currentColors.border,
-						color: currentColors.foreground,
-						backgroundColor: currentColors.background,
-					},
-					multiline && styles.multilineInput,
-					labelStyle,
-				]}
-				value={value}
-				onChangeText={onChangeText}
-				placeholder={placeholder}
-				placeholderTextColor={currentColors.mutedForeground}
-				multiline={multiline}
-				numberOfLines={multiline ? 3 : 1}
-				textAlignVertical={multiline ? 'top' : 'center'}
-				secureTextEntry={secureTextEntry}
-			/>
-		</View>
-	);
-
 	if (loading) {
 		return (
 			<SafeAreaView
@@ -320,6 +323,7 @@ export default function AccountSettingsScreen() {
 									placeholder="Enter your full name"
 									labelStyle={styles.fieldLabelFullName}
 									required
+									currentColors={currentColors}
 								/>
 
 								<ProfileField
@@ -328,6 +332,7 @@ export default function AccountSettingsScreen() {
 									onChangeText={setBio}
 									placeholder="Tell us about yourself..."
 									multiline
+									currentColors={currentColors}
 								/>
 
 								<ProfileField
@@ -336,6 +341,7 @@ export default function AccountSettingsScreen() {
 									onChangeText={setReadingPreferences}
 									placeholder="e.g., Fiction, Non-fiction, Mystery..."
 									multiline
+									currentColors={currentColors}
 								/>
 
 								<ProfileField
@@ -344,6 +350,7 @@ export default function AccountSettingsScreen() {
 									onChangeText={setReadingGoals}
 									placeholder="e.g., Read 20 books this year..."
 									multiline
+									currentColors={currentColors}
 								/>
 
 								<TouchableOpacity
@@ -523,6 +530,7 @@ export default function AccountSettingsScreen() {
 									placeholder="Enter current password"
 									required
 									secureTextEntry
+									currentColors={currentColors}
 								/>
 
 								<ProfileField
@@ -532,6 +540,7 @@ export default function AccountSettingsScreen() {
 									placeholder="Enter new password"
 									required
 									secureTextEntry
+									currentColors={currentColors}
 								/>
 
 								<ProfileField
@@ -541,6 +550,7 @@ export default function AccountSettingsScreen() {
 									placeholder="Confirm new password"
 									required
 									secureTextEntry
+									currentColors={currentColors}
 								/>
 
 								<TouchableOpacity

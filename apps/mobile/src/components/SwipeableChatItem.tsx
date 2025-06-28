@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
 import { useTheme } from '../contexts/ThemeContext';
@@ -32,6 +32,10 @@ type ChatItemData = {
 		title: string;
 		author?: string;
 		cover_url: string | null;
+		year?: number | null;
+		metadata?: {
+			rating?: number | null;
+		} | null;
 	};
 };
 
@@ -138,7 +142,7 @@ const SwipeableRow = ({
 				<Animated.View
 					style={[styles.deleteButtonContainer, deleteButtonStyle]}
 				>
-					<Ionicons name='trash' size={20} color='#FFFFFF' />
+					<Ionicons name="trash" size={20} color="#FFFFFF" />
 				</Animated.View>
 			</View>
 
@@ -223,7 +227,7 @@ export const SwipeableChatItem: React.FC<SwipeableChatItemProps> = ({
 						<BookCover
 							uri={item.books?.cover_url}
 							style={styles.bookCover}
-							placeholderIcon='book-outline'
+							placeholderIcon="book-outline"
 							placeholderSize={24}
 						/>
 
@@ -245,7 +249,26 @@ export const SwipeableChatItem: React.FC<SwipeableChatItemProps> = ({
 									numberOfLines={1}
 								>
 									{item.books.author}
+									{item.books.year && ` • ${item.books.year}`}
 								</Text>
+							)}
+							{/* Rating display */}
+							{item.books?.metadata?.rating && (
+								<View style={styles.ratingContainer}>
+									<Ionicons
+										name="star"
+										size={12}
+										color={currentColors.primary}
+									/>
+									<Text
+										style={[
+											styles.ratingText,
+											{ color: currentColors.foreground },
+										]}
+									>
+										{item.books.metadata.rating}
+									</Text>
+								</View>
 							)}
 							{item.lastMessage && (
 								<Text
@@ -308,8 +331,8 @@ const styles = StyleSheet.create({
 		position: 'relative',
 	},
 	bookCover: {
-		width: 90,
-		height: 120,
+		width: Platform.OS === 'ios' ? 90 : 100,
+		height: Platform.OS === 'ios' ? 120 : 150,
 		borderRadius: 2,
 		overflow: 'hidden',
 		marginRight: 8,
@@ -335,7 +358,7 @@ const styles = StyleSheet.create({
 		marginBottom: 2,
 	},
 	bookAuthor: {
-		fontSize: 14,
+		fontSize: 12,
 		marginBottom: 4,
 	},
 	timeContainer: {
@@ -372,9 +395,20 @@ const styles = StyleSheet.create({
 		fontSize: 12,
 		fontStyle: 'italic',
 		marginTop: -2,
-		width: '65%',
+		width: '60%',
 		position: 'absolute',
 		bottom: 5,
 		left: 0,
+	},
+	ratingContainer: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		marginTop: 2,
+		marginBottom: 4,
+	},
+	ratingText: {
+		fontSize: 12,
+		marginLeft: 4,
+		fontWeight: '500',
 	},
 });

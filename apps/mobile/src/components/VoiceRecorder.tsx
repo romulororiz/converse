@@ -11,10 +11,19 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
-import * as Speech from 'expo-speech';
 import { colors } from '../utils/colors';
-import { validateChatMessage, sanitizeInput, validateVoiceTranscription } from '../utils/validation';
+import {
+	validateChatMessage,
+	sanitizeInput,
+	validateVoiceTranscription,
+} from '../utils/validation';
 import { secureApiRequest, apiKeyManager } from '../utils/apiSecurity';
+import {
+	textToSpeech,
+	selectVoiceForBook,
+	VOICE_CONFIGS,
+	DEFAULT_VOICE_SETTINGS,
+} from '../services/elevenlabs';
 
 interface VoiceRecorderProps {
 	onTranscriptionComplete: (text: string) => void;
@@ -41,6 +50,7 @@ export default function VoiceRecorder({
 	const [transcribedText, setTranscribedText] = useState('');
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [aiResponse, setAiResponse] = useState('');
+	const [currentAudio, setCurrentAudio] = useState<Audio.Sound | null>(null);
 
 	// Animation values
 	const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -54,171 +64,6 @@ export default function VoiceRecorder({
 	const smokeOpacity1 = useRef(new Animated.Value(0.3)).current;
 	const smokeOpacity2 = useRef(new Animated.Value(0.2)).current;
 	const smokeOpacity3 = useRef(new Animated.Value(0.4)).current;
-
-	// Voice selection based on author gender and book characteristics
-	const getVoiceForBook = () => {
-		if (!bookAuthor || !bookId) {
-			return { pitch: 1.0, rate: 0.9 }; // Default voice
-		}
-
-		// Known female authors database
-		const femaleAuthors = [
-			'jane austen',
-			'charlotte brontë',
-			'emily brontë',
-			'virginia woolf',
-			'george eliot',
-			'edith wharton',
-			'willa cather',
-			'louisa may alcott',
-			'agatha christie',
-			'harper lee',
-			'toni morrison',
-			'maya angelou',
-			'margaret atwood',
-			'j.k. rowling',
-			'gillian flynn',
-			'donna tartt',
-			'zadie smith',
-			'chimamanda ngozi adichie',
-			'octavia butler',
-			'ursula k. le guin',
-			'sylvia plath',
-			"flannery o'connor",
-			'zora neale hurston',
-			'alice walker',
-			'simone de beauvoir',
-			'ayn rand',
-			'pearl s. buck',
-			'gertrude stein',
-			'anne rice',
-			'joyce carol oates',
-			'alice munro',
-			'doris lessing',
-			'nadine gordimer',
-		];
-
-		// Known male authors database
-		const maleAuthors = [
-			'william shakespeare',
-			'charles dickens',
-			'mark twain',
-			'ernest hemingway',
-			'f. scott fitzgerald',
-			'george orwell',
-			'j.d. salinger',
-			'john steinbeck',
-			'william faulkner',
-			'herman melville',
-			'nathaniel hawthorne',
-			'edgar allan poe',
-			'oscar wilde',
-			'james joyce',
-			'franz kafka',
-			'leo tolstoy',
-			'fyodor dostoevsky',
-			'gabriel garcía márquez',
-			'jorge luis borges',
-			'milan kundera',
-			'isaac asimov',
-			'ray bradbury',
-			'arthur c. clarke',
-			'stephen king',
-			'dan brown',
-			'john grisham',
-			'michael crichton',
-			'tom clancy',
-			'jack kerouac',
-			'allen ginsberg',
-			'kurt vonnegut',
-			'joseph heller',
-			'norman mailer',
-			'philip roth',
-			'saul bellow',
-		];
-
-		const authorLower = bookAuthor.toLowerCase();
-		const isKnownFemale = femaleAuthors.some(author =>
-			authorLower.includes(author)
-		);
-		const isKnownMale = maleAuthors.some(author =>
-			authorLower.includes(author)
-		);
-
-		// Determine gender based on known authors or common patterns
-		let isFemale = false;
-		if (isKnownFemale) {
-			isFemale = true;
-		} else if (!isKnownMale) {
-			// Check for common female name patterns if not in known lists
-			const femaleNamePatterns = [
-				'jane',
-				'mary',
-				'elizabeth',
-				'emma',
-				'charlotte',
-				'emily',
-				'anne',
-				'margaret',
-				'sarah',
-				'lisa',
-				'jennifer',
-				'jessica',
-				'ashley',
-				'michelle',
-				'kimberly',
-				'amy',
-				'donna',
-				'carol',
-				'susan',
-				'helen',
-				'patricia',
-				'linda',
-				'barbara',
-				'maria',
-				'nancy',
-				'dorothy',
-				'sandra',
-				'betty',
-				'ruth',
-				'sharon',
-				'diana',
-			];
-			isFemale = femaleNamePatterns.some(name => authorLower.includes(name));
-		}
-
-		// Create unique voice characteristics for each book
-		const bookHash = bookId
-			.split('')
-			.reduce((acc, char) => acc + char.charCodeAt(0), 0);
-		const voiceVariation = (bookHash % 3) + 1; // 1, 2, or 3
-
-		if (isFemale) {
-			// Female voices - higher pitch, varied rates
-			switch (voiceVariation) {
-				case 1:
-					return { pitch: 1.3, rate: 0.85 }; // Higher, slower - wise/mature
-				case 2:
-					return { pitch: 1.2, rate: 0.95 }; // Medium-high, normal - friendly
-				case 3:
-					return { pitch: 1.4, rate: 0.9 }; // Highest, slightly slow - youthful
-				default:
-					return { pitch: 1.3, rate: 0.9 };
-			}
-		} else {
-			// Male voices - lower pitch, varied rates
-			switch (voiceVariation) {
-				case 1:
-					return { pitch: 0.8, rate: 0.85 }; // Lower, slower - deep/authoritative
-				case 2:
-					return { pitch: 0.9, rate: 0.95 }; // Medium-low, normal - conversational
-				case 3:
-					return { pitch: 0.75, rate: 0.9 }; // Lowest, slightly slow - dramatic
-				default:
-					return { pitch: 0.8, rate: 0.9 };
-			}
-		}
-	};
 
 	// Preload icons to prevent loading delay
 	useEffect(() => {
@@ -234,9 +79,9 @@ export default function VoiceRecorder({
 	// Hidden icon preloader to ensure icons are loaded
 	const IconPreloader = () => (
 		<View style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}>
-			<Ionicons name='close' size={24} color={colors.light.foreground} />
-			<Ionicons name='mic' size={40} color={colors.light.primary} />
-			<Ionicons name='stop' size={30} color={colors.light.background} />
+			<Ionicons name="close" size={24} color={colors.light.foreground} />
+			<Ionicons name="mic" size={40} color={colors.light.primary} />
+			<Ionicons name="stop" size={30} color={colors.light.background} />
 		</View>
 	);
 
@@ -557,16 +402,29 @@ CRITICAL LANGUAGE INSTRUCTION:
 	const playAIResponse = async (text: string) => {
 		try {
 			setIsPlaying(true);
-			const voiceSettings = getVoiceForBook();
+			const voiceId = selectVoiceForBook(bookAuthor, bookId, bookTitle);
 
-			await Speech.speak(text, {
-				language: 'en-US',
-				pitch: voiceSettings.pitch,
-				rate: voiceSettings.rate,
-			});
+			const audioUri = await textToSpeech(
+				text,
+				voiceId,
+				DEFAULT_VOICE_SETTINGS
+			);
+			if (audioUri) {
+				const sound = new Audio.Sound();
+				await sound.loadAsync({ uri: audioUri });
+				setCurrentAudio(sound);
+				await sound.playAsync();
+
+				// Wait for playback to complete
+				sound.setOnPlaybackStatusUpdate(status => {
+					if (status.isLoaded && status.didJustFinish) {
+						setIsPlaying(false);
+						setCurrentAudio(null);
+					}
+				});
+			}
 		} catch (error) {
 			console.error('Failed to play AI response:', error);
-		} finally {
 			setIsPlaying(false);
 		}
 	};
@@ -587,9 +445,11 @@ CRITICAL LANGUAGE INSTRUCTION:
 		if (recording) {
 			recording.stopAndUnloadAsync();
 		}
-		if (isPlaying) {
-			Speech.stop();
+		if (currentAudio) {
+			currentAudio.stopAsync();
+			setCurrentAudio(null);
 		}
+		setIsPlaying(false);
 		onCancel();
 	};
 
@@ -599,7 +459,7 @@ CRITICAL LANGUAGE INSTRUCTION:
 		<Modal
 			transparent
 			visible={visible}
-			animationType='fade'
+			animationType="fade"
 			onRequestClose={handleCancel}
 		>
 			<IconPreloader />
@@ -616,7 +476,7 @@ CRITICAL LANGUAGE INSTRUCTION:
 					<View style={styles.header}>
 						<TouchableOpacity onPress={handleCancel} style={styles.closeButton}>
 							<Ionicons
-								name='close'
+								name="close"
 								size={24}
 								color={colors.light.foreground}
 							/>
@@ -636,7 +496,7 @@ CRITICAL LANGUAGE INSTRUCTION:
 									style={styles.micButton}
 									onPress={startRecording}
 								>
-									<Ionicons name='mic' size={40} color={colors.light.primary} />
+									<Ionicons name="mic" size={40} color={colors.light.primary} />
 								</TouchableOpacity>
 							</View>
 						)}
@@ -655,7 +515,7 @@ CRITICAL LANGUAGE INSTRUCTION:
 									onPress={stopRecording}
 								>
 									<Ionicons
-										name='stop'
+										name="stop"
 										size={30}
 										color={colors.light.background}
 									/>

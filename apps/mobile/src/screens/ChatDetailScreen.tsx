@@ -1374,8 +1374,8 @@ const styles = StyleSheet.create({
 		flex: 1,
 	},
 	bookCover: {
-		width: 75,
-		height: '100%',
+		width: 70,
+		height: 100,
 		borderRadius: 2,
 		overflow: 'hidden',
 		marginRight: 12,

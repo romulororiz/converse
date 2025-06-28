@@ -12,6 +12,7 @@ import {
 	StatusBar,
 	RefreshControl,
 	Dimensions,
+	Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
@@ -35,6 +36,7 @@ import { MessageCounterBadge } from '../components/MessageCounterBadge';
 import { PremiumPaywallDrawer } from '../components/PremiumPaywallDrawer';
 import { ScreenHeader } from '../components';
 import { useSubscription } from '../contexts/SubscriptionContext';
+import { deviceType } from 'expo-device';
 
 const { width } = Dimensions.get('window');
 
@@ -318,7 +320,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 					<Text
 						style={[styles.yearText, { color: currentColors.mutedForeground }]}
 					>
-						{(item.metadata as any)?.year || 'N/A'}
+						{item?.year || 'N/A'}
 					</Text>
 				</View>
 				<Text
@@ -851,14 +853,10 @@ const styles = StyleSheet.create({
 		padding: 12,
 		marginBottom: 16,
 		borderRadius: 12,
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.1,
-		shadowRadius: 8,
-		elevation: 2,
 	},
 	bookCover: {
-		width: 90,
-		height: 120,
+		width: Platform.OS === 'ios' ? 90 : 100,
+		height: Platform.OS === 'ios' ? 120 : 150,
 		marginRight: 16,
 		borderRadius: 2,
 	},
@@ -869,7 +867,7 @@ const styles = StyleSheet.create({
 		borderBottomWidth: 1,
 	},
 	bookTitle: {
-		fontSize: 16,
+		fontSize: 18,
 		fontWeight: '600',
 		marginBottom: 4,
 		lineHeight: 20,
@@ -897,7 +895,7 @@ const styles = StyleSheet.create({
 		fontSize: 12,
 	},
 	bookDescription: {
-		fontSize: 12,
+		fontSize: Platform.OS === 'ios' ? 18 : 12,
 		lineHeight: 16,
 	},
 	tagsContainer: {

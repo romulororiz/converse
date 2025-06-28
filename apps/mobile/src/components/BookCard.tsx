@@ -1,17 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BookCover } from './BookCover';
 import { colors } from '../utils/colors';
-
-type Book = {
-	id: string;
-	title: string;
-	author?: string;
-	description?: string;
-	cover_url?: string;
-	metadata?: any;
-};
+import { Book } from '../types/supabase';
 
 type BookCardProps = {
 	book: Book;
@@ -32,8 +24,8 @@ export const BookCard: React.FC<BookCardProps> = ({
 	variant = 'carousel',
 	style,
 	activeOpacity = 0.7,
-	showRating = false,
-	showYear = false,
+	showRating = true,
+	showYear = true,
 	showDescription = false,
 	titleLines = 2,
 	descriptionLines = 2,
@@ -52,7 +44,7 @@ export const BookCard: React.FC<BookCardProps> = ({
 				<BookCover
 					uri={book.cover_url}
 					style={styles.listCover}
-					placeholderIcon='book-outline'
+					placeholderIcon="book-outline"
 					placeholderSize={24}
 				/>
 				<View style={styles.listInfo}>
@@ -66,21 +58,24 @@ export const BookCard: React.FC<BookCardProps> = ({
 						<View style={styles.listMeta}>
 							{showRating && (
 								<View style={styles.ratingContainer}>
-									<Ionicons name='star' size={12} color={colors.light.primary} />
+									<Ionicons
+										name="star"
+										size={12}
+										color={colors.light.primary}
+									/>
 									<Text style={styles.ratingText}>
 										{book.metadata?.rating || 'N/A'}
 									</Text>
 								</View>
 							)}
-							{showYear && (
-								<Text style={styles.yearText}>
-									{book.metadata?.year || 'N/A'}
-								</Text>
-							)}
+							{showYear && <Text style={styles.yearText}>{book?.year}</Text>}
 						</View>
 					)}
 					{showDescription && book.description && (
-						<Text style={styles.listDescription} numberOfLines={descriptionLines}>
+						<Text
+							style={styles.listDescription}
+							numberOfLines={descriptionLines}
+						>
 							{book.description}
 						</Text>
 					)}
@@ -100,7 +95,7 @@ export const BookCard: React.FC<BookCardProps> = ({
 				<BookCover
 					uri={book.cover_url}
 					style={styles.carouselCover}
-					placeholderIcon='book-outline'
+					placeholderIcon="book-outline"
 					placeholderSize={32}
 				/>
 			</View>
@@ -153,10 +148,6 @@ const styles = StyleSheet.create({
 		marginBottom: 12,
 		borderWidth: 1,
 		borderColor: colors.light.border,
-		shadowOffset: { width: 0, height: 0.5 },
-		shadowOpacity: 0.1,
-		shadowRadius: 3.84,
-		elevation: 2,
 	},
 	listCover: {
 		width: 60,
@@ -165,6 +156,7 @@ const styles = StyleSheet.create({
 		marginRight: 12,
 	},
 	listInfo: {
+		fontSize: Platform.OS === 'ios' ? 18 : 2,
 		flex: 1,
 		justifyContent: 'space-between',
 	},
@@ -204,4 +196,4 @@ const styles = StyleSheet.create({
 		color: colors.light.mutedForeground,
 		lineHeight: 16,
 	},
-}); 
+});

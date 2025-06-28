@@ -5,6 +5,7 @@ import {
 	StyleSheet,
 	TextInput,
 	TouchableOpacity,
+	Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
@@ -87,6 +88,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 					placeholderTextColor={currentColors.mutedForeground}
 					value={value}
 					onChangeText={handleChangeText}
+					textAlignVertical={Platform.OS === 'android' ? 'center' : undefined}
 				/>
 				{showClearButton && value.length > 0 && (
 					<TouchableOpacity onPress={handleClear} style={styles.clearButton}>
@@ -121,7 +123,8 @@ const styles = StyleSheet.create({
 	searchInput: {
 		flex: 1,
 		fontSize: 16,
-		height: 24,
+		height: Platform.OS === 'android' ? 32 : 24,
+		paddingVertical: Platform.OS === 'android' ? 4 : 0,
 	},
 	clearButton: {
 		padding: 4,

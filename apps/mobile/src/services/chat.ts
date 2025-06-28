@@ -10,6 +10,10 @@ type ChatSession = Database['public']['Tables']['chat_sessions']['Row'] & {
 		title: string;
 		cover_url: string | null;
 		author?: string;
+		year?: number | null;
+		metadata?: {
+			rating?: number | null;
+		} | null;
 	};
 };
 
@@ -23,7 +27,7 @@ export async function getOrCreateChatSession(
 		// First, try to find an existing session
 		const { data: existingSession, error: findError } = await supabase
 			.from('chat_sessions')
-			.select('*, books(title, cover_url)')
+			.select('*, books(title, cover_url, year, metadata)')
 			.eq('user_id', userId)
 			.eq('book_id', bookId)
 			.single();
@@ -41,7 +45,7 @@ export async function getOrCreateChatSession(
 					book_id: bookId,
 				},
 			])
-			.select('*, books(title, cover_url)')
+			.select('*, books(title, cover_url, year, metadata)')
 			.single();
 
 		if (createError) throw createError;
@@ -56,7 +60,7 @@ export async function getUserChats(userId: string): Promise<ChatSession[]> {
 	try {
 		const { data, error } = await supabase
 			.from('chat_sessions')
-			.select('*, books(title, author, cover_url)')
+			.select('*, books(title, author, cover_url, year, metadata)')
 			.eq('user_id', userId)
 			.order('updated_at', { ascending: false });
 
@@ -83,7 +87,9 @@ export async function getRecentChats(
 				books (
 					title,
 					author,
-					cover_url
+					cover_url,
+					year,
+					metadata
 				)
 			`
 			)

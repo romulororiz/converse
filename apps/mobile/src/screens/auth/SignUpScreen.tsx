@@ -50,6 +50,8 @@ export default function SignUpScreen() {
 
 		try {
 			setLoading(true);
+
+			// Sign up the user - the database trigger will automatically create the profile
 			const { error: signUpError } = await supabase.auth.signUp({
 				email,
 				password,
@@ -62,24 +64,37 @@ export default function SignUpScreen() {
 
 			if (signUpError) throw signUpError;
 
-			// Create profile in profiles table
-			const { error: profileError } = await supabase.from('profiles').insert([
-				{
-					id: (await supabase.auth.getUser()).data.user?.id,
-					email,
-					full_name: fullName,
-				},
-			]);
-
-			if (profileError) throw profileError;
-
 			Alert.alert(
-				'Success',
-				'Please check your email for verification instructions',
-				[{ text: 'OK', onPress: () => navigation.navigate('Login') }]
+				'Account Created Successfully!',
+				'Please check your email and click the confirmation link to verify your account. You can then login with your email and password.',
+				[
+					{
+						text: 'OK',
+						onPress: () => navigation.navigate('Login'),
+					},
+					{
+						text: 'Resend Email',
+						onPress: async () => {
+							try {
+								const { error } = await supabase.auth.resend({
+									type: 'signup',
+									email: email,
+								});
+								if (error) throw error;
+								Alert.alert('Success', 'Confirmation email resent!');
+							} catch (error) {
+								Alert.alert(
+									'Error',
+									'Failed to resend email: ' + error.message
+								);
+							}
+						},
+					},
+				]
 			);
 		} catch (error) {
-			Alert.alert('Error', error.message);
+			console.error('Signup error:', error);
+			Alert.alert('Error', error.message || 'Failed to create account');
 		} finally {
 			setLoading(false);
 		}

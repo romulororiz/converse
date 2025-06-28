@@ -28,10 +28,10 @@ const AuthStack = createStackNavigator();
 function AuthNavigator() {
 	return (
 		<AuthStack.Navigator screenOptions={{ headerShown: false }}>
-			<AuthStack.Screen name='Login' component={LoginScreen} />
-			<AuthStack.Screen name='SignUp' component={SignUpScreen} />
+			<AuthStack.Screen name="Login" component={LoginScreen} />
+			<AuthStack.Screen name="SignUp" component={SignUpScreen} />
 			<AuthStack.Screen
-				name='ForgotPassword'
+				name="ForgotPassword"
 				component={ForgotPasswordScreen}
 			/>
 		</AuthStack.Navigator>
@@ -41,10 +41,14 @@ function AuthNavigator() {
 function HomeStack() {
 	return (
 		<Stack.Navigator screenOptions={{ headerShown: false }}>
-			<Stack.Screen name='HomeMain' component={HomeScreen} />
-			<Stack.Screen name='BooksList' component={BooksListScreen} />
-			<Stack.Screen name='Categories' component={CategoriesScreen} />
-			<Stack.Screen name='ChatDetail' component={ChatDetailScreen} />
+			<Stack.Screen name="HomeMain" component={HomeScreen} />
+			<Stack.Screen name="BooksList" component={BooksListScreen} />
+			<Stack.Screen name="Categories" component={CategoriesScreen} />
+			<Stack.Screen
+				name="ChatDetail"
+				component={ChatDetailScreen}
+				tabBarStyle={{ display: 'none' }}
+			/>
 		</Stack.Navigator>
 	);
 }
@@ -52,8 +56,12 @@ function HomeStack() {
 function ChatsStack() {
 	return (
 		<Stack.Navigator screenOptions={{ headerShown: false }}>
-			<Stack.Screen name='ChatsMain' component={ChatsScreen} />
-			<Stack.Screen name='ChatDetail' component={ChatDetailScreen} />
+			<Stack.Screen name="ChatsMain" component={ChatsScreen} />
+			<Stack.Screen
+				name="ChatDetail"
+				component={ChatDetailScreen}
+				tabBarStyle={{ display: 'none' }}
+			/>
 		</Stack.Navigator>
 	);
 }
@@ -61,8 +69,8 @@ function ChatsStack() {
 function ProfileStack() {
 	return (
 		<Stack.Navigator screenOptions={{ headerShown: false }}>
-			<Stack.Screen name='ProfileMain' component={ProfileScreen} />
-			<Stack.Screen name='AccountSettings' component={AccountSettingsScreen} />
+			<Stack.Screen name="ProfileMain" component={ProfileScreen} />
+			<Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
 		</Stack.Navigator>
 	);
 }
@@ -72,7 +80,7 @@ function TabNavigator() {
 
 	return (
 		<Tab.Navigator
-			initialRouteName='Home'
+			initialRouteName="Home"
 			screenOptions={({ route }) => ({
 				headerShown: false,
 				tabBarIcon: ({ focused, color, size }) => {
@@ -113,11 +121,11 @@ function TabNavigator() {
 				},
 			})}
 		>
-			<Tab.Screen name='Home' component={HomeStack} />
-			<Tab.Screen name='Chats' component={ChatsStack} />
-			<Tab.Screen name='Discover' component={DiscoverScreen} />
-			<Tab.Screen name='Insights' component={InsightsScreen} />
-			<Tab.Screen name='Profile' component={ProfileStack} />
+			<Tab.Screen name="Home" component={HomeStack} />
+			<Tab.Screen name="Chats" component={ChatsStack} />
+			<Tab.Screen name="Discover" component={DiscoverScreen} />
+			<Tab.Screen name="Insights" component={InsightsScreen} />
+			<Tab.Screen name="Profile" component={ProfileStack} />
 		</Tab.Navigator>
 	);
 }
@@ -128,7 +136,7 @@ export default function AppNavigator() {
 	if (loading) {
 		return (
 			<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-				<ActivityIndicator size='large' color={colors.light.primary} />
+				<ActivityIndicator size="large" color={colors.light.primary} />
 			</View>
 		);
 	}
@@ -137,9 +145,9 @@ export default function AppNavigator() {
 		<NavigationContainer>
 			<Stack.Navigator screenOptions={{ headerShown: false }}>
 				{user ? (
-					<Stack.Screen name='Main' component={TabNavigator} />
+					<Stack.Screen name="Main" component={TabNavigator} />
 				) : (
-					<Stack.Screen name='Auth' component={AuthNavigator} />
+					<Stack.Screen name="Auth" component={AuthNavigator} />
 				)}
 			</Stack.Navigator>
 		</NavigationContainer>

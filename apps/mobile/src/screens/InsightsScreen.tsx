@@ -372,7 +372,7 @@ export default function InsightsScreen() {
 						</View>
 
 						{/* Chat Goals */}
-						<View style={styles.goalsSection}>
+						{/* <View style={styles.goalsSection}>
 							<Text
 								style={[
 									styles.sectionTitle,
@@ -382,7 +382,7 @@ export default function InsightsScreen() {
 								Chat Goals
 							</Text>
 							{goals.map(renderGoalCard)}
-						</View>
+						</View> */}
 					</>
 				)}
 			</ScrollView>

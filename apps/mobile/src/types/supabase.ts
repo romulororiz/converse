@@ -18,13 +18,20 @@ export type Author = {
 	updated_at: string;
 };
 
+export type BookMetadata = {
+	rating?: number | null;
+	genres?: string[] | null;
+	language?: string | null;
+	pages?: number | null;
+};
+
 export type Book = {
 	id: string;
 	title: string;
 	description?: string | null;
 	cover_url?: string | null;
 	content_vector?: number[] | null;
-	metadata?: Json | null;
+	metadata?: BookMetadata | null;
 	created_at: string;
 	updated_at: string;
 	author: string;
