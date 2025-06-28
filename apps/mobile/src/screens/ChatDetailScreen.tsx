@@ -128,7 +128,6 @@ export default function ChatDetailScreen() {
 	const chatContainerRef = useRef<View>(null);
 	const textInputRef = useRef<TextInput>(null);
 	const scrollY = useRef(0);
-	const [keyboardHeight, setKeyboardHeight] = useState(0);
 
 	const { bookId } = route.params;
 
@@ -220,18 +219,6 @@ export default function ChatDetailScreen() {
 			dropdownTranslateY.value = withTiming(0, { duration: 300 });
 		}
 	}, [showDropdown]);
-
-	useEffect(() => {
-		const onKeyboardShow = (e: any) =>
-			setKeyboardHeight(e.endCoordinates.height);
-		const onKeyboardHide = () => setKeyboardHeight(0);
-		const showSub = Keyboard.addListener('keyboardDidShow', onKeyboardShow);
-		const hideSub = Keyboard.addListener('keyboardDidHide', onKeyboardHide);
-		return () => {
-			showSub.remove();
-			hideSub.remove();
-		};
-	}, []);
 
 	const loadChatData = async () => {
 		try {
@@ -981,7 +968,7 @@ export default function ChatDetailScreen() {
 			<SafeAreaView style={styles.safeArea}>
 				<KeyboardAvoidingView
 					style={{ flex: 1 }}
-					behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+					behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
 					keyboardVerticalOffset={0}
 				>
 					<IconPreloader />
@@ -1089,12 +1076,14 @@ export default function ChatDetailScreen() {
 										]}
 									>
 										{messages.length === 0 ? (
-											<View
-												style={{
-													flex: 1,
-													justifyContent: 'center',
-													alignItems: 'center',
-												}}
+											<ScrollView
+												style={styles.emptyStateScrollView}
+												contentContainerStyle={styles.emptyStateScrollContent}
+												showsVerticalScrollIndicator={false}
+												keyboardShouldPersistTaps="always"
+												keyboardDismissMode={
+													Platform.OS === 'ios' ? 'interactive' : 'on-drag'
+												}
 											>
 												<View style={styles.emptyContainer}>
 													<View
@@ -1128,7 +1117,8 @@ export default function ChatDetailScreen() {
 													</Text>
 												</View>
 												{renderSampleQuestions()}
-											</View>
+												<View style={{ height: 100 }} />
+											</ScrollView>
 										) : (
 											<FlatList
 												ref={flatListRef}
@@ -1153,7 +1143,7 @@ export default function ChatDetailScreen() {
 													<>
 														{renderTypingIndicator()}
 														{renderSampleQuestions()}
-														<View style={{ height: 80 }} />
+														<View style={{ height: 20 }} />
 													</>
 												)}
 												keyboardDismissMode={
@@ -1162,45 +1152,61 @@ export default function ChatDetailScreen() {
 											/>
 										)}
 									</View>
-								</ChatErrorBoundary>
 
-								<View style={styles.floatingInputContainer}>
+									{/* Input container moved inside the main layout */}
 									<View
 										style={[
-											styles.inputWrapper,
-											{
-												backgroundColor: currentColors.card,
-												borderColor: currentColors.border,
-											},
+											styles.inputContainer,
+											{ borderTopColor: currentColors.border },
 										]}
 									>
-										<TextInput
-											ref={textInputRef}
+										<View
 											style={[
-												styles.textInput,
-												{ color: currentColors.foreground },
+												styles.inputWrapper,
+												{
+													backgroundColor: currentColors.card,
+													borderColor: currentColors.border,
+												},
 											]}
-											placeholder="Type a message..."
-											placeholderTextColor={currentColors.mutedForeground}
-											value={newMessage}
-											onChangeText={setNewMessage}
-											multiline
-											maxLength={500}
-											onSubmitEditing={Keyboard.dismiss}
-										/>
-										<TouchableOpacity
-											style={styles.sendButton}
-											onPress={handleSendMessage}
-											disabled={!newMessage.trim() || sending}
 										>
-											<Ionicons
-												name="send"
-												size={20}
-												color={currentColors.primary}
+											<TextInput
+												ref={textInputRef}
+												style={[
+													styles.textInput,
+													{ color: currentColors.foreground },
+												]}
+												placeholder="Type a message..."
+												placeholderTextColor={currentColors.mutedForeground}
+												value={newMessage}
+												onChangeText={setNewMessage}
+												multiline
+												maxLength={500}
+												onSubmitEditing={Keyboard.dismiss}
 											/>
-										</TouchableOpacity>
+											<TouchableOpacity
+												style={styles.sendButton}
+												onPress={handleSendMessage}
+												disabled={!newMessage.trim() || sending}
+											>
+												<Ionicons
+													name="send"
+													size={20}
+													color={currentColors.primary}
+												/>
+											</TouchableOpacity>
+											<TouchableOpacity
+												style={styles.micButton}
+												onPress={handleVoiceFeaturePress}
+											>
+												<Ionicons
+													name="mic"
+													size={20}
+													color={currentColors.primary}
+												/>
+											</TouchableOpacity>
+										</View>
 									</View>
-								</View>
+								</ChatErrorBoundary>
 							</View>
 						</View>
 					</View>
@@ -1344,15 +1350,18 @@ const styles = StyleSheet.create({
 	contentContainer: {
 		flex: 1,
 		position: 'relative',
+		display: 'flex',
+		flexDirection: 'column',
 	},
 	messagesContainer: {
 		flex: 1,
+		display: 'flex',
+		flexDirection: 'column',
 	},
 	emptyStateContainer: {
 		flex: 1,
 		justifyContent: 'center',
 		paddingHorizontal: 16,
-		paddingBottom: 90, // Space for input container
 	},
 	backButton: {
 		marginRight: 16,
@@ -1479,13 +1488,11 @@ const styles = StyleSheet.create({
 	},
 	emptyContainer: {
 		alignItems: 'center',
-		paddingTop: 40,
 		paddingHorizontal: 20,
-		flex: 0.6, // Take up part of the available space
+		marginBottom: 40,
 	},
 	emptyIconContainer: {
 		width: 80,
-		height: 80,
 		borderRadius: 40,
 		justifyContent: 'center',
 		alignItems: 'center',
@@ -1507,10 +1514,9 @@ const styles = StyleSheet.create({
 	sampleQuestionsContainer: {
 		width: '100%',
 		alignItems: 'center',
-		paddingBottom: 20, // Normal padding
+		paddingBottom: 20,
 		paddingHorizontal: 16,
-		flex: 0.45, // Take up remaining space
-		justifyContent: 'flex-start',
+		marginTop: 20,
 	},
 	sampleQuestionsTitle: {
 		fontSize: 18,
@@ -1562,15 +1568,10 @@ const styles = StyleSheet.create({
 		backgroundColor: 'transparent',
 		borderWidth: 1,
 	},
-	floatingInputContainer: {
-		position: 'absolute',
-		left: 0,
-		right: 0,
-		bottom: 0,
+	inputContainer: {
 		paddingHorizontal: 16,
 		paddingBottom: Platform.OS === 'ios' ? 24 : 16,
-		backgroundColor: 'transparent',
-		zIndex: 100,
+		paddingTop: 12,
 	},
 	inputWrapper: {
 		flexDirection: 'row',
@@ -1594,8 +1595,8 @@ const styles = StyleSheet.create({
 		paddingRight: 8,
 	},
 	sendButton: {
-		width: 36,
-		height: 36,
+		width: 34,
+		height: 34,
 		borderRadius: 18,
 		alignItems: 'center',
 		justifyContent: 'center',
@@ -1605,12 +1606,12 @@ const styles = StyleSheet.create({
 		opacity: 0.6,
 	},
 	micButton: {
-		width: 36,
-		height: 36,
+		width: 34,
+		height: 34,
 		borderRadius: 18,
 		alignItems: 'center',
 		justifyContent: 'center',
-		marginLeft: 8,
+		marginLeft: 6,
 	},
 	menuButton: {
 		padding: 8,
@@ -1669,5 +1670,15 @@ const styles = StyleSheet.create({
 	},
 	destructiveText: {
 		// Color will be set dynamically
+	},
+	emptyStateScrollView: {
+		flex: 1,
+	},
+	emptyStateScrollContent: {
+		flexGrow: 1,
+		justifyContent: 'center',
+		paddingHorizontal: 16,
+		paddingTop: 40,
+		paddingBottom: 20,
 	},
 });
