@@ -44,13 +44,7 @@ function HomeStack() {
 			<Stack.Screen name="HomeMain" component={HomeScreen} />
 			<Stack.Screen name="BooksList" component={BooksListScreen} />
 			<Stack.Screen name="Categories" component={CategoriesScreen} />
-			<Stack.Screen
-				name="ChatDetail"
-				component={ChatDetailScreen}
-				options={{
-					tabBarStyle: { display: 'none' },
-				}}
-			/>
+			<Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
 		</Stack.Navigator>
 	);
 }
@@ -59,13 +53,7 @@ function ChatsStack() {
 	return (
 		<Stack.Navigator screenOptions={{ headerShown: false }}>
 			<Stack.Screen name="ChatsMain" component={ChatsScreen} />
-			<Stack.Screen
-				name="ChatDetail"
-				component={ChatDetailScreen}
-				options={{
-					tabBarStyle: { display: 'none' },
-				}}
-			/>
+			<Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
 		</Stack.Navigator>
 	);
 }

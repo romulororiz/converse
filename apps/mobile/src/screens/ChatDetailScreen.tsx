@@ -139,6 +139,32 @@ export default function ChatDetailScreen() {
 	const isPremium = false; // TODO: Replace with real premium check from user/session/profile
 	const [showPaywall, setShowPaywall] = useState(false);
 
+	// Set navigation options to hide tab bar
+	useEffect(() => {
+		// Hide tab bar by accessing parent navigation
+		const parent = navigation.getParent();
+		if (parent) {
+			parent.setOptions({
+				tabBarStyle: { display: 'none' },
+			});
+		}
+
+		// Cleanup when component unmounts
+		return () => {
+			if (parent) {
+				parent.setOptions({
+					tabBarStyle: {
+						backgroundColor: colors.light.cardForeground,
+						borderTopColor: colors.light.border,
+						paddingTop: 10,
+						paddingBottom: 10,
+						height: 60,
+					},
+				});
+			}
+		};
+	}, [navigation]);
+
 	// Preload icons to prevent loading delay
 	useEffect(() => {
 		// Preload commonly used icons by rendering them off-screen

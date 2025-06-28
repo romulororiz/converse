@@ -404,6 +404,16 @@ CRITICAL LANGUAGE INSTRUCTION:
 			setIsPlaying(true);
 			const voiceId = selectVoiceForBook(bookAuthor, bookId, bookTitle);
 
+			// Debug logging
+			console.log('🎤 VoiceRecorder - Book Author:', bookAuthor);
+			console.log('🎤 VoiceRecorder - Book ID:', bookId);
+			console.log('🎤 VoiceRecorder - Book Title:', bookTitle);
+			console.log('🎤 VoiceRecorder - Selected Voice ID:', voiceId);
+			console.log(
+				'🎤 VoiceRecorder - Text to speak:',
+				text.substring(0, 50) + '...'
+			);
+
 			const audioUri = await textToSpeech(
 				text,
 				voiceId,
@@ -422,6 +432,11 @@ CRITICAL LANGUAGE INSTRUCTION:
 						setCurrentAudio(null);
 					}
 				});
+			} else {
+				console.error(
+					'🎤 VoiceRecorder - Failed to get audio URI from ElevenLabs'
+				);
+				setIsPlaying(false);
 			}
 		} catch (error) {
 			console.error('Failed to play AI response:', error);
