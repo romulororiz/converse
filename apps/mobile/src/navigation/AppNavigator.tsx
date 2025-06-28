@@ -47,7 +47,9 @@ function HomeStack() {
 			<Stack.Screen
 				name="ChatDetail"
 				component={ChatDetailScreen}
-				tabBarStyle={{ display: 'none' }}
+				options={{
+					tabBarStyle: { display: 'none' },
+				}}
 			/>
 		</Stack.Navigator>
 	);
@@ -60,7 +62,9 @@ function ChatsStack() {
 			<Stack.Screen
 				name="ChatDetail"
 				component={ChatDetailScreen}
-				tabBarStyle={{ display: 'none' }}
+				options={{
+					tabBarStyle: { display: 'none' },
+				}}
 			/>
 		</Stack.Navigator>
 	);

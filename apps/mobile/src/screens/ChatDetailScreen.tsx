@@ -915,10 +915,10 @@ export default function ChatDetailScreen() {
 	);
 
 	const handleVoiceFeaturePress = () => {
-		if (!isPremium) {
-			setShowPaywall(true);
-			return;
-		}
+		// if (!isPremium) {
+		// 	setShowPaywall(true);
+		// 	return;
+		// }
 		setShowConversationalVoice(true);
 	};
 
@@ -1304,13 +1304,13 @@ export default function ChatDetailScreen() {
 			)}
 
 			{/* Premium Paywall Drawer */}
-			<PremiumPaywallDrawer
+			{/* <PremiumPaywallDrawer
 				visible={showPaywall}
 				onClose={() => setShowPaywall(false)}
 				onPurchase={handlePremiumPurchase}
 				onRestore={handlePremiumRestore}
 				onPrivacyPolicy={handlePrivacyPolicy}
-			/>
+			/> */}
 		</GestureHandlerRootView>
 	);
 }

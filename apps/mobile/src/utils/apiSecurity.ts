@@ -51,8 +51,8 @@ class ApiKeyManager {
 				return key.startsWith('sk-') && key.length >= 50;
 
 			case 'elevenlabs':
-				// ElevenLabs keys are typically 32 characters long
-				return key.length >= 20 && /^[a-f0-9]+$/i.test(key);
+				// ElevenLabs keys are typically longer and can contain letters, numbers, and underscores
+				return key.length >= 30 && /^[a-zA-Z0-9_]+$/.test(key);
 
 			case 'supabase':
 				// Supabase URLs should be valid URLs
@@ -96,6 +96,10 @@ class ApiKeyManager {
 	getElevenLabsKey(): string | null {
 		const key = this.keys.elevenlabs;
 
+		console.log('ELEVENLABS KEY:', key);
+		console.log('ELEVENLABS KEY LENGTH:', key?.length);
+		console.log('ELEVENLABS KEY TYPE:', typeof key);
+
 		if (!key) {
 			console.warn(
 				'ElevenLabs API key not found. Voice features will use fallback.'
@@ -104,7 +108,12 @@ class ApiKeyManager {
 		}
 
 		if (!this.validated.has('elevenlabs')) {
-			if (!this.validateKeyFormat(key, 'elevenlabs')) {
+			const isValid = this.validateKeyFormat(key, 'elevenlabs');
+			console.log('ELEVENLABS KEY VALIDATION:', isValid);
+			console.log('ELEVENLABS KEY PATTERN TEST:', /^[a-zA-Z0-9_]+$/.test(key));
+			console.log('ELEVENLABS KEY LENGTH TEST:', key.length >= 30);
+
+			if (!isValid) {
 				console.warn(
 					'Invalid ElevenLabs API key format. Voice features will use fallback.'
 				);
