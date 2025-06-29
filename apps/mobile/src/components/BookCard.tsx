@@ -1,5 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import {
+	View,
+	Text,
+	StyleSheet,
+	TouchableOpacity,
+	Platform,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BookCover } from './BookCover';
 import { colors } from '../utils/colors';
@@ -156,7 +162,6 @@ const styles = StyleSheet.create({
 		marginRight: 12,
 	},
 	listInfo: {
-		fontSize: Platform.OS === 'ios' ? 18 : 2,
 		flex: 1,
 		justifyContent: 'space-between',
 	},

@@ -1,5 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
+import {
+	View,
+	Text,
+	StyleSheet,
+	TouchableOpacity,
+	Alert,
+	Platform,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
 import { useTheme } from '../contexts/ThemeContext';
@@ -168,6 +175,13 @@ export const SwipeableChatItem: React.FC<SwipeableChatItemProps> = ({
 	const { theme } = useTheme();
 	const currentColors = colors[theme];
 
+	// Safe date parsing with fallback
+	const parseDate = (dateString: string | null | undefined): Date => {
+		if (!dateString) return new Date();
+		const parsed = new Date(dateString);
+		return isNaN(parsed.getTime()) ? new Date() : parsed;
+	};
+
 	const handleDeleteChat = async (
 		chatId: string,
 		resetPosition?: () => void
@@ -288,7 +302,7 @@ export const SwipeableChatItem: React.FC<SwipeableChatItemProps> = ({
 										{ color: currentColors.mutedForeground },
 									]}
 								>
-									{formatDistanceToNow(new Date(item.updated_at), {
+									{formatDistanceToNow(parseDate(item.updated_at), {
 										addSuffix: true,
 									})}
 								</Text>

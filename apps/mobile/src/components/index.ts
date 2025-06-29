@@ -18,3 +18,4 @@ export { SectionHeader } from './SectionHeader';
 export { CategoryCard } from './CategoryCard';
 export { BookCard } from './BookCard';
 export { IconPreloader } from './IconPreloader';
+export { SeeMore } from './SeeMore';

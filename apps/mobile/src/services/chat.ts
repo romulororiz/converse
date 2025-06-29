@@ -292,39 +292,39 @@ async function callOpenAI(
 			const response = await fetch(
 				'https://api.openai.com/v1/chat/completions',
 				{
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-						Authorization: `Bearer ${apiKey}`,
-					},
-					body: JSON.stringify({
-						model: 'gpt-4o',
-						messages: messages,
-						max_tokens: 300,
-						temperature: 0.7,
-					}),
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${apiKey}`,
+			},
+			body: JSON.stringify({
+				model: 'gpt-4o',
+				messages: messages,
+				max_tokens: 300,
+				temperature: 0.7,
+			}),
 				}
 			);
 
-			if (!response.ok) {
-				const errorData = await response.text();
-				console.error('OpenAI API error:', response.status, errorData);
-				throw new Error(`OpenAI API error: ${response.status} ${errorData}`);
-			}
+		if (!response.ok) {
+			const errorData = await response.text();
+			console.error('OpenAI API error:', response.status, errorData);
+			throw new Error(`OpenAI API error: ${response.status} ${errorData}`);
+		}
 
-			const data = await response.json();
-			const aiContent = data.choices?.[0]?.message?.content?.trim();
+		const data = await response.json();
+		const aiContent = data.choices?.[0]?.message?.content?.trim();
 
-			if (!aiContent) {
-				throw new Error('No content received from OpenAI');
-			}
+		if (!aiContent) {
+			throw new Error('No content received from OpenAI');
+		}
 
 			return sanitizeInput(aiContent);
-		} catch (error) {
-			console.error('Error calling OpenAI:', error);
-			// Fallback response if OpenAI fails
-			return "I apologize, but I'm having trouble connecting to my knowledge base right now. Please try again in a moment, and I'll be happy to discuss literature with you!";
-		}
+	} catch (error) {
+		console.error('Error calling OpenAI:', error);
+		// Fallback response if OpenAI fails
+		return "I apologize, but I'm having trouble connecting to my knowledge base right now. Please try again in a moment, and I'll be happy to discuss literature with you!";
+	}
 	});
 }
 

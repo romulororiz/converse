@@ -23,12 +23,18 @@ export type BookMetadata = {
 	genres?: string[] | null;
 	language?: string | null;
 	pages?: number | null;
+	publisher?: string | null;
+	published_date?: string | null;
+	isbn?: string | null;
+	metadata_updated_at?: string | null;
+	metadata_sources?: string | null;
 };
 
 export type Book = {
 	id: string;
 	title: string;
 	description?: string | null;
+	descriptionbookdetail?: string | null;
 	cover_url?: string | null;
 	content_vector?: number[] | null;
 	metadata?: BookMetadata | null;
@@ -38,6 +44,7 @@ export type Book = {
 	slug?: string | null;
 	book_authors?: { author: Author }[];
 	year?: number | null;
+	categories?: string[];
 };
 
 export type ChatMessage = {

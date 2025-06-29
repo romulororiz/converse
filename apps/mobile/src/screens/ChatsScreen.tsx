@@ -253,7 +253,7 @@ export default function ChatsScreen() {
 				/>
 
 				{/* Header */}
-				<ScreenHeader
+				{/* <ScreenHeader
 					title="Your Conversations"
 					showBackButton={true}
 					onBackPress={() => navigation.goBack()}
@@ -268,7 +268,7 @@ export default function ChatsScreen() {
 							/>
 						</View>
 					}
-				/>
+				/> */}
 
 				{/* Fixed Content */}
 				<View
@@ -279,6 +279,7 @@ export default function ChatsScreen() {
 				>
 					{/* Page Description */}
 					<View style={styles.descriptionContainer}>
+						<View style={styles.descriptionHeader}>
 						<Text
 							style={[
 								styles.descriptionTitle,
@@ -287,6 +288,14 @@ export default function ChatsScreen() {
 						>
 							Your Conversations
 						</Text>
+						<MessageCounterBadge
+							variant="pill"
+							label="FREE MESSAGES"
+							refreshKey={badgeRefreshKey}
+							onPress={handleBadgePress}
+							style={{ marginRight: 8 }}
+						/>
+						</View>
 						<Text
 							style={[
 								styles.descriptionText,
@@ -398,6 +407,12 @@ const styles = StyleSheet.create({
 	fixedContent: {
 		// Fixed content that doesn't scroll
 	},
+	descriptionHeader: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		marginBottom: 10,
+	},
 	scrollableContent: {
 		flex: 1,
 	},
@@ -427,7 +442,6 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 	},
 	searchContainer: {
-		
 		paddingHorizontal: 16,
 		paddingBottom: 15,
 		paddingTop: -10,

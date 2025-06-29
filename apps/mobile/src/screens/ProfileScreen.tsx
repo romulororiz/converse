@@ -21,6 +21,7 @@ import { supabase } from '../lib/supabase';
 import { useNavigation } from '@react-navigation/native';
 import { PremiumPaywallDrawer } from '../components/PremiumPaywallDrawer';
 import { SkeletonLoader } from '../components/SkeletonLoader';
+import { ElevenLabsTest } from '../components/ElevenLabsTest';
 import { useTheme } from '../contexts/ThemeContext';
 import {
 	NotificationService,
@@ -372,7 +373,7 @@ export default function ProfileScreen() {
 					barStyle={isDark ? 'light-content' : 'dark-content'}
 					backgroundColor={currentColors.background}
 				/>
-				<ActivityIndicator size='large' color={currentColors.primary} />
+				<ActivityIndicator size="large" color={currentColors.primary} />
 				<Text
 					style={[styles.loadingText, { color: currentColors.mutedForeground }]}
 				>
@@ -456,7 +457,7 @@ export default function ProfileScreen() {
 									/>
 								) : (
 									<Ionicons
-										name='camera-outline'
+										name="camera-outline"
 										size={20}
 										color={currentColors.primaryForeground}
 									/>
@@ -487,7 +488,7 @@ export default function ProfileScreen() {
 					<View style={styles.preferenceItem}>
 						<View style={styles.preferenceInfo}>
 							<Ionicons
-								name='notifications-outline'
+								name="notifications-outline"
 								size={24}
 								color={currentColors.foreground}
 							/>
@@ -516,7 +517,7 @@ export default function ProfileScreen() {
 					<View style={styles.preferenceItem}>
 						<View style={styles.preferenceInfo}>
 							<Ionicons
-								name='moon-outline'
+								name="moon-outline"
 								size={24}
 								color={currentColors.foreground}
 							/>
@@ -543,7 +544,7 @@ export default function ProfileScreen() {
 					<View style={styles.preferenceItem}>
 						<View style={styles.preferenceInfo}>
 							<Ionicons
-								name='mail-outline'
+								name="mail-outline"
 								size={24}
 								color={currentColors.foreground}
 							/>
@@ -572,7 +573,7 @@ export default function ProfileScreen() {
 					<View style={styles.preferenceItem}>
 						<View style={styles.preferenceInfo}>
 							<Ionicons
-								name='trophy-outline'
+								name="trophy-outline"
 								size={24}
 								color={currentColors.foreground}
 							/>
@@ -615,7 +616,7 @@ export default function ProfileScreen() {
 						<View style={styles.preferenceItem}>
 							<View style={styles.preferenceInfo}>
 								<Ionicons
-									name='book-outline'
+									name="book-outline"
 									size={24}
 									color={currentColors.foreground}
 								/>
@@ -644,7 +645,7 @@ export default function ProfileScreen() {
 						<View style={styles.preferenceItem}>
 							<View style={styles.preferenceInfo}>
 								<Ionicons
-									name='add-circle-outline'
+									name="add-circle-outline"
 									size={24}
 									color={currentColors.foreground}
 								/>
@@ -672,7 +673,7 @@ export default function ProfileScreen() {
 						<View style={styles.preferenceItem}>
 							<View style={styles.preferenceInfo}>
 								<Ionicons
-									name='star-outline'
+									name="star-outline"
 									size={24}
 									color={currentColors.foreground}
 								/>
@@ -707,7 +708,7 @@ export default function ProfileScreen() {
 					>
 						<View style={styles.menuInfo}>
 							<Ionicons
-								name='settings-outline'
+								name="settings-outline"
 								size={24}
 								color={currentColors.foreground}
 							/>
@@ -718,7 +719,7 @@ export default function ProfileScreen() {
 							</Text>
 						</View>
 						<Ionicons
-							name='chevron-forward'
+							name="chevron-forward"
 							size={24}
 							color={currentColors.mutedForeground}
 						/>

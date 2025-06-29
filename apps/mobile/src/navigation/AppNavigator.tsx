@@ -16,6 +16,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import AccountSettingsScreen from '../screens/AccountSettingsScreen';
 import BooksListScreen from '../screens/BooksListScreen';
 import CategoriesScreen from '../screens/CategoriesScreen';
+import BookDetailScreen from '../screens/BookDetailScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import SignUpScreen from '../screens/auth/SignUpScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
@@ -44,6 +45,7 @@ function HomeStack() {
 			<Stack.Screen name="HomeMain" component={HomeScreen} />
 			<Stack.Screen name="BooksList" component={BooksListScreen} />
 			<Stack.Screen name="Categories" component={CategoriesScreen} />
+			<Stack.Screen name="BookDetail" component={BookDetailScreen} />
 			<Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
 		</Stack.Navigator>
 	);
@@ -53,6 +55,7 @@ function ChatsStack() {
 	return (
 		<Stack.Navigator screenOptions={{ headerShown: false }}>
 			<Stack.Screen name="ChatsMain" component={ChatsScreen} />
+			<Stack.Screen name="BookDetail" component={BookDetailScreen} />
 			<Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
 		</Stack.Navigator>
 	);

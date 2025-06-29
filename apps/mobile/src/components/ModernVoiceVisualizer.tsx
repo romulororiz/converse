@@ -225,7 +225,7 @@ export const ModernVoiceVisualizer: React.FC<ModernVoiceVisualizerProps> = ({
 			</Animated.View>
 
 			{/* Audio level indicator bars */}
-			{isRecording && (
+			{/* {isRecording && (
 				<View style={styles.audioLevelContainer}>
 					{Array.from({ length: 5 }).map((_, index) => (
 						<AudioLevelBar
@@ -236,7 +236,7 @@ export const ModernVoiceVisualizer: React.FC<ModernVoiceVisualizerProps> = ({
 						/>
 					))}
 				</View>
-			)}
+			)} */}
 		</View>
 	);
 };

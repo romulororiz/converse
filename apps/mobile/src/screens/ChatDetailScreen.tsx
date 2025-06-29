@@ -24,8 +24,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { showAlert } from '../utils/alert';
 import { LoadingDots } from '../components/LoadingDots';
 import { BookCover } from '../components/BookCover';
-import VoiceRecorder from '../components/VoiceRecorder';
-import ConversationalVoiceChat from '../components/ConversationalVoiceChat';
+import { ConversationalVoiceChat } from '../components/ConversationalVoiceChat';
 import { useAuth } from '../components/AuthProvider';
 import { ChatErrorBoundary } from '../components/ErrorBoundary';
 import {
@@ -60,6 +59,7 @@ import {
 	getOrCreateChatSession,
 	getChatMessages,
 	sendMessageAndGetAIResponse,
+	sendMessage,
 } from '../services/chat';
 import { getBookById } from '../services/books';
 import { supabase } from '../lib/supabase';
@@ -70,6 +70,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { canSendMessage, upgradeToPremium } from '../services/subscription';
 import { useToast } from '../components/ui/toast';
 import { checkRateLimit } from '../utils/rateLimit';
+import { useSubscription } from '../contexts/SubscriptionContext';
 
 type RootStackParamList = {
 	ChatDetail: { bookId: string };
@@ -115,12 +116,12 @@ export default function ChatDetailScreen() {
 	const [sending, setSending] = useState(false);
 	const [book, setBook] = useState<Book | null>(null);
 	const [sessionId, setSessionId] = useState<string | null>(null);
-	const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
 	const [showConversationalVoice, setShowConversationalVoice] = useState(false);
 	const [showDropdown, setShowDropdown] = useState(false);
 	const { user } = useAuth();
 	const { theme, isDark } = useTheme();
 	const { toast } = useToast();
+	const { subscription, refreshSubscription } = useSubscription();
 	const currentColors = colors[theme];
 	const route = useRoute<ChatDetailScreenRouteProp>();
 	const navigation = useNavigation<ChatDetailScreenNavigationProp>();
@@ -135,35 +136,21 @@ export default function ChatDetailScreen() {
 	const dropdownOpacity = useSharedValue(0);
 	const dropdownTranslateY = useSharedValue(-20);
 
-	// MOCK: Replace with real premium check
-	const isPremium = false; // TODO: Replace with real premium check from user/session/profile
+	// Real premium check based on subscription
+	const isPremium =
+		subscription?.subscription_plan === 'premium' &&
+		subscription?.subscription_status === 'active';
 	const [showPaywall, setShowPaywall] = useState(false);
 
-	// Set navigation options to hide tab bar
+	// Debug logging for subscription status
 	useEffect(() => {
-		// Hide tab bar by accessing parent navigation
-		const parent = navigation.getParent();
-		if (parent) {
-			parent.setOptions({
-				tabBarStyle: { display: 'none' },
-			});
-		}
-
-		// Cleanup when component unmounts
-		return () => {
-			if (parent) {
-				parent.setOptions({
-					tabBarStyle: {
-						backgroundColor: colors.light.cardForeground,
-						borderTopColor: colors.light.border,
-						paddingTop: 10,
-						paddingBottom: 10,
-						height: 60,
-					},
-				});
-			}
-		};
-	}, [navigation]);
+		console.log('Subscription status:', {
+			plan: subscription?.subscription_plan,
+			status: subscription?.subscription_status,
+			isPremium,
+			loading: subscription === null,
+		});
+	}, [subscription, isPremium]);
 
 	// Preload icons to prevent loading delay
 	useEffect(() => {
@@ -189,7 +176,6 @@ export default function ChatDetailScreen() {
 	useFocusEffect(
 		React.useCallback(() => {
 			// Reset any modal states when screen gains focus
-			setShowVoiceRecorder(false);
 			setShowConversationalVoice(false);
 			setShowDropdown(false);
 			setShowPaywall(false);
@@ -202,7 +188,6 @@ export default function ChatDetailScreen() {
 
 			return () => {
 				// Cleanup when screen loses focus
-				setShowVoiceRecorder(false);
 				setShowConversationalVoice(false);
 				setShowDropdown(false);
 				setShowPaywall(false);
@@ -216,7 +201,6 @@ export default function ChatDetailScreen() {
 	useEffect(() => {
 		const unsubscribe = navigation.addListener('beforeRemove', e => {
 			// Allow normal back navigation but clean up any open modals
-			setShowVoiceRecorder(false);
 			setShowConversationalVoice(false);
 			setShowDropdown(false);
 			setShowPaywall(false);
@@ -272,10 +256,26 @@ export default function ChatDetailScreen() {
 				setSessionId(existingSession.id);
 				// Load messages only if session exists
 				const chatMessages = await getChatMessages(existingSession.id);
-				setMessages(chatMessages as ChatMessage[]);
+
+				// Ensure all messages have valid timestamps
+				const validatedMessages = chatMessages.map(msg => {
+					// Check if created_at is valid
+					const createdAt = msg.created_at;
+					if (!createdAt || isNaN(new Date(createdAt).getTime())) {
+						console.warn('Invalid timestamp found in message:', msg.id);
+						// Return message with current timestamp as fallback
+						return {
+							...msg,
+							created_at: new Date().toISOString(),
+						};
+					}
+					return msg;
+				});
+
+				setMessages(validatedMessages as ChatMessage[]);
 
 				// Auto-scroll to bottom after loading messages - use requestAnimationFrame for better performance
-				if (chatMessages.length > 0) {
+				if (validatedMessages.length > 0) {
 					requestAnimationFrame(() => {
 						setTimeout(() => {
 							flatListRef.current?.scrollToEnd({ animated: false }); // Use non-animated scroll on initial load
@@ -478,7 +478,7 @@ export default function ChatDetailScreen() {
 	};
 
 	const handleVoiceTranscriptionComplete = async (transcribedText: string) => {
-		setShowVoiceRecorder(false);
+		setShowConversationalVoice(false);
 
 		// Validate transcription using Zod
 		try {
@@ -488,87 +488,27 @@ export default function ChatDetailScreen() {
 			return;
 		}
 
-		// Set the transcribed text as the new message
-		setNewMessage(transcribedText);
-
-		// Automatically send the message
-		if (transcribedText.trim()) {
-			const userMessage = transcribedText.trim();
-			setNewMessage('');
-			setSending(true);
-
-			try {
-				// Check message limit before sending
-				const messageLimit = await canSendMessage(user!.id);
-				if (!messageLimit.canSend) {
-					if (messageLimit.plan === 'free') {
-						// Show paywall for free users who reached their limit
-						setShowPaywall(true);
-						return;
-					} else {
-						throw new Error('Unable to send message. Please try again.');
-					}
-				}
-
-				// Create session if it doesn't exist
-				let currentSessionId = sessionId;
-				if (!currentSessionId) {
-					const session = await getOrCreateChatSession(user!.id, bookId);
-					currentSessionId = session.id;
-					setSessionId(currentSessionId);
-				}
-
-				// Create temporary user message for immediate UI display
-				const tempUserMessage: ChatMessage = {
-					id: `temp-${Date.now()}`,
-					content: userMessage,
-					role: 'user',
-					created_at: new Date().toISOString(),
-					session_id: currentSessionId,
-					metadata: {},
-				};
-
-				// Add user message to UI immediately
-				setMessages(prev => [...prev, tempUserMessage]);
-
-				// Send message and get AI response in one call
-				const { userMessage: userMsg, aiMessage: aiMsg } =
-					await sendMessageAndGetAIResponse(currentSessionId, userMessage);
-
-				// Replace temp message with real user message and add AI response
-				setMessages(prev => [
-					...prev.slice(0, -1), // Remove temp message
-					userMsg as ChatMessage,
-					aiMsg as ChatMessage,
-				]);
-			} catch (error) {
-				console.error('Error sending transcribed message:', error);
-				// Remove the temp message on error
-				setMessages(prev => prev.slice(0, -1));
-
-				// Check if it's a message limit error
-				if (error.message?.includes('daily message limit')) {
-					setShowPaywall(true);
-				} else {
-					showAlert('Error', 'Failed to send message');
-				}
-			} finally {
-				setSending(false);
-			}
+		if (!transcribedText.trim()) {
+			showAlert('Error', 'No speech detected. Please try again.');
+			return;
 		}
-	};
 
-	const handleVoiceRecorderCancel = () => {
-		setShowVoiceRecorder(false);
-	};
-
-	const handleConversationalVoiceComplete = async (conversation: any[]) => {
-		setShowConversationalVoice(false);
-
-		if (conversation.length === 0) return;
+		const userMessage = transcribedText.trim();
+		setNewMessage('');
+		setSending(true);
 
 		try {
-			setSending(true);
+			// Check message limit before sending
+			const messageLimit = await canSendMessage(user!.id);
+			if (!messageLimit.canSend) {
+				if (messageLimit.plan === 'free') {
+					// Show paywall for free users who reached their limit
+					setShowPaywall(true);
+					return;
+				} else {
+					throw new Error('Unable to send message. Please try again.');
+				}
+			}
 
 			// Create session if it doesn't exist
 			let currentSessionId = sessionId;
@@ -578,56 +518,144 @@ export default function ChatDetailScreen() {
 				setSessionId(currentSessionId);
 			}
 
-			// Add each conversation message to the chat
-			for (const msg of conversation) {
-				if (msg.role === 'user' || msg.role === 'assistant') {
-					// Create temporary message for immediate UI display
-					const tempMessage: ChatMessage = {
-						id: `temp-${Date.now()}-${Math.random()}`,
-						content: msg.content,
-						role: msg.role,
-						created_at: new Date().toISOString(),
-						session_id: currentSessionId,
-						metadata: {},
-					};
+			// Create temporary user message for immediate UI display
+			const tempUserMessage: ChatMessage = {
+				id: `temp-${Date.now()}`,
+				content: userMessage,
+				role: 'user',
+				created_at: new Date().toISOString(),
+				session_id: currentSessionId,
+				metadata: {},
+			};
 
-					// Add message to UI immediately
-					setMessages(prev => [...prev, tempMessage]);
+			// Add user message to UI immediately
+			setMessages(prev => [...prev, tempUserMessage]);
 
-					// Save to database
-					const { data, error } = await supabase
-						.from('chat_messages')
-						.insert({
-							session_id: currentSessionId,
-							content: msg.content,
-							role: msg.role,
-							metadata: {},
-						})
-						.select()
-						.single();
+			// Send message and get AI response in one call
+			const { userMessage: userMsg, aiMessage: aiMsg } =
+				await sendMessageAndGetAIResponse(currentSessionId, userMessage);
 
-					if (data && !error) {
-						// Replace temp message with real message
-						setMessages(prev =>
-							prev.map(m =>
-								m.id === tempMessage.id
-									? ({ ...data, id: data.id } as ChatMessage)
-									: m
-							)
-						);
-					}
-				}
-			}
+			// Replace temp message with real user message and add AI response
+			setMessages(prev => [
+				...prev.slice(0, -1), // Remove temp message
+				userMsg as ChatMessage,
+				aiMsg as ChatMessage,
+			]);
 		} catch (error) {
-			console.error('Error saving conversation:', error);
-			showAlert('Error', 'Failed to save voice conversation');
+			console.error('Error sending transcribed message:', error);
+			// Remove the temp message on error
+			setMessages(prev => prev.slice(0, -1));
+
+			// Check if it's a message limit error
+			if (error.message?.includes('daily message limit')) {
+				setShowPaywall(true);
+			} else {
+				showAlert('Error', 'Failed to send message');
+			}
 		} finally {
 			setSending(false);
 		}
 	};
 
+	const handleConversationalVoiceComplete = async (conversation: any[]) => {
+		setShowConversationalVoice(false);
+
+		console.log('Voice conversation completed:', {
+			conversationLength: conversation?.length,
+			sessionId,
+			bookId,
+		});
+
+		// Add all conversation messages to the chat and save to database
+		if (conversation && conversation.length > 0) {
+			try {
+				// Create session if it doesn't exist
+				let currentSessionId = sessionId;
+				if (!currentSessionId) {
+					const session = await getOrCreateChatSession(user!.id, bookId);
+					currentSessionId = session.id;
+					setSessionId(currentSessionId);
+					console.log('Created new session for voice chat:', currentSessionId);
+				}
+
+				// Save each message to the database and update local state
+				const savedMessages: ChatMessage[] = [];
+
+				for (const msg of conversation) {
+					try {
+						console.log('Saving conversation message:', {
+							role: msg.role,
+							contentLength: msg.content?.length,
+							sessionId: currentSessionId,
+						});
+
+						// For voice chat messages, we skip message limit checks since it's a premium feature
+						// and the messages are already part of the conversation
+						const savedMessage = await sendMessage(
+							currentSessionId,
+							msg.content,
+							msg.role
+						);
+
+						console.log('Successfully saved message:', savedMessage.id);
+
+						// Add to saved messages array
+						savedMessages.push(savedMessage as ChatMessage);
+					} catch (error) {
+						console.error('Error saving conversation message:', error);
+						// If database save fails, still add to local state with temp ID and valid timestamp
+						const now = new Date();
+						const tempMessage: ChatMessage = {
+							id: `temp-${Date.now()}-${Math.random()}`,
+							content: msg.content,
+							role: msg.role,
+							created_at: now.toISOString(), // Ensure valid ISO string
+							session_id: currentSessionId,
+							metadata: {},
+						};
+						savedMessages.push(tempMessage);
+					}
+				}
+
+				console.log('Total saved messages:', savedMessages.length);
+
+				// Update local state with saved messages
+				setMessages(prev => [...prev, ...savedMessages]);
+			} catch (error) {
+				console.error('Error saving conversation to database:', error);
+				// Fallback: just add to local state if database operations fail
+				// Ensure all messages have valid timestamps
+				const fallbackMessages: ChatMessage[] = conversation.map(
+					(msg, index) => {
+						const now = new Date();
+						// Add small offset to ensure messages appear in order
+						now.setMilliseconds(now.getMilliseconds() + index);
+
+						return {
+							id: `fallback-${Date.now()}-${index}`,
+							content: msg.content,
+							role: msg.role,
+							created_at: now.toISOString(),
+							session_id: sessionId || 'temp-session',
+							metadata: {},
+						};
+					}
+				);
+				setMessages(prev => [...prev, ...fallbackMessages]);
+			}
+		}
+	};
+
 	const handleConversationalVoiceCancel = () => {
 		setShowConversationalVoice(false);
+	};
+
+	const handleVoiceFeaturePress = () => {
+		if (!isPremium) {
+			setShowPaywall(true);
+			return;
+		}
+		setShowConversationalVoice(true);
 	};
 
 	const closeDropdown = () => {
@@ -725,11 +753,22 @@ export default function ChatDetailScreen() {
 	const renderMessage = React.useCallback(
 		({ item, index }: { item: ChatMessage; index: number }) => {
 			const isUser = item.role === 'user';
+
+			// Safe date parsing with fallback
+			const parseDate = (dateString: string | null | undefined): Date => {
+				if (!dateString) return new Date();
+				const parsed = new Date(dateString);
+				return isNaN(parsed.getTime()) ? new Date() : parsed;
+			};
+
+			const currentMessageDate = parseDate(item.created_at);
+			const previousMessageDate =
+				index > 0 ? parseDate(messages[index - 1].created_at) : new Date(0);
+
 			const showTimestamp =
 				index === 0 ||
 				(index > 0 &&
-					new Date(item.created_at).getTime() -
-						new Date(messages[index - 1].created_at).getTime() >
+					currentMessageDate.getTime() - previousMessageDate.getTime() >
 						300000); // 5 minutes
 
 			return (
@@ -741,7 +780,7 @@ export default function ChatDetailScreen() {
 								{ color: currentColors.mutedForeground },
 							]}
 						>
-							{formatDistanceToNow(new Date(item.created_at), {
+							{formatDistanceToNow(currentMessageDate, {
 								addSuffix: true,
 							})}
 						</Text>
@@ -940,20 +979,14 @@ export default function ChatDetailScreen() {
 		</View>
 	);
 
-	const handleVoiceFeaturePress = () => {
-		// if (!isPremium) {
-		// 	setShowPaywall(true);
-		// 	return;
-		// }
-		setShowConversationalVoice(true);
-	};
-
 	// Add paywall handlers
 	const handlePremiumPurchase = async (
 		plan: 'weekly' | 'monthly' | 'yearly'
 	) => {
 		try {
 			await upgradeToPremium(user!.id, plan === 'weekly' ? 'monthly' : plan);
+			// Refresh subscription data after successful upgrade
+			await refreshSubscription();
 			setShowPaywall(false);
 			showAlert(
 				'Success',
@@ -1027,7 +1060,6 @@ export default function ChatDetailScreen() {
 										// Ensure clean navigation back
 										Keyboard.dismiss();
 										setShowDropdown(false);
-										setShowVoiceRecorder(false);
 										setShowConversationalVoice(false);
 										setShowPaywall(false);
 
@@ -1074,6 +1106,21 @@ export default function ChatDetailScreen() {
 											{book?.author || 'Unknown Author'} •{' '}
 											{formatYear(book?.year)}
 										</Text>
+										<View style={styles.ratingContainer}>
+											<Ionicons
+												name="star"
+												size={12}
+												color={currentColors.primary}
+											/>
+											<Text
+												style={[
+													styles.ratingText,
+													{ color: currentColors.foreground },
+												]}
+											>
+												{book?.metadata?.rating}
+											</Text>
+										</View>
 									</View>
 									<TouchableOpacity
 										style={styles.menuButton}
@@ -1239,16 +1286,6 @@ export default function ChatDetailScreen() {
 				</KeyboardAvoidingView>
 			</SafeAreaView>
 
-			{/* Voice Recorder Modal */}
-			<VoiceRecorder
-				visible={showVoiceRecorder}
-				onTranscriptionComplete={handleVoiceTranscriptionComplete}
-				onCancel={handleVoiceRecorderCancel}
-				bookTitle={book?.title}
-				bookAuthor={book?.author}
-				bookId={bookId}
-			/>
-
 			{/* Conversational Voice Chat Modal */}
 			<ConversationalVoiceChat
 				visible={showConversationalVoice}
@@ -1330,13 +1367,13 @@ export default function ChatDetailScreen() {
 			)}
 
 			{/* Premium Paywall Drawer */}
-			{/* <PremiumPaywallDrawer
+			<PremiumPaywallDrawer
 				visible={showPaywall}
 				onClose={() => setShowPaywall(false)}
 				onPurchase={handlePremiumPurchase}
 				onRestore={handlePremiumRestore}
 				onPrivacyPolicy={handlePrivacyPolicy}
-			/> */}
+			/>
 		</GestureHandlerRootView>
 	);
 }
@@ -1397,11 +1434,12 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		alignItems: 'flex-start',
 		height: 100,
+		width: '100%',
 		flex: 1,
 	},
 	bookCover: {
 		width: 70,
-		height: 100,
+		height: '100%',
 		borderRadius: 2,
 		overflow: 'hidden',
 		marginRight: 12,
@@ -1434,6 +1472,17 @@ const styles = StyleSheet.create({
 	bookAuthor: {
 		fontSize: 14,
 		fontStyle: 'italic',
+	},
+	ratingContainer: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 4,
+		marginTop: 4,
+	},
+	ratingText: {
+		fontSize: 12,
+		fontWeight: '500',
+		marginTop: 2,
 	},
 	messagesList: {
 		paddingHorizontal: 16,
@@ -1602,7 +1651,7 @@ const styles = StyleSheet.create({
 	inputWrapper: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		borderRadius: 24,
+		borderRadius: 30,
 		borderWidth: 1,
 		paddingHorizontal: 16,
 		paddingVertical: 10,

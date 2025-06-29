@@ -129,7 +129,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 			if (showRefreshLoader) {
 				setRefreshing(true);
 			} else {
-				setLoading(true);
+			setLoading(true);
 			}
 			setError(null);
 
@@ -280,7 +280,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 		<TouchableOpacity
 			style={[styles.bookItem]}
 			onPress={() => {
-				navigation.navigate('ChatDetail', { bookId: item.id });
+				navigation.navigate('BookDetail', { bookId: item.id });
 			}}
 			activeOpacity={0.7}
 		>
@@ -430,7 +430,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 					<View style={styles.searchContainer}>
 						<SkeletonLoader width={width - 32} height={48} borderRadius={12} />
 					</View>
-				</View>
+			</View>
 
 				{/* Scrollable Books List Skeleton */}
 				<View style={styles.scrollableContent}>{renderSkeletonList()}</View>
@@ -439,7 +439,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 	}
 
 	if (error && books.length === 0) {
-		return (
+	return (
 			<SafeAreaView
 				style={[
 					styles.container,
@@ -451,7 +451,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 					backgroundColor={currentColors.background}
 				/>
 
-				{/* Header */}
+			{/* Header */}
 				<View
 					style={[
 						styles.header,
@@ -461,16 +461,16 @@ export default function BooksListScreen({ navigation, route }: any) {
 						},
 					]}
 				>
-					<TouchableOpacity
-						style={styles.backButton}
-						onPress={() => navigation.goBack()}
-					>
-						<Ionicons
+				<TouchableOpacity
+					style={styles.backButton}
+					onPress={() => navigation.goBack()}
+				>
+					<Ionicons
 							name="arrow-back"
-							size={24}
+						size={24}
 							color={currentColors.foreground}
-						/>
-					</TouchableOpacity>
+					/>
+				</TouchableOpacity>
 					<Text
 						style={[styles.headerTitle, { color: currentColors.foreground }]}
 					>
@@ -527,7 +527,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 			/>
 
 			{/* Header */}
-			<ScreenHeader
+			{/* <ScreenHeader
 				title={screenTitle}
 				showBackButton={true}
 				onBackPress={() => navigation.goBack()}
@@ -540,7 +540,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 						style={{ marginRight: 8 }}
 					/>
 				}
-			/>
+			/> */}
 
 			{/* Fixed Content */}
 			<View
@@ -567,7 +567,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 					>
 						{description.text}
 					</Text>
-				</View>
+			</View>
 
 				{/* Search Bar */}
 				<SearchBar
@@ -654,16 +654,16 @@ export default function BooksListScreen({ navigation, route }: any) {
 					</View>
 				)}
 
-				{/* Selected Tags */}
-				{tags && tags.length > 0 && (
-					<View style={styles.tagsContainer}>
+			{/* Selected Tags */}
+			{tags && tags.length > 0 && (
+				<View style={styles.tagsContainer}>
 						<Text
 							style={[styles.tagsTitle, { color: currentColors.foreground }]}
 						>
 							Selected Topics:
 						</Text>
-						<View style={styles.tagsWrapper}>
-							{tags.map((tag: string, index: number) => (
+					<View style={styles.tagsWrapper}>
+						{tags.map((tag: string, index: number) => (
 								<View
 									key={index}
 									style={[
@@ -679,11 +679,11 @@ export default function BooksListScreen({ navigation, route }: any) {
 									>
 										{tag}
 									</Text>
-								</View>
-							))}
-						</View>
+							</View>
+						))}
 					</View>
-				)}
+				</View>
+			)}
 
 				{/* Sort Info */}
 				<View style={styles.sortInfoContainer}>
@@ -895,7 +895,7 @@ const styles = StyleSheet.create({
 		fontSize: 12,
 	},
 	bookDescription: {
-		fontSize: Platform.OS === 'ios' ? 18 : 12,
+		fontSize: 12,
 		lineHeight: 16,
 	},
 	tagsContainer: {

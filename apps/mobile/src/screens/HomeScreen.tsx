@@ -18,6 +18,7 @@ import { showAlert } from '../utils/alert';
 import { getFeaturedBooks } from '../services/books';
 import { getRecentChats, deleteChatSession } from '../services/chat';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { getCategoriesWithCounts, Category } from '../services/categories';
 import { useAuth } from '../components/AuthProvider';
 import { useTheme } from '../contexts/ThemeContext';
 import { Book } from '../types/supabase';
@@ -25,17 +26,9 @@ import { BookCover } from '../components/BookCover';
 import { SwipeableChatItem } from '../components/SwipeableChatItem';
 import { EmptyState } from '../components/EmptyState';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SeeMore } from '../components/SeeMore';
 
 const { width } = Dimensions.get('window');
-
-const categories = [
-	{ id: 1, name: 'Romance', icon: 'heart' },
-	{ id: 2, name: 'Classic Literature', icon: 'library' },
-	{ id: 3, name: 'Adventure', icon: 'map' },
-	{ id: 4, name: 'Mystery & Detective', icon: 'search' },
-	{ id: 5, name: 'Science Fiction', icon: 'rocket' },
-	{ id: 6, name: 'Philosophy', icon: 'bulb' },
-];
 
 type NavigationProp = {
 	navigate: (screen: string, params?: any) => void;
@@ -50,6 +43,7 @@ export default function HomeScreen() {
 	const { user } = useAuth();
 	const { theme, isDark } = useTheme();
 	const currentColors = colors[theme];
+	const [categories, setCategories] = useState<Category[]>([]);
 
 	useEffect(() => {
 		loadFeaturedBooks();
@@ -57,6 +51,14 @@ export default function HomeScreen() {
 			loadRecentChats();
 		}
 	}, [user]);
+
+	useEffect(() => {
+		const fetchCategories = async () => {
+			const categories = await getCategoriesWithCounts();
+			setCategories(categories);
+		};
+		fetchCategories();
+	}, []);
 
 	// Refresh recent chats when screen comes into focus
 	useFocusEffect(
@@ -96,13 +98,13 @@ export default function HomeScreen() {
 	const renderBookCard = ({ item }: { item: Book }) => (
 		<TouchableOpacity
 			style={styles.bookCard}
-			onPress={() => navigation.navigate('ChatDetail', { bookId: item.id })}
+			onPress={() => navigation.navigate('BookDetail', { bookId: item.id })}
 		>
 			<View style={styles.bookCoverContainer}>
 				<BookCover
 					uri={item.cover_url}
 					style={styles.bookCover}
-					placeholderIcon='book-outline'
+					placeholderIcon="book-outline"
 					placeholderSize={32}
 				/>
 			</View>
@@ -123,7 +125,6 @@ export default function HomeScreen() {
 
 	const renderCategoryCard = (category: any) => (
 		<TouchableOpacity
-			key={category.id}
 			style={[styles.categoryCard, { backgroundColor: currentColors.card }]}
 			onPress={() =>
 				navigation.navigate('BooksList', {
@@ -240,7 +241,7 @@ export default function HomeScreen() {
 								Explore Books
 							</Text>
 							<Ionicons
-								name='arrow-forward'
+								name="arrow-forward"
 								size={20}
 								color={currentColors.primaryForeground}
 							/>
@@ -249,28 +250,9 @@ export default function HomeScreen() {
 
 					{/* Featured Books Carousel */}
 					<View style={styles.section}>
-						<View style={styles.sectionHeader}>
-							<Text
-								style={[
-									styles.sectionTitle,
-									{ color: currentColors.foreground },
-								]}
-							>
-								Featured Books
-							</Text>
-							<TouchableOpacity
-								onPress={() => navigation.navigate('BooksList')}
-							>
-								<Text
-									style={[styles.seeAllText, { color: currentColors.primary }]}
-								>
-									See All
-								</Text>
-							</TouchableOpacity>
-						</View>
 						{loading ? (
 							<View style={styles.loadingContainer}>
-								<ActivityIndicator size='large' color={currentColors.primary} />
+								<ActivityIndicator size="large" color={currentColors.primary} />
 								<Text
 									style={[
 										styles.loadingText,
@@ -289,37 +271,22 @@ export default function HomeScreen() {
 								{featuredBooks.map(book => (
 									<View key={book.id}>{renderBookCard({ item: book })}</View>
 								))}
+								<SeeMore variant="books" />
 							</ScrollView>
 						)}
 					</View>
 
 					{/* Categories */}
 					<View style={styles.section}>
-						<View style={styles.sectionHeader}>
-							<Text
-								style={[
-									styles.sectionTitle,
-									{ color: currentColors.foreground },
-								]}
-							>
-								Browse Categories
-							</Text>
-							<TouchableOpacity
-								onPress={() => navigation.navigate('Categories')}
-							>
-								<Text
-									style={[styles.seeAllText, { color: currentColors.primary }]}
-								>
-									See All
-								</Text>
-							</TouchableOpacity>
-						</View>
 						<ScrollView
 							horizontal
 							showsHorizontalScrollIndicator={false}
 							style={styles.carousel}
 						>
-							{categories.map(renderCategoryCard)}
+							{categories.slice(0, 6).map(category => (
+								<View key={category.name}>{renderCategoryCard(category)}</View>
+							))}
+							<SeeMore variant="categories" />
 						</ScrollView>
 					</View>
 
@@ -345,7 +312,7 @@ export default function HomeScreen() {
 
 						{chatsLoading ? (
 							<View style={styles.loadingContainer}>
-								<ActivityIndicator size='small' color={currentColors.primary} />
+								<ActivityIndicator size="small" color={currentColors.primary} />
 								<Text
 									style={[
 										styles.loadingText,
@@ -366,8 +333,8 @@ export default function HomeScreen() {
 									size: 48,
 									color: currentColors.mutedForeground,
 								}}
-								title='No conversations yet'
-								subtitle='Start chatting with a book to see your conversations here'
+								title="No conversations yet"
+								subtitle="Start chatting with a book to see your conversations here"
 								button={{
 									text: 'Explore Books',
 									onPress: () => navigation.navigate('Discover'),
@@ -425,6 +392,7 @@ const styles = StyleSheet.create({
 	},
 	section: {
 		width: '100%',
+		marginTop: 16,
 		paddingVertical: 16,
 		paddingHorizontal: 12,
 		overflow: 'visible',

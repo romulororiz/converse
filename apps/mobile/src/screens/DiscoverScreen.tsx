@@ -16,6 +16,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import { SkeletonLoader } from '../components/SkeletonLoader';
 import { getCategoriesWithCounts, type Category } from '../services/categories';
+import { ScreenHeader } from '../components';
 
 const { width } = Dimensions.get('window');
 
@@ -289,31 +290,11 @@ export default function DiscoverScreen() {
 			/>
 
 			{/* Header */}
-			<View
-				style={[
-					styles.header,
-					{
-						backgroundColor: currentColors.card,
-						borderBottomColor: currentColors.border,
-					},
-				]}
-			>
-				<TouchableOpacity
-					style={styles.backButton}
-					onPress={() => navigation.goBack()}
-				>
-					<Ionicons
-						name='arrow-back'
-						size={24}
-						color={currentColors.foreground}
-					/>
-				</TouchableOpacity>
-				<Text style={[styles.headerTitle, { color: currentColors.foreground }]}>
-					Discover Books
-				</Text>
-				<View style={styles.headerRight} />
-			</View>
-
+			{/* <ScreenHeader
+				title="Discover Books"
+				showBackButton={true}
+				onBackPress={() => navigation.goBack()}
+			/> */}
 			{/* Fixed Header */}
 			<View
 				style={[

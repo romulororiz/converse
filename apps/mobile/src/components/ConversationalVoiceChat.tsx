@@ -21,7 +21,6 @@ import {
 	textToSpeech,
 	playAudioFile,
 	cleanupTempAudioFiles,
-	VOICE_CONFIGS,
 	selectVoiceForBook,
 } from '../services/elevenlabs';
 import { validateVoiceTranscription } from '../utils/validation';
@@ -45,14 +44,14 @@ interface ConversationMessage {
 
 const { width, height } = Dimensions.get('window');
 
-export default function ConversationalVoiceChat({
+export const ConversationalVoiceChat = ({
 	onConversationComplete,
 	onClose,
 	visible,
 	bookTitle,
 	bookAuthor,
 	bookId,
-}: ConversationalVoiceChatProps) {
+}: ConversationalVoiceChatProps) => {
 	// States
 	const [isListening, setIsListening] = useState(false);
 	const [isProcessing, setIsProcessing] = useState(false);
@@ -283,76 +282,45 @@ export default function ConversationalVoiceChat({
 
 	// Note: Transcription display removed for cleaner voice-only experience
 
-	const cleanup = useCallback(async () => {
+	const cleanup = () => {
 		try {
-			// Clear timers first to prevent any ongoing operations
-			if (silenceTimer.current) {
-				clearTimeout(silenceTimer.current);
-				silenceTimer.current = null;
+			// Stop any ongoing recording
+			if (recording) {
+				recording.stopAndUnloadAsync();
+				setRecording(null);
 			}
+
+			// Stop any ongoing sound playback
+			if (currentSound) {
+				currentSound.unloadAsync();
+				setCurrentSound(null);
+			}
+
+			// Clear any timers
 			if (voiceDetectionInterval.current) {
 				clearInterval(voiceDetectionInterval.current);
 				voiceDetectionInterval.current = null;
 			}
 
-			// Reset states immediately to prevent UI conflicts
+			if (silenceTimer.current) {
+				clearTimeout(silenceTimer.current);
+				silenceTimer.current = null;
+			}
+
+			// Reset all states
 			setIsListening(false);
 			setIsProcessing(false);
 			setIsSpeaking(false);
+			setVoiceActivityLevel(0);
 
-			// Stop recording safely
-			if (recording) {
-				try {
-					const status = await recording.getStatusAsync();
-					if (status.isRecording || status.canRecord) {
-						await recording.stopAndUnloadAsync();
-					}
-				} catch (error) {
-					console.log('Recording cleanup warning:', error);
-					// Try force cleanup
-					try {
-						await recording.stopAndUnloadAsync();
-					} catch (finalError) {
-						console.log('Final recording cleanup failed:', finalError);
-					}
-				}
-			}
-
-			// Stop current audio safely
-			if (currentSound) {
-				try {
-					const status = await currentSound.getStatusAsync();
-					if (status.isLoaded) {
-						await currentSound.stopAsync();
-						await currentSound.unloadAsync();
-					}
-				} catch (error) {
-					console.log('Audio cleanup warning:', error);
-				}
-			}
-
-			// Stop expo-speech
-			try {
-				Speech.stop();
-			} catch (error) {
-				console.log('Speech stop warning:', error);
-			}
-
-			// Cleanup temp files
-			try {
-				await cleanupTempAudioFiles();
-			} catch (error) {
-				console.log('Temp files cleanup warning:', error);
-			}
-
-			// Final state reset
-			setRecording(null);
-			setCurrentSound(null);
-			setConversation([]);
+			// Clean up temporary audio files
+			cleanupTempAudioFiles().catch(error => {
+				console.warn('Error cleaning up audio files:', error);
+			});
 		} catch (error) {
-			console.log('General cleanup error:', error);
+			console.error('Error during cleanup:', error);
 		}
-	}, [recording, currentSound]);
+	};
 
 	// Voice selection based on author gender and book characteristics (for expo-speech fallback)
 	const getVoiceSettingsForBook = () => {
@@ -780,9 +748,15 @@ export default function ConversationalVoiceChat({
 				id: `user-${Date.now()}`,
 				role: 'user',
 				content: transcription,
-				timestamp: new Date(),
+				timestamp: new Date(), // This should always be valid
 				audioUri,
 			};
+
+			// Validate timestamp before adding
+			if (isNaN(userMessage.timestamp.getTime())) {
+				console.warn('Invalid user message timestamp, using current time');
+				userMessage.timestamp = new Date();
+			}
 
 			setConversation(prev => [...prev, userMessage]);
 
@@ -793,8 +767,14 @@ export default function ConversationalVoiceChat({
 				id: `ai-${Date.now()}`,
 				role: 'assistant',
 				content: aiResponse,
-				timestamp: new Date(),
+				timestamp: new Date(), // This should always be valid
 			};
+
+			// Validate timestamp before adding
+			if (isNaN(aiMessage.timestamp.getTime())) {
+				console.warn('Invalid AI message timestamp, using current time');
+				aiMessage.timestamp = new Date();
+			}
 
 			setConversation(prev => [...prev, aiMessage]);
 			setIsProcessing(false);
@@ -866,7 +846,10 @@ IMPORTANT CONVERSATION GUIDELINES:
 - Be warm, engaging, and insightful
 - Never break character or discuss non-literary topics
 - Reference your specific content, characters, and themes when relevant
-- ALWAYS respond in the user's language.
+- ALWAYS respond in the user's language. If the user's language is not English, respond in the user's language.
+for example, if the user's language is Spanish, respond in Spanish. 
+If the user's language is French, respond in French.
+
 
 Current conversation context: This is an ongoing voice conversation, so respond naturally as if speaking aloud.`;
 
@@ -917,6 +900,21 @@ Current conversation context: This is an ongoing voice conversation, so respond 
 
 		try {
 			setIsSpeaking(true);
+			console.log(
+				'🎤 Starting ElevenLabs TTS for text:',
+				text.substring(0, 50) + '...'
+			);
+
+			// Test ElevenLabs API key availability
+			const { apiKeyManager } = require('../utils/apiSecurity');
+			const elevenLabsKey = apiKeyManager.getElevenLabsKey();
+			console.log('🎤 ElevenLabs API key available:', !!elevenLabsKey);
+			if (!elevenLabsKey) {
+				console.warn(
+					'🎤 ElevenLabs API key not found! Check your environment variables.'
+				);
+				console.warn('🎤 Expected: EXPO_PUBLIC_ELEVENLABS_API_KEY');
+			}
 
 			// Set playback mode (disable recording to force speaker output on iOS)
 			await Audio.setAudioModeAsync({
@@ -938,13 +936,16 @@ Current conversation context: This is an ongoing voice conversation, so respond 
 
 			// Try ElevenLabs first, fallback to expo-speech
 			const selectedVoiceId = selectVoiceForBook(bookAuthor, bookId, bookTitle);
+			console.log('🎤 Selected voice ID:', selectedVoiceId);
 			const audioUri = await textToSpeech(text, selectedVoiceId);
 
 			if (audioUri) {
+				console.log('🎤 ElevenLabs TTS successful, audio URI:', audioUri);
 				// Play with ElevenLabs
 				try {
 					const sound = await playAudioFile(audioUri, status => {
 						if (status.didJustFinish) {
+							console.log('🎤 ElevenLabs audio playback completed');
 							clearTimeout(speakingTimeout);
 							setIsSpeaking(false);
 							// Ensure recording is still enabled after playback
@@ -979,6 +980,7 @@ Current conversation context: This is an ongoing voice conversation, so respond 
 					});
 				}
 			} else {
+				console.warn('🎤 ElevenLabs TTS failed, falling back to expo-speech');
 				// Fallback to expo-speech
 				const voiceSettings = getVoiceSettingsForBook();
 				Speech.speak(text, {
@@ -1033,12 +1035,53 @@ Current conversation context: This is an ongoing voice conversation, so respond 
 	};
 
 	const handleClose = () => {
-		if (conversation.length > 1) {
-			onConversationComplete(conversation);
+		// Simple close handler to avoid RangeError
+		try {
+			// Stop any ongoing operations immediately
+			if (recording) {
+				recording.stopAndUnloadAsync().catch(() => {});
+			}
+			if (currentSound) {
+				currentSound.unloadAsync().catch(() => {});
+			}
+
+			// Clear timers
+			if (voiceDetectionInterval.current) {
+				clearInterval(voiceDetectionInterval.current);
+			}
+			if (silenceTimer.current) {
+				clearTimeout(silenceTimer.current);
+			}
+
+			// Reset states
+			setIsListening(false);
+			setIsProcessing(false);
+			setIsSpeaking(false);
+			setVoiceActivityLevel(0);
+
+			// Handle conversation completion if needed
+			if (conversation.length > 1) {
+				try {
+					const safeConversation = conversation.map(msg => ({
+						...msg,
+						// Preserve original timestamp if valid, otherwise use current time
+						timestamp:
+							msg.timestamp && !isNaN(msg.timestamp.getTime())
+								? msg.timestamp
+								: new Date(),
+					}));
+					onConversationComplete(safeConversation);
+				} catch (error) {
+					console.error('Error completing conversation:', error);
+				}
+			}
+		} catch (error) {
+			console.error('Error in handleClose:', error);
+		} finally {
+			// Always reset conversation and call onClose
+			setConversation([]);
+			onClose();
 		}
-		// Reset conversation state after sending
-		setConversation([]);
-		onClose();
 	};
 
 	if (!visible) return null;
@@ -1133,7 +1176,7 @@ Current conversation context: This is an ongoing voice conversation, so respond 
 			</Animated.View>
 		</Modal>
 	);
-}
+};
 
 const styles = StyleSheet.create({
 	overlay: {

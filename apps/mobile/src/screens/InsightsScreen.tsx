@@ -253,11 +253,11 @@ export default function InsightsScreen() {
 			/>
 
 			{/* Header */}
-			<ScreenHeader
+			{/* <ScreenHeader
 				title="Insights"
 				showBackButton={true}
 				onBackPress={() => navigation.goBack()}
-			/>
+			/> */}
 
 			{/* Fixed Header */}
 			<View
