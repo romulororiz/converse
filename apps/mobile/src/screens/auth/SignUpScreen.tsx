@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../utils/colors';
 import { supabase } from '../../lib/supabase';
 import { useNavigation } from '@react-navigation/native';
-import { signInWithGoogleDirect } from '../../services/googleAuth';
+import { signInWithGoogle } from '../../services/googleAuth';
 import { useAuth } from '../../components/AuthProvider';
 import { validateSignUp } from '../../utils/validation';
 
@@ -100,27 +100,27 @@ export default function SignUpScreen() {
 		}
 	};
 
-	const handleGoogleLogin = async () => {
+	const handleGoogleSignUp = async () => {
 		try {
 			setLoading(true);
-			console.log('Starting Google signup...');
+			console.log('Starting Google sign up...');
 
-			const result = await signInWithGoogleDirect();
-			console.log('Google signup result:', result);
+			const result = await signInWithGoogle();
+			console.log('Google sign up result:', result);
 
 			if (!result.success) {
-				console.error('Google signup failed:', result.error);
+				console.error('Google sign up failed:', result.error);
 				Alert.alert(
 					'Google Sign Up Failed',
 					result.error || 'Unable to sign up with Google. Please try again.'
 				);
 			} else {
-				console.log('Google signup successful!');
+				console.log('Google sign up successful!');
 				// Manually refresh the session to trigger navigation
 				await refreshSession();
 			}
 		} catch (error) {
-			console.error('Google signup error:', error);
+			console.error('Google sign up error:', error);
 			Alert.alert('Error', 'An unexpected error occurred. Please try again.');
 		} finally {
 			setLoading(false);
@@ -250,7 +250,7 @@ export default function SignUpScreen() {
 
 					<TouchableOpacity
 						style={[styles.socialButton, loading && styles.buttonDisabled]}
-						onPress={handleGoogleLogin}
+						onPress={handleGoogleSignUp}
 						disabled={loading}
 					>
 						<Ionicons

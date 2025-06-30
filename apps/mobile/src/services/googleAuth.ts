@@ -1,22 +1,18 @@
 import { makeRedirectUri } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
-import { Platform } from 'react-native';
+
 import { supabase } from '../lib/supabase';
 import { Alert } from 'react-native';
 
 // Configure WebBrowser for OAuth
 WebBrowser.maybeCompleteAuthSession();
 
-// Google OAuth configuration - use platform-specific client IDs
-const getGoogleClientId = () => {
-	if (Platform.OS === 'android') {
-		return process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
-	} else if (Platform.OS === 'ios') {
-		return process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
-	} else {
-		return process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
-	}
-};
+// Google OAuth configuration
+const GOOGLE_CLIENT_ID =
+	process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || 'your-google-client-id';
+const GOOGLE_CLIENT_SECRET =
+	process.env.EXPO_PUBLIC_GOOGLE_CLIENT_SECRET || 'your-google-client-secret';
+
 
 export interface GoogleAuthResult {
 	success: boolean;
@@ -24,21 +20,10 @@ export interface GoogleAuthResult {
 	user?: any;
 }
 
-// Improved Google OAuth with better error handling
+// Direct OAuth approach without relying on Supabase's OAuth URL generation
 export async function signInWithGoogleDirect(): Promise<GoogleAuthResult> {
 	try {
-		console.log('Starting Google OAuth for platform:', Platform.OS);
-
-		// Check if we have the required client ID
-		const clientId = getGoogleClientId();
-		if (!clientId) {
-			const error = `Google Client ID not configured for ${Platform.OS}. Please check your environment variables.`;
-			console.error(error);
-			return {
-				success: false,
-				error: error,
-			};
-		}
+		console.log('Starting direct Google OAuth...');
 
 		// Get Supabase URL
 		const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -46,122 +31,90 @@ export async function signInWithGoogleDirect(): Promise<GoogleAuthResult> {
 			throw new Error('Supabase URL not configured');
 		}
 
-		// Create redirect URI - use a simpler format for better compatibility
+		// Create redirect URI
 		const redirectUri = 'interactive-library://auth';
 
-		// Construct the OAuth URL with additional parameters for better Android compatibility
-		const authUrl = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectUri)}&client_id=${clientId}`;
+		// Construct the direct OAuth URL to Supabase
+		const authUrl = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectUri)}`;
 
-		console.log('OAuth URL:', authUrl);
+		console.log('Direct auth URL:', authUrl);
 		console.log('Redirect URI:', redirectUri);
 
-		// Open the auth session with better options for Android
-		const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri, {
-			dismissButtonStyle: 'cancel',
-			preferEphemeralSession: true,
-			showInRecents: false,
-		});
+		// Open the auth session
+		const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
 
-		console.log('OAuth result type:', result.type);
+		console.log('Direct OAuth result:', result);
 
-		if (result.type === 'success' && result.url) {
-			// Parse the result URL
-			const url = new URL(result.url);
+		if (result.type === 'success') {
+			console.log('Direct OAuth success, result URL:', result.url);
 
-			// Check for error parameters
-			const error = url.searchParams.get('error');
-			const errorDescription = url.searchParams.get('error_description');
+			// Wait for Supabase to process the callback
+			await new Promise(resolve => setTimeout(resolve, 1500));
 
-			if (error) {
-				console.error('OAuth error:', error, errorDescription);
-				return {
-					success: false,
-					error: errorDescription || error,
-				};
-			}
+			// Check for session multiple times with increasing delays
+			for (let attempt = 1; attempt <= 3; attempt++) {
+				console.log(`Checking for session, attempt ${attempt}...`);
 
-			// Extract tokens from URL parameters
-			const accessToken = url.searchParams.get('access_token');
-			const refreshToken = url.searchParams.get('refresh_token');
+				const {
+					data: { session },
+					error,
+				} = await supabase.auth.getSession();
 
-			if (accessToken && refreshToken) {
-				console.log('Tokens found, setting session...');
+				if (session?.user) {
+					console.log('Session found:', session.user.email);
 
-				// Set the session in Supabase
-				const { data, error: sessionError } = await supabase.auth.setSession({
-					access_token: accessToken,
-					refresh_token: refreshToken,
-				});
-
-				if (sessionError) {
-					console.error('Session error:', sessionError);
-					return {
-						success: false,
-						error: sessionError.message,
-					};
-				}
-
-				if (data?.user) {
-					console.log(
-						'Google authentication successful for user:',
-						data.user.email
-					);
 					return {
 						success: true,
-						user: data.user,
+						user: session.user,
 					};
+				}
+
+				if (attempt < 3) {
+					await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
 				}
 			}
 
-			// If no tokens in URL params, check hash fragment
-			const hashParams = new URLSearchParams(url.hash.substring(1));
-			const hashAccessToken = hashParams.get('access_token');
-			const hashRefreshToken = hashParams.get('refresh_token');
+			// If still no session, try to extract from URL manually
+			console.log('No session found, trying to extract tokens from URL...');
 
-			if (hashAccessToken && hashRefreshToken) {
-				console.log('Tokens found in hash, setting session...');
+			try {
+				const url = new URL(result.url!);
+				const fragment = url.hash.substring(1);
+				const params = new URLSearchParams(fragment);
 
-				const { data, error: sessionError } = await supabase.auth.setSession({
-					access_token: hashAccessToken,
-					refresh_token: hashRefreshToken,
-				});
+				const accessToken = params.get('access_token');
+				const refreshToken = params.get('refresh_token');
 
-				if (sessionError) {
-					return {
-						success: false,
-						error: sessionError.message,
-					};
+				if (accessToken && refreshToken) {
+					console.log('Found tokens in URL, setting session...');
+
+					const { data, error } = await supabase.auth.setSession({
+						access_token: accessToken,
+						refresh_token: refreshToken,
+					});
+
+					if (error) {
+						console.error('Error setting session:', error);
+						return {
+							success: false,
+							error: `Failed to set session: ${error.message}`,
+						};
+					}
+
+					if (data?.user) {
+						return {
+							success: true,
+							user: data.user,
+						};
+					}
 				}
-
-				if (data?.user) {
-					return {
-						success: true,
-						user: data.user,
-					};
-				}
-			}
-
-			// If we get here, try to wait a moment and check if Supabase processed the auth
-			console.log('No tokens found, waiting for Supabase to process...');
-			await new Promise(resolve => setTimeout(resolve, 2000));
-
-			// Check current session
-			const { data: sessionData } = await supabase.auth.getSession();
-			if (sessionData?.session?.user) {
-				console.log(
-					'Session found after waiting:',
-					sessionData.session.user.email
-				);
-				return {
-					success: true,
-					user: sessionData.session.user,
-				};
+			} catch (urlError) {
+				console.error('Error parsing URL:', urlError);
 			}
 
 			return {
 				success: false,
-				error:
-					'Authentication completed but no session was established. Please try again.',
+				error: 'Authentication completed but session could not be established',
 			};
 		} else if (result.type === 'cancel') {
 			return {
@@ -171,11 +124,11 @@ export async function signInWithGoogleDirect(): Promise<GoogleAuthResult> {
 		} else {
 			return {
 				success: false,
-				error: 'Authentication failed - unexpected result type',
+				error: 'Authentication failed',
 			};
 		}
 	} catch (error) {
-		console.error('Google Auth Error:', error);
+		console.error('Direct Google Auth Error:', error);
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -229,7 +182,7 @@ export async function signInWithGoogleSimple(): Promise<GoogleAuthResult> {
 				console.log('Result URL:', result.url);
 
 				// Parse the result URL to extract tokens
-				const url = new URL(result.url);
+				const url = new URL(result.url!);
 
 				// Check for tokens in query parameters
 				const accessToken = url.searchParams.get('access_token');
@@ -379,7 +332,7 @@ export async function signInWithGoogleSupabase(): Promise<GoogleAuthResult> {
 
 		if (result.type === 'success') {
 			// The redirect should contain auth tokens in the URL
-			const url = new URL(result.url);
+			const url = new URL(result.url!);
 			const accessToken = url.searchParams.get('access_token');
 			const refreshToken = url.searchParams.get('refresh_token');
 			const error = url.searchParams.get('error');
@@ -488,7 +441,7 @@ export async function signInWithGoogleWeb(): Promise<GoogleAuthResult> {
 
 		if (result.type === 'success') {
 			// Extract the URL parameters
-			const url = new URL(result.url);
+			const url = new URL(result.url!);
 			const accessToken = url.searchParams.get('access_token');
 			const refreshToken = url.searchParams.get('refresh_token');
 

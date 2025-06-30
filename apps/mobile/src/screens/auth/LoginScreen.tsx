@@ -72,10 +72,9 @@ export default function LoginScreen() {
 			console.log('Starting Google login...');
 
 			const result = await signInWithGoogleDirect();
-			console.log('Google login result:', result);
 
 			if (!result.success) {
-				console.error('Google login failed:', result.error);
+				console.error('Google login failed:', result.error || 'Unknown error');
 				Alert.alert(
 					'Google Sign In Failed',
 					result.error || 'Unable to sign in with Google. Please try again.'
