@@ -1,12 +1,20 @@
 {
-  "expo": {
-    "extra": {
-      "eas": {
-        "projectId": "8b881501-1cf6-4193-92ef-0697a8668a06"
-      }
-    },
-    "web": {
-      "bundler": "metro"
-    }
-  }
+	"expo": {
+		"extra": {
+			"eas": {
+				"projectId": "8b881501-1cf6-4193-92ef-0697a8668a06"
+			}
+		},
+		"web": {
+			"bundler": "metro"
+		},
+		"plugins": [
+			[
+				"expo-linking",
+				{
+					"prefix": "interactive-library"
+				}
+			]
+		]
+	}
 }

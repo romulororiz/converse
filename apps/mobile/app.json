@@ -12,17 +12,13 @@
 			"resizeMode": "contain",
 			"backgroundColor": "#ffffff"
 		},
-		"extra": {
-			"eas": {
-				"projectId": "b99dbb50-1f88-4251-9fe3-48b3534a313f"
-			}
-		},
 		"ios": {
 			"supportsTablet": true,
 			"infoPlist": {
 				"NSMicrophoneUsageDescription": "This app needs access to the microphone to record voice messages for AI chat.",
 				"NSPhotoLibraryUsageDescription": "This app needs access to your photo library to upload profile pictures.",
-				"NSCameraUsageDescription": "This app needs access to your camera to take profile pictures."
+				"NSCameraUsageDescription": "This app needs access to your camera to take profile pictures.",
+				"ITSAppUsesNonExemptEncryption": false
 			},
 			"bundleIdentifier": "com.interactivelibrary.mobile"
 		},
@@ -62,7 +58,7 @@
 		"scheme": "interactive-library",
 		"extra": {
 			"eas": {
-				"projectId": "90bb907f-379f-4ca6-829a-b0d45fff7d06"
+				"projectId": "b99dbb50-1f88-4251-9fe3-48b3534a313f"
 			}
 		},
 		"owner": "romulororiz",
