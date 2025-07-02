@@ -1212,7 +1212,9 @@ export default function ChatDetailScreen() {
 
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>
-			<SafeAreaView style={styles.safeArea}>
+			<SafeAreaView
+				style={[styles.safeArea, { backgroundColor: currentColors.background }]}
+			>
 				<KeyboardAvoidingView
 					style={{ flex: 1 }}
 					behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
