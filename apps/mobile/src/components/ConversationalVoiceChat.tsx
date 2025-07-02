@@ -24,6 +24,8 @@ import {
 	selectVoiceForBook,
 } from '../services/elevenlabs';
 import { validateVoiceTranscription } from '../utils/validation';
+import { checkVoiceRateLimit, checkAIRateLimit } from '../utils/rateLimit';
+import { supabase } from '../lib/supabase';
 
 interface ConversationalVoiceChatProps {
 	onConversationComplete: (conversation: ConversationMessage[]) => void;
@@ -32,6 +34,8 @@ interface ConversationalVoiceChatProps {
 	bookTitle?: string;
 	bookAuthor?: string;
 	bookId?: string;
+	onRateLimitHit?: (resetTime: Date) => void; // Add callback for rate limit
+	onRateLimitHit?: (resetTime: Date) => void;
 }
 
 interface ConversationMessage {
@@ -51,6 +55,7 @@ export const ConversationalVoiceChat = ({
 	bookTitle,
 	bookAuthor,
 	bookId,
+	onRateLimitHit,
 }: ConversationalVoiceChatProps) => {
 	// States
 	const [isListening, setIsListening] = useState(false);
@@ -87,15 +92,18 @@ export const ConversationalVoiceChat = ({
 	useEffect(() => {
 		const initAudio = async () => {
 			try {
+				// Initial audio session setup for recording with speaker preference
 				await Audio.setAudioModeAsync({
 					allowsRecordingIOS: true,
 					playsInSilentModeIOS: true,
 					staysActiveInBackground: true,
 					shouldDuckAndroid: true,
-					playThroughEarpieceAndroid: false,
+					playThroughEarpieceAndroid: false, // Force speaker on Android
 					interruptionModeIOS: InterruptionModeIOS.DuckOthers,
 					interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
 				});
+
+				console.log('🔊 Audio session initialized for speaker output');
 			} catch (error) {
 				console.error('Error setting audio mode:', error);
 			}
@@ -499,16 +507,20 @@ export const ConversationalVoiceChat = ({
 				return;
 			}
 
-			// Configure audio session for recording
+			// Configure audio session for recording with speaker output preference
 			await Audio.setAudioModeAsync({
 				allowsRecordingIOS: true,
 				playsInSilentModeIOS: true,
 				staysActiveInBackground: true,
 				shouldDuckAndroid: true,
-				playThroughEarpieceAndroid: false,
+				playThroughEarpieceAndroid: false, // Always use speaker, never earpiece
 				interruptionModeIOS: InterruptionModeIOS.DuckOthers,
 				interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
 			});
+
+			console.log(
+				'🔊 Audio session configured for recording with speaker output'
+			);
 
 			// Start listening with a small delay to ensure audio is configured
 			setTimeout(() => {
@@ -724,22 +736,97 @@ export const ConversationalVoiceChat = ({
 
 	const processUserSpeech = async (audioUri: string) => {
 		try {
-			// Transcribe audio using OpenAI Whisper
-			const transcription = await transcribeAudio(audioUri);
+			setIsProcessing(true);
 
-			if (!transcription.trim()) {
+			// Get current user for rate limiting
+			const {
+				data: { user },
+				error: userError,
+			} = await supabase.auth.getUser();
+			if (userError || !user) {
+				console.error('User not authenticated for voice processing');
 				setIsProcessing(false);
-				startListening(); // Continue listening if no speech detected
 				return;
 			}
 
-			// Validate transcription using Zod
+			// Professional voice rate limiting with result-based approach
+			const userTier = 'premium'; // Voice is premium-only feature
+			const voiceRateLimitResult = await checkVoiceRateLimit(user.id, userTier);
+
+			if (!voiceRateLimitResult.allowed) {
+				console.log(`⚠️ Voice rate limit exceeded for user ${user.id}`);
+				setIsProcessing(false);
+
+				// Show toast notification
+				const { toast } = require('../utils/toast');
+				const resetSeconds = voiceRateLimitResult.retryAfter || 60;
+
+				toast.warning(
+					'Voice Limit Reached',
+					`Please wait ${resetSeconds} seconds before using voice again.`
+				);
+
+				// Close the voice modal after showing the message
+				setTimeout(() => {
+					onClose();
+				}, 2000);
+				return;
+			}
+
+			console.log(`✅ Voice rate limit check passed for ${userTier} user`);
+
+			// AI request rate limiting with result-based approach
+			const aiRateLimitResult = await checkAIRateLimit(user.id, userTier);
+
+			if (!aiRateLimitResult.allowed) {
+				console.log(`⚠️ AI rate limit exceeded for user ${user.id}`);
+				setIsProcessing(false);
+
+				// Show toast notification
+				const { toast } = require('../utils/toast');
+				const resetSeconds = aiRateLimitResult.retryAfter || 60;
+
+				toast.warning(
+					'AI Processing Limit',
+					`Please wait ${resetSeconds} seconds before asking another question.`
+				);
+
+				// Close the voice modal after showing the message
+				setTimeout(() => {
+					onClose();
+				}, 2000);
+				return;
+			}
+
+			console.log(`✅ AI rate limit check passed for voice processing`);
+
+			console.log('🎤 Processing user speech from:', audioUri);
+
+			// Transcribe audio
+			const transcription = await transcribeAudio(audioUri);
+			console.log('🎤 Transcription result:', transcription);
+
+			if (!transcription || transcription.trim().length === 0) {
+				console.log('🎤 No transcription received, restarting listening');
+				setIsProcessing(false);
+				// Restart listening if no speech was detected
+				setTimeout(() => {
+					if (visible) startListening();
+				}, 500);
+				return;
+			}
+
+			// Validate transcription
 			try {
 				validateVoiceTranscription(transcription);
 			} catch (error) {
-				console.error('Transcription validation error:', error);
+				console.error('Voice transcription validation failed:', error);
 				setIsProcessing(false);
-				startListening(); // Continue listening if validation fails
+				showAlert('Invalid Input', error.message || 'Invalid voice input');
+				// Restart listening after validation error
+				setTimeout(() => {
+					if (visible) startListening();
+				}, 1000);
 				return;
 			}
 
@@ -922,10 +1009,23 @@ Current conversation context: This is an ongoing voice conversation, so respond 
 				playsInSilentModeIOS: true,
 				staysActiveInBackground: true,
 				shouldDuckAndroid: true,
-				playThroughEarpieceAndroid: false,
+				playThroughEarpieceAndroid: false, // Force speaker on Android
 				interruptionModeIOS: InterruptionModeIOS.DuckOthers,
 				interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
 			});
+
+			// Additional iOS-specific configuration to force speaker output
+			if (Platform.OS === 'ios') {
+				await Audio.setAudioModeAsync({
+					allowsRecordingIOS: false,
+					playsInSilentModeIOS: true,
+					staysActiveInBackground: true,
+					shouldDuckAndroid: false,
+					playThroughEarpieceAndroid: false,
+					interruptionModeIOS: InterruptionModeIOS.DuckOthers,
+					interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+				});
+			}
 
 			speakingTimeout = setTimeout(() => {
 				console.warn('Speaking timeout reached, forcing state reset');
@@ -961,7 +1061,9 @@ Current conversation context: This is an ongoing voice conversation, so respond 
 					);
 					// Fallback to expo-speech if audio playback fails
 					const voiceSettings = getVoiceSettingsForBook();
-					Speech.speak(text, {
+
+					// Configure expo-speech to use speaker on iOS
+					const speechOptions: any = {
 						language: 'en',
 						pitch: voiceSettings.pitch,
 						rate: voiceSettings.rate,
@@ -977,13 +1079,23 @@ Current conversation context: This is an ongoing voice conversation, so respond 
 							restoreRecordingMode();
 							if (onComplete) onComplete();
 						},
-					});
+					};
+
+					// Force speaker output for expo-speech on iOS
+					if (Platform.OS === 'ios') {
+						speechOptions._voiceURI = 'com.apple.ttsbundle.Samantha-compact';
+						speechOptions._volume = 1.0;
+					}
+
+					Speech.speak(text, speechOptions);
 				}
 			} else {
 				console.warn('🎤 ElevenLabs TTS failed, falling back to expo-speech');
 				// Fallback to expo-speech
 				const voiceSettings = getVoiceSettingsForBook();
-				Speech.speak(text, {
+
+				// Configure expo-speech to use speaker on iOS
+				const speechOptions: any = {
 					language: 'en',
 					pitch: voiceSettings.pitch,
 					rate: voiceSettings.rate,
@@ -999,7 +1111,15 @@ Current conversation context: This is an ongoing voice conversation, so respond 
 						restoreRecordingMode();
 						if (onComplete) onComplete();
 					},
-				});
+				};
+
+				// Force speaker output for expo-speech on iOS
+				if (Platform.OS === 'ios') {
+					speechOptions._voiceURI = 'com.apple.ttsbundle.Samantha-compact';
+					speechOptions._volume = 1.0;
+				}
+
+				Speech.speak(text, speechOptions);
 			}
 		} catch (error) {
 			console.error('Error speaking text:', error);
@@ -1017,12 +1137,26 @@ Current conversation context: This is an ongoing voice conversation, so respond 
 				playsInSilentModeIOS: true,
 				staysActiveInBackground: true,
 				shouldDuckAndroid: true,
-				playThroughEarpieceAndroid: false,
+				playThroughEarpieceAndroid: false, // Always maintain speaker output
 				interruptionModeIOS: InterruptionModeIOS.DuckOthers,
 				interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
 			});
+
+			console.log('🔊 Recording mode restored with speaker output maintained');
 		} catch (error) {
 			console.error('Error restoring recording mode:', error);
+		}
+	};
+
+	// Debug function to test speaker output
+	const testSpeakerOutput = async () => {
+		try {
+			console.log('🔊 Testing speaker output...');
+			await speakText(
+				'Testing speaker output. You should hear this from your phone speakers, not the earpiece.'
+			);
+		} catch (error) {
+			console.error('Speaker test error:', error);
 		}
 	};
 
@@ -1105,6 +1239,14 @@ Current conversation context: This is an ongoing voice conversation, so respond 
 				{/* Close button */}
 				<TouchableOpacity style={styles.closeButton} onPress={handleClose}>
 					<Ionicons name="close" size={24} color="#FFFFFF" />
+				</TouchableOpacity>
+
+				{/* Debug speaker test button - temporary */}
+				<TouchableOpacity
+					style={[styles.closeButton, { left: 20, right: 'auto' }]}
+					onPress={testSpeakerOutput}
+				>
+					<Ionicons name="volume-high" size={24} color="#FFFFFF" />
 				</TouchableOpacity>
 
 				{/* Main content */}

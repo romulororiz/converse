@@ -51,7 +51,7 @@ export async function getOrCreateChatSession(
 		if (createError) throw createError;
 		return newSession;
 	} catch (error) {
-		console.error('Error in getOrCreateChatSession:', error);
+		console.log('Error in getOrCreateChatSession:', error);
 		throw error;
 	}
 }
@@ -67,7 +67,7 @@ export async function getUserChats(userId: string): Promise<ChatSession[]> {
 		if (error) throw error;
 		return data || [];
 	} catch (error) {
-		console.error('Error in getUserChats:', error);
+		console.log('Error in getUserChats:', error);
 		throw error;
 	}
 }
@@ -119,7 +119,7 @@ export async function getRecentChats(
 
 		return chatsWithLastMessage;
 	} catch (error) {
-		console.error('Error in getRecentChats:', error);
+		console.log('Error in getRecentChats:', error);
 		throw error;
 	}
 }
@@ -135,7 +135,7 @@ export async function getChatMessages(sessionId: string): Promise<Message[]> {
 		if (error) throw error;
 		return data || [];
 	} catch (error) {
-		console.error('Error in getChatMessages:', error);
+		console.log('Error in getChatMessages:', error);
 		throw error;
 	}
 }
@@ -180,7 +180,7 @@ export async function sendMessage(
 		if (error) throw error;
 		return data;
 	} catch (error) {
-		console.error('Error in sendMessage:', error);
+		console.log('Error in sendMessage:', error);
 		throw error;
 	}
 }
@@ -202,11 +202,16 @@ export async function sendMessageAndGetAIResponse(
 		// Check message limit before sending
 		const messageLimit = await canSendMessage(user.id);
 		if (!messageLimit.canSend) {
-			throw new Error(
-				messageLimit.plan === 'free'
-					? `You've reached your daily message limit of ${messageLimit.limit} messages. Upgrade to premium for unlimited messages!`
-					: 'Unable to send message. Please try again.'
-			);
+			// Return a special error object instead of throwing
+			return {
+				error: true,
+				isRateLimit: true,
+				plan: messageLimit.plan,
+				message:
+					messageLimit.plan === 'free'
+						? `You've reached your daily message limit of ${messageLimit.limit} messages. Upgrade to premium for unlimited messages!`
+						: 'Unable to send message. Please try again.',
+			} as any;
 		}
 
 		// First, save the user message
@@ -271,20 +276,80 @@ ${
 		// Call OpenAI API
 		const aiResponse = await callOpenAI(messagesForAI);
 
+		// Check if OpenAI call failed
+		if (typeof aiResponse === 'object' && aiResponse.error) {
+			return {
+				error: true,
+				isRateLimit: aiResponse.isApiRateLimit,
+				isApiRateLimit: aiResponse.isApiRateLimit,
+				message: aiResponse.isApiRateLimit
+					? `API rate limit reached. Please wait ${aiResponse.waitTime || 60} seconds before trying again.`
+					: aiResponse.message,
+				waitTime: aiResponse.waitTime,
+			} as any;
+		}
+
 		// Save AI response
-		const aiMsg = await sendMessage(sessionId, aiResponse, 'assistant');
+		const aiMsg = await sendMessage(
+			sessionId,
+			aiResponse as string,
+			'assistant'
+		);
 
 		return { userMessage: userMsg, aiMessage: aiMsg };
 	} catch (error) {
-		console.error('Error in sendMessageAndGetAIResponse:', error);
-		throw error;
+		console.log('🔥 Error in sendMessageAndGetAIResponse:', error);
+		console.log('🔥 Error type:', typeof error);
+		console.log('🔥 Error constructor:', error?.constructor?.name);
+		console.log(
+			'🔥 Error message:',
+			error instanceof Error ? error.message : String(error)
+		);
+
+		// Return error object instead of throwing
+		let errorMessage = 'Unable to send message. Please try again.';
+
+		// Check if it's a rate limit related error
+		if (error instanceof Error) {
+			const errorMsg = error.message.toLowerCase();
+			if (
+				errorMsg.includes('rate limit') ||
+				errorMsg.includes('too many requests') ||
+				errorMsg.includes('429')
+			) {
+				errorMessage =
+					'You are sending messages too quickly. Please wait a moment before trying again.';
+			} else if (errorMsg.includes('openai') || errorMsg.includes('api')) {
+				errorMessage =
+					'AI service is temporarily busy. Please try again in a moment.';
+			} else if (
+				errorMsg.includes('network') ||
+				errorMsg.includes('fetch') ||
+				errorMsg.includes('connection')
+			) {
+				errorMessage =
+					'Connection issue detected. Please check your internet and try again.';
+			} else if (errorMsg.includes('quota') || errorMsg.includes('billing')) {
+				errorMessage =
+					'AI service temporarily unavailable. Please try again later.';
+			}
+		}
+
+		return {
+			error: true,
+			isRateLimit: false,
+			message: errorMessage,
+		} as any;
 	}
 }
 
 async function callOpenAI(
 	messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>
-): Promise<string> {
-	return secureApiRequest('openai', async () => {
+): Promise<
+	| string
+	| { error: true; isApiRateLimit: boolean; message: string; waitTime?: number }
+> {
+	const result = await secureApiRequest('openai', async () => {
 		try {
 			// Get the OpenAI API key securely
 			const apiKey = apiKeyManager.getOpenAIKey();
@@ -292,40 +357,48 @@ async function callOpenAI(
 			const response = await fetch(
 				'https://api.openai.com/v1/chat/completions',
 				{
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${apiKey}`,
-			},
-			body: JSON.stringify({
-				model: 'gpt-4o',
-				messages: messages,
-				max_tokens: 300,
-				temperature: 0.7,
-			}),
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Authorization: `Bearer ${apiKey}`,
+					},
+					body: JSON.stringify({
+						model: 'gpt-4o',
+						messages: messages,
+						max_tokens: 300,
+						temperature: 0.7,
+					}),
 				}
 			);
 
-		if (!response.ok) {
-			const errorData = await response.text();
-			console.error('OpenAI API error:', response.status, errorData);
-			throw new Error(`OpenAI API error: ${response.status} ${errorData}`);
-		}
+			if (!response.ok) {
+				const errorData = await response.text();
+				console.log('OpenAI API error:', response.status, errorData);
+				throw new Error(`OpenAI API error: ${response.status} ${errorData}`);
+			}
 
-		const data = await response.json();
-		const aiContent = data.choices?.[0]?.message?.content?.trim();
+			const data = await response.json();
+			const aiContent = data.choices?.[0]?.message?.content?.trim();
 
-		if (!aiContent) {
-			throw new Error('No content received from OpenAI');
-		}
+			if (!aiContent) {
+				throw new Error('No content received from OpenAI');
+			}
 
 			return sanitizeInput(aiContent);
-	} catch (error) {
-		console.error('Error calling OpenAI:', error);
-		// Fallback response if OpenAI fails
-		return "I apologize, but I'm having trouble connecting to my knowledge base right now. Please try again in a moment, and I'll be happy to discuss literature with you!";
-	}
+		} catch (error) {
+			console.log('Error calling OpenAI:', error);
+			// Re-throw the error to let secureApiRequest handle it
+			throw error;
+		}
 	});
+
+	// Check if secureApiRequest returned an error
+	if (result && typeof result === 'object' && result.error) {
+		console.log('🚨 API call returned error:', result);
+		return result;
+	}
+
+	return result;
 }
 
 export async function deleteChatSession(sessionId: string): Promise<void> {
@@ -337,7 +410,7 @@ export async function deleteChatSession(sessionId: string): Promise<void> {
 			.eq('session_id', sessionId);
 
 		if (messagesError) {
-			console.error('Error deleting messages:', messagesError);
+			console.log('Error deleting messages:', messagesError);
 			throw messagesError;
 		}
 
@@ -348,7 +421,7 @@ export async function deleteChatSession(sessionId: string): Promise<void> {
 			.eq('id', sessionId);
 
 		if (sessionError) {
-			console.error('Error deleting chat session:', sessionError);
+			console.log('Error deleting chat session:', sessionError);
 			throw sessionError;
 		}
 
@@ -358,7 +431,7 @@ export async function deleteChatSession(sessionId: string): Promise<void> {
 			);
 		}
 	} catch (error) {
-		console.error('Error in deleteChatSession:', error);
+		console.log('Error in deleteChatSession:', error);
 		throw error;
 	}
 }
@@ -378,7 +451,7 @@ export async function updateChatSession(
 		if (error) throw error;
 		return data;
 	} catch (error) {
-		console.error('Error in updateChatSession:', error);
+		console.log('Error in updateChatSession:', error);
 		throw error;
 	}
 }

@@ -230,10 +230,10 @@ export class NotificationService {
 			try {
 				await Notifications.setNotificationChannelAsync('default', {
 					name: 'Default',
-					importance: 'max',
+					importance: Notifications.AndroidImportance.MAX,
 					vibrationPattern: [0, 250, 250, 250],
 					lightColor: '#FF231F7C',
-					sound: true,
+					sound: 'default',
 				});
 				console.log('Android notification channel created');
 			} catch (error) {
@@ -255,7 +255,7 @@ export class NotificationService {
 			'Time to Read! 📚',
 			'Your books are waiting for you. Continue your reading journey!',
 			{
-				type: 'timeInterval',
+				type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
 				seconds: hours * 3600,
 				repeats: false,
 			}
@@ -274,7 +274,7 @@ export class NotificationService {
 			'New Book Available! 🎉',
 			`"${bookTitle}" is now available in your library.`,
 			{
-				type: 'timeInterval',
+				type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
 				seconds: 1,
 				repeats: false,
 			}
@@ -293,7 +293,7 @@ export class NotificationService {
 			'New Response! 💬',
 			`"${bookTitle}" has responded to your message.`,
 			{
-				type: 'timeInterval',
+				type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
 				seconds: 1,
 				repeats: false,
 			}
@@ -312,7 +312,7 @@ export class NotificationService {
 			'Achievement Unlocked! 🏆',
 			`Congratulations! You've earned: ${achievement}`,
 			{
-				type: 'timeInterval',
+				type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
 				seconds: 1,
 				repeats: false,
 			}

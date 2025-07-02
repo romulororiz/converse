@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, {
+	useState,
+	useEffect,
+	useRef,
+	useCallback,
+	useMemo,
+} from 'react';
 import {
 	View,
 	Text,
@@ -17,11 +23,12 @@ import {
 	NativeScrollEvent,
 	NativeSyntheticEvent,
 	ScrollView,
+	BackHandler,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
 import { useTheme } from '../contexts/ThemeContext';
-import { showAlert } from '../utils/alert';
+// import { showAlert } from '../utils/alert'; // Replaced with toast
 import { LoadingDots } from '../components/LoadingDots';
 import { BookCover } from '../components/BookCover';
 import { ConversationalVoiceChat } from '../components/ConversationalVoiceChat';
@@ -68,8 +75,8 @@ import { PremiumPaywallDrawer } from '../components/PremiumPaywallDrawer';
 import { LinearGradient } from 'expo-linear-gradient';
 import { formatDistanceToNow } from 'date-fns';
 import { canSendMessage, upgradeToPremium } from '../services/subscription';
-import { useToast } from '../components/ui/toast';
-import { checkRateLimit } from '../utils/rateLimit';
+import { toast } from '../utils/toast';
+import { checkChatRateLimit, checkVoiceRateLimit } from '../utils/rateLimit';
 import { useSubscription } from '../contexts/SubscriptionContext';
 
 type RootStackParamList = {
@@ -120,7 +127,6 @@ export default function ChatDetailScreen() {
 	const [showDropdown, setShowDropdown] = useState(false);
 	const { user } = useAuth();
 	const { theme, isDark } = useTheme();
-	const { toast } = useToast();
 	const { subscription, refreshSubscription } = useSubscription();
 	const currentColors = colors[theme];
 	const route = useRoute<ChatDetailScreenRouteProp>();
@@ -136,10 +142,25 @@ export default function ChatDetailScreen() {
 	const dropdownOpacity = useSharedValue(0);
 	const dropdownTranslateY = useSharedValue(-20);
 
-	// Real premium check based on subscription
-	const isPremium =
-		subscription?.subscription_plan === 'premium' &&
-		subscription?.subscription_status === 'active';
+	// Real premium check based on subscription with better validation
+	const isPremium = React.useMemo(() => {
+		if (!subscription) {
+			console.log('🔍 Subscription is null/loading');
+			return false;
+		}
+
+		const isValidPremium =
+			subscription.subscription_plan === 'premium' &&
+			subscription.subscription_status === 'active';
+
+		console.log('🔍 Premium check:', {
+			plan: subscription.subscription_plan,
+			status: subscription.subscription_status,
+			isValidPremium,
+		});
+
+		return isValidPremium;
+	}, [subscription]);
 	const [showPaywall, setShowPaywall] = useState(false);
 
 	// Debug logging for subscription status
@@ -230,6 +251,28 @@ export default function ChatDetailScreen() {
 		}
 	}, [showDropdown]);
 
+	// Use global rate limiting from AuthProvider
+	const {
+		chatRateLimited,
+		voiceRateLimited,
+		apiRateLimited,
+		rateLimitResetTime,
+		apiRateLimitResetTime,
+		setChatRateLimited,
+		setVoiceRateLimited,
+		setApiRateLimited,
+		setRateLimitResetTime,
+		setApiRateLimitResetTime,
+		getRemainingTime,
+	} = useAuth();
+
+	// Reset sending state when API rate limit is cleared
+	useEffect(() => {
+		if (!apiRateLimited && sending) {
+			setSending(false);
+		}
+	}, [apiRateLimited, sending]);
+
 	const loadChatData = async () => {
 		try {
 			setLoading(true);
@@ -239,7 +282,7 @@ export default function ChatDetailScreen() {
 			if (bookData) {
 				setBook(bookData);
 			} else {
-				showAlert('Error', 'Book not found');
+				toast.error('Book not found', 'Unable to load book details');
 				navigation.goBack();
 				return;
 			}
@@ -285,46 +328,61 @@ export default function ChatDetailScreen() {
 			}
 			// If no session exists, we'll create it when user sends first message
 		} catch (error) {
-			console.error('Error loading chat data:', error);
-			showAlert('Error', 'Failed to load conversation');
+			console.log('Error loading chat data:', error);
+			toast.error('Unable to load messages', 'Please try again');
 		} finally {
 			setLoading(false);
 		}
 	};
 
 	const handleSendMessage = async () => {
-		if (!user?.id || !bookId || !newMessage.trim() || sending) return;
+		if (
+			!user?.id ||
+			!bookId ||
+			!newMessage.trim() ||
+			sending ||
+			chatRateLimited ||
+			apiRateLimited
+		)
+			return;
+
+		// Store the message before clearing input
+		const userMessage = newMessage.trim();
 
 		try {
-			// Validate message using Zod
-			const userMessage = newMessage.trim();
+			// Validate message using Zod - wrap in try-catch to prevent throws
 			try {
 				validateChatMessage(userMessage, bookId);
-			} catch (error) {
-				toast({
-					title: 'Invalid Message',
-					description: error.message || 'Invalid message',
-					variant: 'destructive',
-				});
+			} catch (validationError) {
+				console.log('Validation error:', validationError);
+				// Don't throw, just show toast and return
+				toast.error(
+					'Invalid Message',
+					validationError.message || 'Invalid message'
+				);
 				return;
 			}
 
-			// Check rate limit
-			try {
-				await checkRateLimit({ key: user.id, window: 60, max: 10 });
-			} catch (error) {
-				toast({
-					title: 'Rate Limit Exceeded',
-					description:
-						'You are sending messages too quickly. Please wait a minute.',
-					variant: 'destructive',
-				});
-				return;
-			}
-
-			// Clear input immediately and focus management
+			// Clear input immediately to prevent double-sends
 			setNewMessage('');
 			textInputRef.current?.clear();
+
+			// Professional rate limiting with result-based approach (no throwing)
+			const userTier = isPremium ? 'premium' : 'basic';
+			const rateLimitResult = await checkChatRateLimit(user.id, userTier);
+
+			if (!rateLimitResult.allowed) {
+				setChatRateLimited(true);
+				const resetSeconds = rateLimitResult.retryAfter || 30;
+				const resetTime =
+					rateLimitResult.resetTime ||
+					new Date(Date.now() + resetSeconds * 1000);
+				setRateLimitResetTime(resetTime);
+				setNewMessage(userMessage);
+				return;
+			}
+
+			// Now set sending state since rate limit passed
 			setSending(true);
 
 			try {
@@ -334,9 +392,15 @@ export default function ChatDetailScreen() {
 					if (messageLimit.plan === 'free') {
 						// Show paywall for free users who reached their limit
 						setShowPaywall(true);
+						// Restore message
+						setNewMessage(userMessage);
 						return;
 					} else {
-						throw new Error('Unable to send message. Please try again.');
+						// Don't throw, show error toast
+						toast.error('Unable to send message', 'Please try again');
+						setNewMessage(userMessage);
+						setSending(false);
+						return;
 					}
 				}
 
@@ -362,17 +426,47 @@ export default function ChatDetailScreen() {
 				setMessages(prev => [...prev, tempUserMessage]);
 
 				// Send message and get AI response in one call
-				const { userMessage: userMsg, aiMessage: aiMsg } =
-					await sendMessageAndGetAIResponse(currentSessionId, userMessage);
+				const response = await sendMessageAndGetAIResponse(
+					currentSessionId,
+					userMessage
+				);
+
+				if ((response as any).error) {
+					// Remove temp message
+					setMessages(prev => prev.slice(0, -1));
+
+					if ((response as any).isRateLimit) {
+						// User rate limit (message count limit)
+						if ((response as any).plan === 'free') {
+							setShowPaywall(true);
+						} else {
+							// NO TOAST - handled by UI only
+							const rateLimitMessage =
+								(response as any).message || 'Rate limit exceeded';
+						}
+					} else if ((response as any).isApiRateLimit) {
+						const waitTime = (response as any).waitTime || 60;
+						setNewMessage('');
+						textInputRef.current?.clear();
+						setApiRateLimited(true);
+						const resetTime = new Date(Date.now() + waitTime * 1000);
+						setApiRateLimitResetTime(resetTime);
+						setSending(false);
+						return;
+					}
+					setSending(false);
+					return;
+				}
 
 				// Replace temp message with real user message and add AI response
+				const { userMessage: userMsg, aiMessage: aiMsg } = response as any;
 				setMessages(prev => [
 					...prev.slice(0, -1), // Remove temp message
 					userMsg as ChatMessage,
 					aiMsg as ChatMessage,
 				]);
 			} catch (error) {
-				console.error('Error sending message:', error);
+				console.log('Error sending message:', error);
 				// Remove the temp message on error and restore input
 				setMessages(prev => prev.slice(0, -1));
 				setNewMessage(userMessage); // Restore the message if there was an error
@@ -381,26 +475,20 @@ export default function ChatDetailScreen() {
 				if (error.message?.includes('daily message limit')) {
 					setShowPaywall(true);
 				} else {
-					toast({
-						title: 'Error',
-						description: 'Failed to send message',
-						variant: 'destructive',
-					});
+					// NO TOAST - handled by UI only
 				}
 			} finally {
-				setSending(false);
+				// Only reset sending if we're not in an API rate limit state
+				if (!apiRateLimited) {
+					setSending(false);
+				}
 			}
 		} catch (error) {
-			console.error('Error sending message:', error);
-			if (error.message?.includes('message limit')) {
-				setShowPaywall(true);
-			} else {
-				toast({
-					title: 'Error',
-					description: 'Failed to send message',
-					variant: 'destructive',
-				});
+			console.log('Error in handleSendMessage:', error);
+			if (!apiRateLimited) {
+				setSending(false);
 			}
+			setNewMessage(userMessage);
 		}
 	};
 
@@ -411,7 +499,10 @@ export default function ChatDetailScreen() {
 		try {
 			validateChatMessage(question, bookId);
 		} catch (error) {
-			Alert.alert('Validation Error', error.message);
+			toast.error(
+				'Invalid Message',
+				error.message || 'Please check your message'
+			);
 			return;
 		}
 
@@ -426,7 +517,10 @@ export default function ChatDetailScreen() {
 					setShowPaywall(true);
 					return;
 				} else {
-					throw new Error('Unable to send message. Please try again.');
+					// Don't throw, show error toast
+					toast.error('Unable to send message', 'Please try again');
+					setSending(false);
+					return;
 				}
 			}
 
@@ -452,28 +546,49 @@ export default function ChatDetailScreen() {
 			setMessages(prev => [...prev, tempUserMessage]);
 
 			// Send message and get AI response in one call
-			const { userMessage: userMsg, aiMessage: aiMsg } =
-				await sendMessageAndGetAIResponse(currentSessionId, question);
+			const response = await sendMessageAndGetAIResponse(
+				currentSessionId,
+				question
+			);
+
+			if ((response as any).error) {
+				setMessages(prev => prev.slice(0, -1));
+
+				if ((response as any).isRateLimit) {
+					if ((response as any).plan === 'free') {
+						setShowPaywall(true);
+					}
+				} else if ((response as any).isApiRateLimit) {
+					const waitTime = (response as any).waitTime || 60;
+					setApiRateLimited(true);
+					const resetTime = new Date(Date.now() + waitTime * 1000);
+					setApiRateLimitResetTime(resetTime);
+					return;
+				}
+				setSending(false);
+				return;
+			}
 
 			// Replace temp message with real user message and add AI response
+			const { userMessage: userMsg, aiMessage: aiMsg } = response as any;
 			setMessages(prev => [
 				...prev.slice(0, -1), // Remove temp message
 				userMsg as ChatMessage,
 				aiMsg as ChatMessage,
 			]);
 		} catch (error) {
-			console.error('Error sending sample question:', error);
+			console.log('Error sending sample question:', error);
 			// Remove the temp message on error
 			setMessages(prev => prev.slice(0, -1));
 
-			// Check if it's a message limit error
 			if (error.message?.includes('daily message limit')) {
 				setShowPaywall(true);
-			} else {
-				showAlert('Error', 'Failed to send message');
 			}
 		} finally {
-			setSending(false);
+			// Only reset sending if we're not in an API rate limit state
+			if (!apiRateLimited) {
+				setSending(false);
+			}
 		}
 	};
 
@@ -484,12 +599,12 @@ export default function ChatDetailScreen() {
 		try {
 			validateVoiceTranscription(transcribedText);
 		} catch (error) {
-			Alert.alert('Validation Error', error.message);
+			toast.error('Invalid Voice Message', error.message || 'Please try again');
 			return;
 		}
 
 		if (!transcribedText.trim()) {
-			showAlert('Error', 'No speech detected. Please try again.');
+			toast.error('No speech detected', 'Please try again');
 			return;
 		}
 
@@ -506,7 +621,10 @@ export default function ChatDetailScreen() {
 					setShowPaywall(true);
 					return;
 				} else {
-					throw new Error('Unable to send message. Please try again.');
+					// Don't throw, show error toast
+					toast.error('Unable to send message', 'Please try again');
+					setSending(false);
+					return;
 				}
 			}
 
@@ -532,28 +650,45 @@ export default function ChatDetailScreen() {
 			setMessages(prev => [...prev, tempUserMessage]);
 
 			// Send message and get AI response in one call
-			const { userMessage: userMsg, aiMessage: aiMsg } =
-				await sendMessageAndGetAIResponse(currentSessionId, userMessage);
+			const response = await sendMessageAndGetAIResponse(
+				currentSessionId,
+				userMessage
+			);
+
+			// Check if response has error
+			if ((response as any).error) {
+				// Remove temp message
+				setMessages(prev => prev.slice(0, -1));
+				setNewMessage(userMessage); // Restore the message
+
+				if ((response as any).isRateLimit) {
+					if ((response as any).plan === 'free') {
+						setShowPaywall(true);
+					}
+				} else if ((response as any).isApiRateLimit) {
+					const waitTime = (response as any).waitTime || 60;
+					setApiRateLimited(true);
+					const resetTime = new Date(Date.now() + waitTime * 1000);
+					setApiRateLimitResetTime(resetTime);
+					return;
+				}
+				setSending(false);
+				return;
+			}
 
 			// Replace temp message with real user message and add AI response
+			const { userMessage: userMsg, aiMessage: aiMsg } = response as any;
 			setMessages(prev => [
 				...prev.slice(0, -1), // Remove temp message
 				userMsg as ChatMessage,
 				aiMsg as ChatMessage,
 			]);
 		} catch (error) {
-			console.error('Error sending transcribed message:', error);
-			// Remove the temp message on error
-			setMessages(prev => prev.slice(0, -1));
-
-			// Check if it's a message limit error
-			if (error.message?.includes('daily message limit')) {
-				setShowPaywall(true);
-			} else {
-				showAlert('Error', 'Failed to send message');
-			}
+			console.log('Error sending transcribed message:', error);
 		} finally {
-			setSending(false);
+			if (!apiRateLimited) {
+				setSending(false);
+			}
 		}
 	};
 
@@ -602,7 +737,7 @@ export default function ChatDetailScreen() {
 						// Add to saved messages array
 						savedMessages.push(savedMessage as ChatMessage);
 					} catch (error) {
-						console.error('Error saving conversation message:', error);
+						console.log('Error saving conversation message:', error);
 						// If database save fails, still add to local state with temp ID and valid timestamp
 						const now = new Date();
 						const tempMessage: ChatMessage = {
@@ -622,7 +757,7 @@ export default function ChatDetailScreen() {
 				// Update local state with saved messages
 				setMessages(prev => [...prev, ...savedMessages]);
 			} catch (error) {
-				console.error('Error saving conversation to database:', error);
+				console.log('Error saving conversation to database:', error);
 				// Fallback: just add to local state if database operations fail
 				// Ensure all messages have valid timestamps
 				const fallbackMessages: ChatMessage[] = conversation.map(
@@ -650,11 +785,72 @@ export default function ChatDetailScreen() {
 		setShowConversationalVoice(false);
 	};
 
-	const handleVoiceFeaturePress = () => {
-		if (!isPremium) {
+	const handleVoiceFeaturePress = async () => {
+		// Check if voice is rate limited
+		if (voiceRateLimited) {
+			const waitSeconds = rateLimitResetTime
+				? Math.ceil((rateLimitResetTime.getTime() - Date.now()) / 1000)
+				: 30;
+
+			toast.warning(
+				'Voice Feature Limited',
+				`Please wait ${waitSeconds} seconds before using voice again.`
+			);
+			return;
+		}
+
+		console.log('🎤 Voice Feature Pressed - Debug Info:', {
+			isPremium,
+			subscriptionPlan: subscription?.subscription_plan,
+			subscriptionStatus: subscription?.subscription_status,
+			subscription: subscription,
+			loading: subscription === null,
+		});
+
+		// Check if subscription is still loading
+		if (subscription === null) {
+			console.log(
+				'⏳ Subscription data is still loading, trying to refresh...'
+			);
+			toast.info(
+				'Loading subscription data...',
+				'Refreshing your account status'
+			);
+
+			try {
+				await refreshSubscription();
+				// After refresh, try again
+				if (
+					subscription?.subscription_plan === 'premium' &&
+					subscription?.subscription_status === 'active'
+				) {
+					console.log('✅ After refresh: User is premium, opening voice chat');
+					setShowConversationalVoice(true);
+					return;
+				}
+			} catch (error) {
+				console.log('Failed to refresh subscription:', error);
+			}
+
+			// Still not premium after refresh
+			console.log('❌ After refresh: User is still not premium');
 			setShowPaywall(true);
 			return;
 		}
+
+		if (!isPremium) {
+			console.log('❌ User is not premium, showing paywall');
+			// Double check with fresh data
+			try {
+				await refreshSubscription();
+			} catch (error) {
+				console.log('Failed to refresh subscription:', error);
+			}
+			setShowPaywall(true);
+			return;
+		}
+
+		console.log('✅ User is premium, opening voice chat');
 		setShowConversationalVoice(true);
 	};
 
@@ -673,7 +869,10 @@ export default function ChatDetailScreen() {
 		try {
 			// Check if sharing is available
 			if (!(await Sharing.isAvailableAsync())) {
-				showAlert('Error', 'Sharing is not available on this device');
+				toast.error(
+					'Sharing not available',
+					'Sharing is not supported on this device'
+				);
 				return;
 			}
 
@@ -696,8 +895,8 @@ export default function ChatDetailScreen() {
 				dialogTitle: `Share conversation about "${book?.title}"`,
 			});
 		} catch (error) {
-			console.error('Error sharing chat:', error);
-			showAlert('Error', 'Failed to share chat. Please try again.');
+			console.log('Error sharing chat:', error);
+			toast.error('Unable to share', 'Please try again');
 		}
 	};
 
@@ -741,8 +940,8 @@ export default function ChatDetailScreen() {
 								setMessages([]);
 							}
 						} catch (error) {
-							console.error('Error resetting chat:', error);
-							showAlert('Error', 'Failed to reset chat. Please try again.');
+							console.log('Error resetting chat:', error);
+							toast.error('Unable to reset chat', 'Please try again');
 						}
 					},
 				},
@@ -988,25 +1187,28 @@ export default function ChatDetailScreen() {
 			// Refresh subscription data after successful upgrade
 			await refreshSubscription();
 			setShowPaywall(false);
-			showAlert(
-				'Success',
-				'Premium features activated! You now have unlimited messages.'
+			toast.success(
+				'Premium features activated!',
+				'You now have unlimited messages.'
 			);
 		} catch (error) {
-			console.error('Error upgrading to premium:', error);
-			showAlert('Error', 'Failed to upgrade. Please try again.');
+			console.log('Error upgrading to premium:', error);
+			toast.error('Unable to upgrade', 'Please try again');
 		}
 	};
 
 	const handlePremiumRestore = () => {
 		// TODO: Implement restore purchase logic
 		setShowPaywall(false);
-		showAlert('Success', 'Premium features restored!');
+		toast.success(
+			'Premium features restored!',
+			'You can now enjoy all premium features'
+		);
 	};
 
 	const handlePrivacyPolicy = () => {
 		// TODO: Navigate to privacy policy or open web view
-		showAlert('Privacy Policy', 'Privacy policy would open here');
+		toast.info('Privacy Policy', 'Opening privacy policy...');
 	};
 
 	if (loading) {
@@ -1122,6 +1324,29 @@ export default function ChatDetailScreen() {
 											</Text>
 										</View>
 									</View>
+									{/* Debug subscription refresh button - temporary */}
+									{/* <TouchableOpacity
+										style={[styles.menuButton, { marginRight: 8 }]}
+										onPress={async () => {
+											console.log('🔄 Manual subscription refresh');
+											try {
+												await refreshSubscription();
+												toast.success(
+													'Subscription refreshed',
+													'Account status updated'
+												);
+											} catch (error) {
+												console.error('Failed to refresh:', error);
+												toast.error('Refresh failed', 'Please try again');
+											}
+										}}
+									>
+										<Ionicons
+											name="refresh"
+											size={20}
+											color={currentColors.primary}
+										/>
+									</TouchableOpacity> */}
 									<TouchableOpacity
 										style={styles.menuButton}
 										onPress={() => setShowDropdown(true)}
@@ -1243,39 +1468,93 @@ export default function ChatDetailScreen() {
 											]}
 										>
 											<TextInput
+												key={`input-${apiRateLimited}-${chatRateLimited}`} // Force re-render when rate limit changes
 												ref={textInputRef}
 												style={[
 													styles.textInput,
-													{ color: currentColors.foreground },
+													{
+														color: currentColors.foreground,
+														opacity:
+															chatRateLimited || apiRateLimited ? 0.5 : 1,
+													},
 												]}
-												placeholder="Type a message..."
+												placeholder={
+													chatRateLimited || apiRateLimited
+														? `You're sending messages too quickly. Please slow down to maintain conversation quality.`
+														: 'Type a message...'
+												}
 												placeholderTextColor={currentColors.mutedForeground}
-												value={newMessage}
+												value={
+													chatRateLimited || apiRateLimited ? '' : newMessage
+												} // Force empty when rate limited
 												onChangeText={setNewMessage}
-												multiline
 												maxLength={500}
+												multiline={chatRateLimited || apiRateLimited}
 												onSubmitEditing={Keyboard.dismiss}
+												editable={!chatRateLimited && !apiRateLimited}
 											/>
+											{/* Send button with countdown when rate limited */}
 											<TouchableOpacity
-												style={styles.sendButton}
+												style={[
+													styles.sendButton,
+													(!newMessage.trim() ||
+														sending ||
+														chatRateLimited ||
+														apiRateLimited) &&
+														styles.sendButtonDisabled,
+												]}
 												onPress={handleSendMessage}
-												disabled={!newMessage.trim() || sending}
+												disabled={
+													!newMessage.trim() ||
+													sending ||
+													chatRateLimited ||
+													apiRateLimited
+												}
 											>
-												<Ionicons
-													name="send"
-													size={20}
-													color={currentColors.primary}
-												/>
+												{chatRateLimited || apiRateLimited ? (
+													<Text style={styles.countdownText}>
+														{apiRateLimited
+															? getRemainingTime(apiRateLimitResetTime)
+															: getRemainingTime(rateLimitResetTime)}
+														s
+													</Text>
+												) : (
+													<Ionicons
+														name="send"
+														size={24}
+														color={
+															!newMessage.trim() || sending
+																? currentColors.mutedForeground
+																: currentColors.primary
+														}
+													/>
+												)}
 											</TouchableOpacity>
+											{/* Voice Button - update to show disabled state when rate limited */}
 											<TouchableOpacity
-												style={styles.micButton}
+												style={[
+													styles.voiceButton,
+													voiceRateLimited && styles.voiceButtonDisabled,
+												]}
 												onPress={handleVoiceFeaturePress}
+												disabled={voiceRateLimited}
 											>
-												<Ionicons
-													name="mic"
-													size={20}
-													color={currentColors.primary}
-												/>
+												<LinearGradient
+													colors={
+														voiceRateLimited
+															? ['#9CA3AF', '#6B7280'] // Gray when disabled
+															: ['#7C3AED', '#8B5CF6']
+													}
+													style={styles.voiceButtonGradient}
+												>
+													{voiceRateLimited ? (
+														<Text style={styles.voiceCountdownText}>
+															{getRemainingTime(rateLimitResetTime)}s
+														</Text>
+													) : (
+														<Ionicons name="mic" size={20} color="#FFFFFF" />
+													)}
+												</LinearGradient>
 											</TouchableOpacity>
 										</View>
 									</View>
@@ -1294,6 +1573,11 @@ export default function ChatDetailScreen() {
 				bookTitle={book?.title}
 				bookAuthor={book?.author}
 				bookId={bookId}
+				onRateLimitHit={resetTime => {
+					setVoiceRateLimited(true);
+					setRateLimitResetTime(resetTime);
+					// The useEffect will handle auto-reset based on the reset time
+				}}
 			/>
 
 			{/* Dropdown Menu Modal */}
@@ -1678,7 +1962,7 @@ const styles = StyleSheet.create({
 		marginLeft: 8,
 	},
 	sendButtonDisabled: {
-		opacity: 0.6,
+		opacity: 0.5,
 	},
 	micButton: {
 		width: 34,
@@ -1755,5 +2039,34 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 16,
 		paddingTop: 40,
 		paddingBottom: 20,
+	},
+	voiceButton: {
+		width: 34,
+		height: 34,
+		borderRadius: 18,
+		alignItems: 'center',
+		justifyContent: 'center',
+		marginLeft: 6,
+	},
+	voiceButtonDisabled: {
+		opacity: 0.5,
+	},
+	voiceButtonGradient: {
+		width: '100%',
+		height: '100%',
+		borderRadius: 18,
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	countdownText: {
+		fontSize: 12,
+		fontWeight: 'bold',
+		color: colors.light.mutedForeground,
+	},
+	voiceCountdownText: {
+		fontSize: 10,
+		fontWeight: 'bold',
+		color: '#FFFFFF',
+		textAlign: 'center',
 	},
 });

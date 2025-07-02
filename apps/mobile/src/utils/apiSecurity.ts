@@ -220,7 +220,7 @@ export class ApiRateLimiter {
 
 	// Rate limits per service (requests per minute)
 	private limits = {
-		openai: 20, // Conservative limit for OpenAI
+		openai: 3, // Temporarily reduced for testing (normally 20)
 		elevenlabs: 10, // Conservative limit for ElevenLabs
 		supabase: 100, // Higher limit for database operations
 	};
@@ -250,17 +250,26 @@ export class ApiRateLimiter {
 				count: 1,
 				resetTime: now + windowMs,
 			});
+			console.log(`🔄 Rate limit window reset for ${service}`);
 			return true;
 		}
 
-		if (record.count >= this.limits[service]) {
+		// Increment the count first
+		record.count++;
+
+		// Then check if we've hit the limit
+		if (record.count > this.limits[service]) {
 			console.warn(
 				`Rate limit exceeded for ${service}. Current: ${record.count}, Limit: ${this.limits[service]}`
 			);
+			// Decrement back since request won't be made
+			record.count--;
 			return false;
 		}
 
-		record.count++;
+		console.log(
+			`✅ Request allowed for ${service}. Count: ${record.count}/${this.limits[service]}`
+		);
 		return true;
 	}
 
@@ -307,9 +316,21 @@ export async function secureApiRequest(
 		const waitTime = resetTime
 			? Math.ceil((resetTime.getTime() - Date.now()) / 1000)
 			: 60;
-		throw new Error(
-			`Rate limit exceeded. Please wait ${waitTime} seconds before trying again.`
-		);
+
+		console.log('🚫 API Rate limit hit in secureApiRequest:', {
+			service,
+			waitTime,
+			resetTime: resetTime?.toISOString(),
+		});
+
+		// Return error object instead of throwing
+		return {
+			error: true,
+			isApiRateLimit: true,
+			service,
+			waitTime,
+			message: `API rate limit exceeded. Please wait ${waitTime} seconds before trying again.`,
+		};
 	}
 
 	try {
@@ -317,11 +338,17 @@ export async function secureApiRequest(
 		return result;
 	} catch (error) {
 		// Log error without exposing sensitive information
-		console.error(
+		console.log(
 			`API request failed for ${service}:`,
 			error instanceof Error ? error.message : 'Unknown error'
 		);
-		throw error;
+		// Return error object instead of throwing
+		return {
+			error: true,
+			isApiRateLimit: false,
+			service,
+			message: error instanceof Error ? error.message : 'API request failed',
+		};
 	}
 }
 
