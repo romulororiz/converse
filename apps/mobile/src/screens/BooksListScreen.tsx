@@ -129,7 +129,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 			if (showRefreshLoader) {
 				setRefreshing(true);
 			} else {
-			setLoading(true);
+				setLoading(true);
 			}
 			setError(null);
 
@@ -228,13 +228,17 @@ export default function BooksListScreen({ navigation, route }: any) {
 		if (categories && categories.length > 0) {
 			return {
 				title: `Books by Genre${categories.length > 1 ? 's' : ''}`,
-				text: `Explore books in ${categories.join(', ')}. Curated selections based on your selected genres.`,
+				text: `Explore books in ${categories.join(
+					', '
+				)}. Curated selections based on your selected genres.`,
 			};
 		}
 		if (tags && tags.length > 0) {
 			return {
 				title: 'Books by Topic',
-				text: `Explore books related to ${tags.join(', ')}. Curated selections based on your interests.`,
+				text: `Explore books related to ${tags.join(
+					', '
+				)}. Curated selections based on your interests.`,
 			};
 		}
 		return {
@@ -430,7 +434,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 					<View style={styles.searchContainer}>
 						<SkeletonLoader width={width - 32} height={48} borderRadius={12} />
 					</View>
-			</View>
+				</View>
 
 				{/* Scrollable Books List Skeleton */}
 				<View style={styles.scrollableContent}>{renderSkeletonList()}</View>
@@ -439,7 +443,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 	}
 
 	if (error && books.length === 0) {
-	return (
+		return (
 			<SafeAreaView
 				style={[
 					styles.container,
@@ -451,7 +455,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 					backgroundColor={currentColors.background}
 				/>
 
-			{/* Header */}
+				{/* Header */}
 				<View
 					style={[
 						styles.header,
@@ -461,16 +465,16 @@ export default function BooksListScreen({ navigation, route }: any) {
 						},
 					]}
 				>
-				<TouchableOpacity
-					style={styles.backButton}
-					onPress={() => navigation.goBack()}
-				>
-					<Ionicons
+					<TouchableOpacity
+						style={styles.backButton}
+						onPress={() => navigation.goBack()}
+					>
+						<Ionicons
 							name="arrow-back"
-						size={24}
+							size={24}
 							color={currentColors.foreground}
-					/>
-				</TouchableOpacity>
+						/>
+					</TouchableOpacity>
 					<Text
 						style={[styles.headerTitle, { color: currentColors.foreground }]}
 					>
@@ -567,7 +571,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 					>
 						{description.text}
 					</Text>
-			</View>
+				</View>
 
 				{/* Search Bar */}
 				<SearchBar
@@ -654,16 +658,16 @@ export default function BooksListScreen({ navigation, route }: any) {
 					</View>
 				)}
 
-			{/* Selected Tags */}
-			{tags && tags.length > 0 && (
-				<View style={styles.tagsContainer}>
+				{/* Selected Tags */}
+				{tags && tags.length > 0 && (
+					<View style={styles.tagsContainer}>
 						<Text
 							style={[styles.tagsTitle, { color: currentColors.foreground }]}
 						>
 							Selected Topics:
 						</Text>
-					<View style={styles.tagsWrapper}>
-						{tags.map((tag: string, index: number) => (
+						<View style={styles.tagsWrapper}>
+							{tags.map((tag: string, index: number) => (
 								<View
 									key={index}
 									style={[
@@ -679,11 +683,11 @@ export default function BooksListScreen({ navigation, route }: any) {
 									>
 										{tag}
 									</Text>
-							</View>
-						))}
+								</View>
+							))}
+						</View>
 					</View>
-				</View>
-			)}
+				)}
 
 				{/* Sort Info */}
 				<View style={styles.sortInfoContainer}>
@@ -727,15 +731,15 @@ export default function BooksListScreen({ navigation, route }: any) {
 							searchQuery
 								? 'No books found'
 								: category
-									? `No ${category} books`
-									: 'No books available'
+								? `No ${category} books`
+								: 'No books available'
 						}
 						subtitle={
 							searchQuery
 								? 'Try adjusting your search terms or browse by category'
 								: category
-									? 'Try exploring other categories or check back later for new additions'
-									: 'Check back later for new book additions'
+								? 'Try exploring other categories or check back later for new additions'
+								: 'Check back later for new book additions'
 						}
 						button={
 							searchQuery || category
@@ -751,7 +755,7 @@ export default function BooksListScreen({ navigation, route }: any) {
 											}
 										},
 										style: 'secondary',
-									}
+								  }
 								: undefined
 						}
 						containerStyle={styles.emptyContainer}

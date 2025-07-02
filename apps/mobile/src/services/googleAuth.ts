@@ -13,7 +13,6 @@ const GOOGLE_CLIENT_ID =
 const GOOGLE_CLIENT_SECRET =
 	process.env.EXPO_PUBLIC_GOOGLE_CLIENT_SECRET || 'your-google-client-secret';
 
-
 export interface GoogleAuthResult {
 	success: boolean;
 	error?: string;
@@ -35,7 +34,9 @@ export async function signInWithGoogleDirect(): Promise<GoogleAuthResult> {
 		const redirectUri = 'interactive-library://auth';
 
 		// Construct the direct OAuth URL to Supabase
-		const authUrl = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectUri)}`;
+		const authUrl = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(
+			redirectUri
+		)}`;
 
 		console.log('Direct auth URL:', authUrl);
 		console.log('Redirect URI:', redirectUri);
@@ -312,7 +313,9 @@ export async function signInWithGoogleSupabase(): Promise<GoogleAuthResult> {
 		}
 
 		// Try the fallback redirect URI first (simpler format)
-		const oauthUrl = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(fallbackRedirectUri)}`;
+		const oauthUrl = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(
+			fallbackRedirectUri
+		)}`;
 
 		console.log('Opening OAuth URL:', oauthUrl);
 		console.log('Expected redirect URI:', fallbackRedirectUri);
@@ -432,7 +435,9 @@ export async function signInWithGoogleWeb(): Promise<GoogleAuthResult> {
 		});
 
 		// Construct the OAuth URL
-		const oauthUrl = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectUri)}`;
+		const oauthUrl = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(
+			redirectUri
+		)}`;
 
 		console.log('OAuth URL:', oauthUrl);
 

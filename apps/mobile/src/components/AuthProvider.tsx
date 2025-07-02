@@ -134,6 +134,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		return () => clearInterval(interval);
 	}, [voiceRateLimited, rateLimitResetTime, chatRateLimited]);
 
+	// Check existing rate limits on startup/login
+	const checkExistingRateLimits = async (userId: string) => {
+		try {
+			// Import rate limit functions
+			const { checkChatRateLimit, checkVoiceRateLimit, checkAIRateLimit } =
+				await import('../utils/rateLimit');
+
+			// Determine user tier (simple check)
+			const userTier: 'basic' | 'premium' = 'basic'; // You can make this dynamic later
+
+			// Check all rate limits
+			const [chatResult, voiceResult, aiResult] = await Promise.all([
+				checkChatRateLimit(userId, userTier),
+				checkVoiceRateLimit(userId, userTier),
+				checkAIRateLimit(userId, userTier),
+			]);
+
+			// Update states based on server response
+			if (!chatResult.allowed) {
+				setChatRateLimited(true);
+				setRateLimitResetTime(chatResult.resetTime);
+			}
+
+			if (!voiceResult.allowed) {
+				setVoiceRateLimited(true);
+				setRateLimitResetTime(voiceResult.resetTime);
+			}
+
+			if (!aiResult.allowed) {
+				setApiRateLimited(true);
+				setApiRateLimitResetTime(aiResult.resetTime);
+			}
+
+			console.log('🔄 Rate limit status restored:', {
+				chat: chatResult.allowed ? 'allowed' : 'limited',
+				voice: voiceResult.allowed ? 'allowed' : 'limited',
+				ai: aiResult.allowed ? 'allowed' : 'limited',
+			});
+		} catch (error) {
+			console.log('⚠️ Could not check existing rate limits:', error);
+			// Fail silently - rate limits will be checked when user tries to use features
+		}
+	};
+
 	useEffect(() => {
 		// Get initial session
 		getInitialSession();
@@ -152,6 +196,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			if (session) {
 				await AsyncStorage.setItem('supabase.session.exists', 'true');
 				console.log('User logged in:', session.user.email);
+
+				// Check existing rate limits when user logs in
+				checkExistingRateLimits(session.user.id);
 			} else {
 				await AsyncStorage.removeItem('supabase.session.exists');
 				console.log('User logged out');
@@ -192,6 +239,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			console.log('Initial session:', session?.user?.email || 'No session');
 			setSession(session);
 			setUser(session?.user ?? null);
+
+			// Check existing rate limits on app startup if user is logged in
+			if (session?.user) {
+				checkExistingRateLimits(session.user.id);
+			}
 		} catch (error) {
 			console.error('Error checking session:', error);
 		} finally {

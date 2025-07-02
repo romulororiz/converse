@@ -3,11 +3,11 @@ import { Alert, Platform } from 'react-native';
 export const showAlert = (
 	title: string,
 	message: string,
-	buttons?: Array<{
+	buttons?: {
 		text: string;
 		onPress?: () => void;
 		style?: 'default' | 'cancel' | 'destructive';
-	}>
+	}[]
 ) => {
 	if (Platform.OS === 'web') {
 		// For web, use browser dialogs

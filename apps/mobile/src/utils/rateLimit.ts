@@ -24,26 +24,19 @@ export interface RateLimitResult {
 	message?: string; // Human-readable message explaining the rate limit
 }
 
-export interface RateLimitError extends Error {
-	retryAfter: number;
-	remaining: number;
-	tier: string;
-	action: string;
-}
-
 // Comprehensive rate limit configurations by tier and action
 const RATE_LIMIT_CONFIGS = {
 	// Chat message limits
 	chat_message: {
-		basic: { max: 10, window: 300 }, // 20 messages per 5 minutes for free users
-		premium: { max: 20, window: 300 }, // 100 messages per 5 minutes for premium
+		basic: { max: 20, window: 300 }, // 20 messages per 5 minutes for free users
+		premium: { max: 100, window: 300 }, // 100 messages per 5 minutes for premium
 		admin: { max: 1000, window: 300 }, // Generous limits for admin
 	},
 	// Voice transcription limits (more restrictive due to processing cost)
 	voice_transcription: {
-		basic: { max: 10, window: 600 }, // 10 transcriptions per 10 minutes
-		premium: { max: 50, window: 600 }, // 50 transcriptions per 10 minutes
-		admin: { max: 200, window: 600 }, // Admin limits
+		basic: { max: 10, window: 120 }, // 10 transcriptions per 2 minutes
+		premium: { max: 30, window: 120 }, // 30 transcriptions per 2 minutes
+		admin: { max: 200, window: 120 }, // Admin limits
 	},
 	// AI request limits (covers both chat and voice AI responses)
 	ai_request: {
@@ -70,15 +63,8 @@ const rateLimiters = {
  */
 export class ProfessionalRateLimit {
 	private static instance: ProfessionalRateLimit;
-	private analytics: Map<
-		string,
-		{ requests: number; blocks: number; lastReset: Date }
-	> = new Map();
 
-	private constructor() {
-		// Clean up analytics every hour
-		setInterval(() => this.cleanupAnalytics(), 3600000);
-	}
+	private constructor() {}
 
 	static getInstance(): ProfessionalRateLimit {
 		if (!ProfessionalRateLimit.instance) {
@@ -114,9 +100,6 @@ export class ProfessionalRateLimit {
 			try {
 				const result = await rateLimiter.consume(key);
 
-				// Update analytics
-				this.updateAnalytics(key, true, false);
-
 				return {
 					allowed: result.isAllowed,
 					remaining: result.isAllowed ? limits.max - 1 : 0,
@@ -127,9 +110,6 @@ export class ProfessionalRateLimit {
 			} catch (consumeError) {
 				// Rate limit exceeded by the underlying library
 				console.log(`Rate limit exceeded for key: ${key}`);
-
-				// Update analytics
-				this.updateAnalytics(key, false, true);
 
 				// Return rate limit exceeded result instead of throwing
 				const retryAfter = this.calculateRetryAfter(limits.window);
@@ -156,56 +136,6 @@ export class ProfessionalRateLimit {
 				tier,
 				action,
 			};
-		}
-	}
-
-	/**
-	 * Check rate limit status without consuming a token
-	 */
-	async getRateLimitStatus(config: RateLimitConfig): Promise<RateLimitResult> {
-		const { tier = 'basic', action = 'api_call' } = config;
-		const limits = this.getLimitsForTierAndAction(tier, action);
-
-		// For status checks, we return optimistic data
-		return {
-			allowed: true,
-			remaining: limits.max,
-			resetTime: new Date(Date.now() + limits.window * 1000),
-			tier,
-			action,
-		};
-	}
-
-	/**
-	 * Get analytics for debugging and monitoring
-	 */
-	getAnalytics(key?: string) {
-		if (key) {
-			return (
-				this.analytics.get(key) || {
-					requests: 0,
-					blocks: 0,
-					lastReset: new Date(),
-				}
-			);
-		}
-		return Object.fromEntries(this.analytics.entries());
-	}
-
-	/**
-	 * Clear rate limits for a specific key (admin function)
-	 */
-	async clearRateLimit(key: string): Promise<void> {
-		// Clear from all rate limiter instances
-		for (const [limiterKey, limiter] of rateLimiters.tokenBucket.entries()) {
-			try {
-				// Reset the specific key if the limiter supports it
-				console.log(
-					`Cleared rate limit for key: ${key} in limiter: ${limiterKey}`
-				);
-			} catch (error) {
-				console.warn(`Failed to clear rate limit for ${key}:`, error);
-			}
 		}
 	}
 
@@ -260,51 +190,9 @@ export class ProfessionalRateLimit {
 
 		return `${baseMessage} ${waitMessage}${upgradeMessage}`;
 	}
-
-	private updateAnalytics(
-		key: string,
-		success: boolean,
-		blocked: boolean
-	): void {
-		const current = this.analytics.get(key) || {
-			requests: 0,
-			blocks: 0,
-			lastReset: new Date(),
-		};
-
-		if (success) current.requests++;
-		if (blocked) current.blocks++;
-
-		this.analytics.set(key, current);
-	}
-
-	private cleanupAnalytics(): void {
-		const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours ago
-
-		for (const [key, analytics] of this.analytics.entries()) {
-			if (analytics.lastReset < cutoff) {
-				this.analytics.delete(key);
-			}
-		}
-	}
 }
 
 // Convenience functions for backwards compatibility and ease of use
-
-/**
- * Simple rate limit check (backwards compatible) - Modified to not throw
- */
-export async function checkRateLimit(config: RateLimitConfig): Promise<number> {
-	try {
-		const limiter = ProfessionalRateLimit.getInstance();
-		const result = await limiter.checkRateLimit(config);
-		return result.remaining;
-	} catch (error) {
-		// Don't re-throw - this causes Expo to show error dialog
-		// Return -1 to indicate rate limit exceeded
-		return -1;
-	}
-}
 
 /**
  * Chat-specific rate limiting with intelligent tier detection - Safe version
@@ -434,24 +322,4 @@ export async function checkAIRateLimit(
 			message: humanMessage,
 		};
 	}
-}
-
-/**
- * Get comprehensive rate limit analytics
- */
-export function getRateLimitAnalytics(userId?: string) {
-	const limiter = ProfessionalRateLimit.getInstance();
-	return limiter.getAnalytics(userId ? `chat:${userId}` : undefined);
-}
-
-/**
- * Clear rate limits (admin function)
- */
-export async function clearUserRateLimits(userId: string): Promise<void> {
-	const limiter = ProfessionalRateLimit.getInstance();
-	await Promise.all([
-		limiter.clearRateLimit(`chat:${userId}`),
-		limiter.clearRateLimit(`voice:${userId}`),
-		limiter.clearRateLimit(`ai:${userId}`),
-	]);
 }

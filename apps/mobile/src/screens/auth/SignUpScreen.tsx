@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../utils/colors';
 import { supabase } from '../../lib/supabase';
 import { useNavigation } from '@react-navigation/native';
-import { signInWithGoogle } from '../../services/googleAuth';
+import { signInWithGoogleDirect } from '../../services/googleAuth';
 import { useAuth } from '../../components/AuthProvider';
 import { validateSignUp } from '../../utils/validation';
 
@@ -105,7 +105,7 @@ export default function SignUpScreen() {
 			setLoading(true);
 			console.log('Starting Google sign up...');
 
-			const result = await signInWithGoogle();
+			const result = await signInWithGoogleDirect();
 			console.log('Google sign up result:', result);
 
 			if (!result.success) {

@@ -1,4 +1,3 @@
-
 import './src/lib/polyfills';
 import { registerRootComponent } from 'expo';
 

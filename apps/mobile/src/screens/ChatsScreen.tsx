@@ -280,21 +280,21 @@ export default function ChatsScreen() {
 					{/* Page Description */}
 					<View style={styles.descriptionContainer}>
 						<View style={styles.descriptionHeader}>
-						<Text
-							style={[
-								styles.descriptionTitle,
-								{ color: currentColors.foreground },
-							]}
-						>
-							Your Conversations
-						</Text>
-						<MessageCounterBadge
-							variant="pill"
-							label="FREE MESSAGES"
-							refreshKey={badgeRefreshKey}
-							onPress={handleBadgePress}
-							style={{ marginRight: 8 }}
-						/>
+							<Text
+								style={[
+									styles.descriptionTitle,
+									{ color: currentColors.foreground },
+								]}
+							>
+								Your Conversations
+							</Text>
+							<MessageCounterBadge
+								variant="pill"
+								label="FREE MESSAGES"
+								refreshKey={badgeRefreshKey}
+								onPress={handleBadgePress}
+								style={{ marginRight: 8 }}
+							/>
 						</View>
 						<Text
 							style={[
@@ -374,12 +374,12 @@ export default function ChatsScreen() {
 											text: 'Explore Books',
 											onPress: () => navigation.navigate('Discover'),
 											style: 'primary',
-										}
+									  }
 									: {
 											text: 'Clear Search',
 											onPress: () => setSearchQuery(''),
 											style: 'secondary',
-										}
+									  }
 							}
 							containerStyle={styles.centerContainer}
 						/>

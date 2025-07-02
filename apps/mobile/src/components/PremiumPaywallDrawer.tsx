@@ -73,7 +73,7 @@ export const PremiumPaywallDrawer: React.FC<PremiumPaywallDrawerProps> = ({
 			{/* Sliding drawer modal - transparent background */}
 			<Modal
 				visible={visible}
-				animationType='slide'
+				animationType="slide"
 				transparent
 				onRequestClose={onClose}
 			>
@@ -87,7 +87,7 @@ export const PremiumPaywallDrawer: React.FC<PremiumPaywallDrawerProps> = ({
 						{/* Close button */}
 						<TouchableOpacity style={styles.closeButton} onPress={onClose}>
 							<Ionicons
-								name='close'
+								name="close"
 								size={28}
 								color={colors.light.mutedForeground}
 							/>
@@ -104,7 +104,7 @@ export const PremiumPaywallDrawer: React.FC<PremiumPaywallDrawerProps> = ({
 									<Image
 										source={src}
 										style={styles.avatarImg}
-										resizeMode='cover'
+										resizeMode="cover"
 									/>
 								</View>
 							))}
@@ -113,26 +113,26 @@ export const PremiumPaywallDrawer: React.FC<PremiumPaywallDrawerProps> = ({
 						{/* Title and features */}
 						<Text style={styles.title}>Hello History - Unlimited</Text>
 						<View style={styles.featuresList}>
-							<FeatureItem text='Use advanced text AI models' />
-							<FeatureItem text='Generate realistic voice messages' />
-							<FeatureItem text='Receive priority support' />
-							<FeatureItem text='Help us improve the app' />
+							<FeatureItem text="Use advanced text AI models" />
+							<FeatureItem text="Generate realistic voice messages" />
+							<FeatureItem text="Receive priority support" />
+							<FeatureItem text="Help us improve the app" />
 						</View>
 
 						{/* Plans */}
 						<View style={styles.plansContainer}>
 							<PlanButton
-								label='CHF 4.00 Weekly'
+								label="CHF 4.00 Weekly"
 								onPress={() => onPurchase('weekly')}
 							/>
 							<PlanButton
-								label='CHF 6.00 Monthly access'
+								label="CHF 6.00 Monthly access"
 								onPress={() => onPurchase('monthly')}
 							/>
 							<PlanButton
-								label='CHF 35.00 Yearly access'
+								label="CHF 35.00 Yearly access"
 								highlight
-								badge='Best value'
+								badge="Best value"
 								onPress={() => onPurchase('yearly')}
 							/>
 						</View>
@@ -173,7 +173,7 @@ export const PremiumPaywallDrawer: React.FC<PremiumPaywallDrawerProps> = ({
 const FeatureItem = ({ text }: { text: string }) => (
 	<View style={styles.featureItem}>
 		<Ionicons
-			name='checkmark-circle'
+			name="checkmark-circle"
 			size={20}
 			color={colors.light.primary}
 			style={{ marginRight: 8 }}

@@ -149,14 +149,14 @@ export default function DiscoverScreen() {
 									backgroundColor: currentColors.primary + '15',
 									borderColor: currentColors.primary,
 								},
-							]
+						  ]
 						: [
 								styles.categoryCardDefault,
 								{
 									backgroundColor: currentColors.card,
 									borderColor: currentColors.border,
 								},
-							],
+						  ],
 				]}
 				onPress={() => toggleCategory(category.name)}
 				activeOpacity={0.7}
@@ -229,7 +229,7 @@ export default function DiscoverScreen() {
 						onPress={() => navigation.goBack()}
 					>
 						<Ionicons
-							name='arrow-back'
+							name="arrow-back"
 							size={24}
 							color={currentColors.foreground}
 						/>
@@ -245,7 +245,7 @@ export default function DiscoverScreen() {
 				{/* Error State */}
 				<View style={styles.errorContainer}>
 					<Ionicons
-						name='alert-circle'
+						name="alert-circle"
 						size={48}
 						color={currentColors.mutedForeground}
 					/>
@@ -414,7 +414,7 @@ export default function DiscoverScreen() {
 						Find Books ({selectedCategories.length})
 					</Text>
 					<Ionicons
-						name='arrow-forward'
+						name="arrow-forward"
 						size={20}
 						color={
 							selectedCategories.length > 0

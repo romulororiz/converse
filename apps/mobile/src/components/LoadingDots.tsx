@@ -9,7 +9,7 @@ interface LoadingDotsProps {
 
 export function LoadingDots({
 	color = colors.light.foreground,
-	size = 8,
+	size = 6,
 }: LoadingDotsProps) {
 	const dot1 = useRef(new Animated.Value(0)).current;
 	const dot2 = useRef(new Animated.Value(0)).current;

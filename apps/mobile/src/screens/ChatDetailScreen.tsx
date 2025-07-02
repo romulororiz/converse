@@ -76,8 +76,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { formatDistanceToNow } from 'date-fns';
 import { canSendMessage, upgradeToPremium } from '../services/subscription';
 import { toast } from '../utils/toast';
-import { checkChatRateLimit, checkVoiceRateLimit } from '../utils/rateLimit';
+import { checkChatRateLimit } from '../utils/rateLimit';
 import { useSubscription } from '../contexts/SubscriptionContext';
+import { ScrollDown } from '../components/ScrollDown';
 
 type RootStackParamList = {
 	ChatDetail: { bookId: string };
@@ -162,6 +163,7 @@ export default function ChatDetailScreen() {
 		return isValidPremium;
 	}, [subscription]);
 	const [showPaywall, setShowPaywall] = useState(false);
+	const [showScrollDown, setShowScrollDown] = useState(false);
 
 	// Debug logging for subscription status
 	useEffect(() => {
@@ -265,13 +267,6 @@ export default function ChatDetailScreen() {
 		setApiRateLimitResetTime,
 		getRemainingTime,
 	} = useAuth();
-
-	// Reset sending state when API rate limit is cleared
-	useEffect(() => {
-		if (!apiRateLimited && sending) {
-			setSending(false);
-		}
-	}, [apiRateLimited, sending]);
 
 	const loadChatData = async () => {
 		try {
@@ -1011,14 +1006,14 @@ export default function ChatDetailScreen() {
 									? [
 											styles.userBubble,
 											{ backgroundColor: currentColors.primary },
-										]
+									  ]
 									: [
 											styles.aiBubble,
 											{
 												backgroundColor: currentColors.card,
 												borderColor: currentColors.border,
 											},
-										],
+									  ],
 							]}
 						>
 							<Text
@@ -1028,7 +1023,7 @@ export default function ChatDetailScreen() {
 										? [
 												styles.userText,
 												{ color: currentColors.primaryForeground },
-											]
+										  ]
 										: [styles.aiText, { color: currentColors.foreground }],
 								]}
 							>
@@ -1058,7 +1053,7 @@ export default function ChatDetailScreen() {
 					]}
 				>
 					<View style={styles.typingIndicator}>
-						<LoadingDots color={currentColors.foreground} size={8} />
+						<LoadingDots color={currentColors.foreground} />
 					</View>
 				</View>
 			</View>
@@ -1128,6 +1123,9 @@ export default function ChatDetailScreen() {
 	const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
 		const currentScrollY = event.nativeEvent.contentOffset.y;
 		const scrollDelta = currentScrollY - scrollY.current;
+		const { contentSize, layoutMeasurement } = event.nativeEvent;
+		const contentHeight = contentSize.height;
+		const scrollViewHeight = layoutMeasurement.height;
 
 		// Only dismiss keyboard on significant downward scroll (scrolling up through messages)
 		// This mimics iOS Messages behavior where scrolling down dismisses keyboard
@@ -1136,7 +1134,19 @@ export default function ChatDetailScreen() {
 			Keyboard.dismiss();
 		}
 
+		// Show scroll down button when user has scrolled up enough
+		// Only show if there's enough content to scroll and user is not near the bottom
+		const isNearBottom =
+			currentScrollY + scrollViewHeight + 100 >= contentHeight;
+		const hasScrolledUp = currentScrollY > 200; // Scrolled up more than 200px
+
+		setShowScrollDown(hasScrolledUp && !isNearBottom);
+
 		scrollY.current = currentScrollY;
+	};
+
+	const scrollToBottom = () => {
+		flatListRef.current?.scrollToEnd({ animated: true });
 	};
 
 	// Animated styles for dropdown
@@ -1308,21 +1318,23 @@ export default function ChatDetailScreen() {
 											{book?.author || 'Unknown Author'} •{' '}
 											{formatYear(book?.year)}
 										</Text>
-										<View style={styles.ratingContainer}>
-											<Ionicons
-												name="star"
-												size={12}
-												color={currentColors.primary}
-											/>
-											<Text
-												style={[
-													styles.ratingText,
-													{ color: currentColors.foreground },
-												]}
-											>
-												{book?.metadata?.rating}
-											</Text>
-										</View>
+										{book?.metadata?.rating && (
+											<View style={styles.ratingContainer}>
+												<Ionicons
+													name="star"
+													size={12}
+													color={currentColors.primary}
+												/>
+												<Text
+													style={[
+														styles.ratingText,
+														{ color: currentColors.foreground },
+													]}
+												>
+													{book?.metadata?.rating}
+												</Text>
+											</View>
+										)}
 									</View>
 									{/* Debug subscription refresh button - temporary */}
 									{/* <TouchableOpacity
@@ -1451,6 +1463,12 @@ export default function ChatDetailScreen() {
 										)}
 									</View>
 
+									{/* Scroll Down Button */}
+									<ScrollDown
+										visible={showScrollDown}
+										onPress={scrollToBottom}
+									/>
+
 									{/* Input container moved inside the main layout */}
 									<View
 										style={[
@@ -1543,7 +1561,10 @@ export default function ChatDetailScreen() {
 													colors={
 														voiceRateLimited
 															? ['#9CA3AF', '#6B7280'] // Gray when disabled
-															: ['#7C3AED', '#8B5CF6']
+															: [
+																	currentColors.primary,
+																	currentColors.cardForeground,
+															  ]
 													}
 													style={styles.voiceButtonGradient}
 												>
@@ -1552,7 +1573,11 @@ export default function ChatDetailScreen() {
 															{getRemainingTime(rateLimitResetTime)}s
 														</Text>
 													) : (
-														<Ionicons name="mic" size={20} color="#FFFFFF" />
+														<Ionicons
+															name="mic"
+															size={18}
+															color={currentColors.muted}
+														/>
 													)}
 												</LinearGradient>
 											</TouchableOpacity>
@@ -1576,7 +1601,6 @@ export default function ChatDetailScreen() {
 				onRateLimitHit={resetTime => {
 					setVoiceRateLimited(true);
 					setRateLimitResetTime(resetTime);
-					// The useEffect will handle auto-reset based on the reset time
 				}}
 			/>
 
@@ -2041,8 +2065,8 @@ const styles = StyleSheet.create({
 		paddingBottom: 20,
 	},
 	voiceButton: {
-		width: 34,
-		height: 34,
+		width: 30,
+		height: 30,
 		borderRadius: 18,
 		alignItems: 'center',
 		justifyContent: 'center',
@@ -2064,7 +2088,7 @@ const styles = StyleSheet.create({
 		color: colors.light.mutedForeground,
 	},
 	voiceCountdownText: {
-		fontSize: 10,
+		fontSize: 9,
 		fontWeight: 'bold',
 		color: '#FFFFFF',
 		textAlign: 'center',

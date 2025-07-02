@@ -89,7 +89,7 @@ export function BookCover({
 					onLoadStart={handleLoadStart}
 					onLoad={handleLoad}
 					onError={handleError}
-					resizeMode='cover'
+					resizeMode="cover"
 				/>
 			)}
 

@@ -3,7 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 type IconPreloaderProps = {
-	icons: Array<keyof typeof Ionicons.glyphMap>;
+	icons: (keyof typeof Ionicons.glyphMap)[];
 	size?: number;
 	color?: string;
 };
@@ -16,12 +16,7 @@ export const IconPreloader: React.FC<IconPreloaderProps> = ({
 	return (
 		<View style={styles.container}>
 			{icons.map((iconName, index) => (
-				<Ionicons
-					key={index}
-					name={iconName}
-					size={size}
-					color={color}
-				/>
+				<Ionicons key={index} name={iconName} size={size} color={color} />
 			))}
 		</View>
 	);
@@ -35,4 +30,4 @@ const styles = StyleSheet.create({
 		top: -1000,
 		left: -1000,
 	},
-}); 
+});

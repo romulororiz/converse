@@ -35,7 +35,6 @@ interface ConversationalVoiceChatProps {
 	bookAuthor?: string;
 	bookId?: string;
 	onRateLimitHit?: (resetTime: Date) => void; // Add callback for rate limit
-	onRateLimitHit?: (resetTime: Date) => void;
 }
 
 interface ConversationMessage {
@@ -616,7 +615,11 @@ export const ConversationalVoiceChat = ({
 						// Debug logging every 2 seconds
 						if (currentTime % 2000 < 50) {
 							console.log(
-								`🔊 Audio level: ${audioLevel.toFixed(1)}dB, normalized: ${normalizedLevel.toFixed(1)}, threshold: ${SPEECH_THRESHOLD}dB`
+								`🔊 Audio level: ${audioLevel.toFixed(
+									1
+								)}dB, normalized: ${normalizedLevel.toFixed(
+									1
+								)}, threshold: ${SPEECH_THRESHOLD}dB`
 							);
 						}
 
@@ -738,7 +741,7 @@ export const ConversationalVoiceChat = ({
 		try {
 			setIsProcessing(true);
 
-			// Get current user for rate limiting
+			// Get current user
 			const {
 				data: { user },
 				error: userError,
@@ -749,60 +752,9 @@ export const ConversationalVoiceChat = ({
 				return;
 			}
 
-			// Professional voice rate limiting with result-based approach
-			const userTier = 'premium'; // Voice is premium-only feature
-			const voiceRateLimitResult = await checkVoiceRateLimit(user.id, userTier);
-
-			if (!voiceRateLimitResult.allowed) {
-				console.log(`⚠️ Voice rate limit exceeded for user ${user.id}`);
-				setIsProcessing(false);
-
-				// Show toast notification
-				const { toast } = require('../utils/toast');
-				const resetSeconds = voiceRateLimitResult.retryAfter || 60;
-
-				toast.warning(
-					'Voice Limit Reached',
-					`Please wait ${resetSeconds} seconds before using voice again.`
-				);
-
-				// Close the voice modal after showing the message
-				setTimeout(() => {
-					onClose();
-				}, 2000);
-				return;
-			}
-
-			console.log(`✅ Voice rate limit check passed for ${userTier} user`);
-
-			// AI request rate limiting with result-based approach
-			const aiRateLimitResult = await checkAIRateLimit(user.id, userTier);
-
-			if (!aiRateLimitResult.allowed) {
-				console.log(`⚠️ AI rate limit exceeded for user ${user.id}`);
-				setIsProcessing(false);
-
-				// Show toast notification
-				const { toast } = require('../utils/toast');
-				const resetSeconds = aiRateLimitResult.retryAfter || 60;
-
-				toast.warning(
-					'AI Processing Limit',
-					`Please wait ${resetSeconds} seconds before asking another question.`
-				);
-
-				// Close the voice modal after showing the message
-				setTimeout(() => {
-					onClose();
-				}, 2000);
-				return;
-			}
-
-			console.log(`✅ AI rate limit check passed for voice processing`);
-
 			console.log('🎤 Processing user speech from:', audioUri);
 
-			// Transcribe audio
+			// TRANSCRIBE FIRST - so user gets their message even if rate limited
 			const transcription = await transcribeAudio(audioUri);
 			console.log('🎤 Transcription result:', transcription);
 
@@ -830,12 +782,12 @@ export const ConversationalVoiceChat = ({
 				return;
 			}
 
-			// Add user message to conversation (no transcription display)
+			// Add user message to conversation FIRST (always save the transcription)
 			const userMessage: ConversationMessage = {
 				id: `user-${Date.now()}`,
 				role: 'user',
 				content: transcription,
-				timestamp: new Date(), // This should always be valid
+				timestamp: new Date(),
 				audioUri,
 			};
 
@@ -846,6 +798,50 @@ export const ConversationalVoiceChat = ({
 			}
 
 			setConversation(prev => [...prev, userMessage]);
+
+			// NOW check rate limits for AI processing
+			const userTier = 'premium'; // Voice is premium-only feature
+			const voiceRateLimitResult = await checkVoiceRateLimit(user.id, userTier);
+
+			if (!voiceRateLimitResult.allowed) {
+				console.log(`⚠️ Voice rate limit exceeded for user ${user.id}`);
+				setIsProcessing(false);
+
+				// Trigger rate limit callback for global state
+				if (onRateLimitHit) {
+					onRateLimitHit(voiceRateLimitResult.resetTime);
+				}
+
+				// Save the conversation with just the user message (no system message)
+				onConversationComplete(conversation.concat([userMessage]));
+
+				// Close the voice modal
+				setTimeout(() => {
+					onClose();
+				}, 1000);
+				return;
+			}
+
+			console.log(`✅ Voice rate limit check passed for ${userTier} user`);
+
+			// AI request rate limiting
+			const aiRateLimitResult = await checkAIRateLimit(user.id, userTier);
+
+			if (!aiRateLimitResult.allowed) {
+				console.log(`⚠️ AI rate limit exceeded for user ${user.id}`);
+				setIsProcessing(false);
+
+				// Save the conversation with just the user message (no system message)
+				onConversationComplete(conversation.concat([userMessage]));
+
+				// Close the voice modal
+				setTimeout(() => {
+					onClose();
+				}, 1000);
+				return;
+			}
+
+			console.log(`✅ AI rate limit check passed for voice processing`);
 
 			// Get AI response
 			const aiResponse = await getAIResponse(transcription);
@@ -1261,10 +1257,10 @@ Current conversation context: This is an ongoing voice conversation, so respond 
 								isProcessing
 									? '#F59E0B' // Orange when processing
 									: isListening
-										? '#4F46E5' // Blue when listening (removed green switching)
-										: isSpeaking
-											? '#059669' // Teal when AI is speaking
-											: '#6B7280' // Gray when idle
+									? '#4F46E5' // Blue when listening (removed green switching)
+									: isSpeaking
+									? '#059669' // Teal when AI is speaking
+									: '#6B7280' // Gray when idle
 							}
 							onVolumeChange={volume => {
 								// Only update if actually listening, not processing
@@ -1282,10 +1278,10 @@ Current conversation context: This is an ongoing voice conversation, so respond 
 								? 'Voice detected...'
 								: 'Listening...'
 							: isProcessing
-								? 'Processing...'
-								: isSpeaking
-									? 'Speaking...'
-									: 'Tap to speak'}
+							? 'Processing...'
+							: isSpeaking
+							? 'Speaking...'
+							: 'Tap to speak'}
 					</Text>
 
 					{/* Transcription removed for cleaner voice-only experience */}
@@ -1308,8 +1304,8 @@ Current conversation context: This is an ongoing voice conversation, so respond 
 									isListening
 										? '#FFFFFF'
 										: isProcessing || isSpeaking
-											? '#6B7280'
-											: '#FFFFFF'
+										? '#6B7280'
+										: '#FFFFFF'
 								}
 							/>
 						</TouchableOpacity>

@@ -17,10 +17,15 @@ import { supabase } from '../../lib/supabase';
 import { useNavigation } from '@react-navigation/native';
 import { validateForgotPassword } from '../../utils/validation';
 
+type AuthNavigationProp = {
+	navigate: (screen: 'Login' | 'SignUp' | 'ForgotPassword') => void;
+	goBack: () => void;
+};
+
 export default function ForgotPasswordScreen() {
 	const [email, setEmail] = useState('');
 	const [loading, setLoading] = useState(false);
-	const navigation = useNavigation();
+	const navigation = useNavigation<AuthNavigationProp>();
 
 	const handleResetPassword = async () => {
 		if (!email) {

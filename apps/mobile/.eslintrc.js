@@ -1,5 +1,5 @@
 module.exports = {
-	extends: ['expo', '@react-native', 'prettier'],
+	extends: ['expo', 'prettier'],
 	plugins: ['@typescript-eslint', 'prettier'],
 	parser: '@typescript-eslint/parser',
 	parserOptions: {
@@ -17,14 +17,10 @@ module.exports = {
 		'@typescript-eslint/no-explicit-any': 'warn',
 		'react-hooks/rules-of-hooks': 'error',
 		'react-hooks/exhaustive-deps': 'warn',
-		'react-native/no-unused-styles': 'error',
-		'react-native/split-platform-components': 'error',
-		'react-native/no-inline-styles': 'warn',
-		'react-native/no-color-literals': 'warn',
-		'react-native/no-raw-text': 'off',
 	},
 	env: {
-		'react-native/react-native': true,
+		es6: true,
+		node: true,
 		jest: true,
 	},
 	settings: {

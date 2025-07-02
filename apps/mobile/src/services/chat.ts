@@ -242,7 +242,9 @@ export async function sendMessageAndGetAIResponse(
 		const messagesForAI = [
 			{
 				role: 'system' as const,
-				content: `You are "${session.books.title}" by ${session.books.author}, a wise and knowledgeable book.
+				content: `You are "${session.books.title}" by ${
+					session.books.author
+				}, a wise and knowledgeable book.
 You have intimate knowledge of your own story, themes, characters, and literary significance.
 You can also discuss other books, literature, and reading in general.
 Never discuss anything outside of literary topics.
@@ -283,7 +285,9 @@ ${
 				isRateLimit: aiResponse.isApiRateLimit,
 				isApiRateLimit: aiResponse.isApiRateLimit,
 				message: aiResponse.isApiRateLimit
-					? `API rate limit reached. Please wait ${aiResponse.waitTime || 60} seconds before trying again.`
+					? `API rate limit reached. Please wait ${
+							aiResponse.waitTime || 60
+					  } seconds before trying again.`
 					: aiResponse.message,
 				waitTime: aiResponse.waitTime,
 			} as any;
@@ -344,7 +348,7 @@ ${
 }
 
 async function callOpenAI(
-	messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>
+	messages: { role: 'system' | 'user' | 'assistant'; content: string }[]
 ): Promise<
 	| string
 	| { error: true; isApiRateLimit: boolean; message: string; waitTime?: number }

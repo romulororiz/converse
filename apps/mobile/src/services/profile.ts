@@ -131,7 +131,9 @@ export function getUserContextForAI(profile: UserProfile): string {
 		return "This is a new user who hasn't set up their reading preferences yet. Be welcoming and help them discover books.";
 	}
 
-	return `User context: ${contextParts.join('. ')}. Use this information to personalize your responses and book recommendations.`;
+	return `User context: ${contextParts.join(
+		'. '
+	)}. Use this information to personalize your responses and book recommendations.`;
 }
 
 /**

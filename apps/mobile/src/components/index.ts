@@ -9,6 +9,7 @@ export { ConversationalVoiceChat } from './ConversationalVoiceChat';
 export { PremiumPaywallDrawer } from './PremiumPaywallDrawer';
 export { ModernVoiceVisualizer } from './ModernVoiceVisualizer';
 export { MessageCounterBadge } from './MessageCounterBadge';
+export { ScrollDown } from './ScrollDown';
 
 // New reusable components
 export { LoadingState } from './LoadingState';

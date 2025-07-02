@@ -299,7 +299,7 @@ export default function InsightsScreen() {
 									: {
 											backgroundColor: currentColors.card,
 											borderColor: currentColors.border,
-										},
+									  },
 							]}
 							onPress={() => setSelectedPeriod(period)}
 							activeOpacity={0.7}

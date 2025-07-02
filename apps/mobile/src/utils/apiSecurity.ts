@@ -198,16 +198,30 @@ class ApiKeyManager {
 
 		console.log('API Key Status:');
 		console.log(
-			`- OpenAI: ${this.keys.openai ? this.obfuscateKey(this.keys.openai) : 'NOT_SET'}`
+			`- OpenAI: ${
+				this.keys.openai ? this.obfuscateKey(this.keys.openai) : 'NOT_SET'
+			}`
 		);
 		console.log(
-			`- ElevenLabs: ${this.keys.elevenlabs ? this.obfuscateKey(this.keys.elevenlabs) : 'NOT_SET'}`
+			`- ElevenLabs: ${
+				this.keys.elevenlabs
+					? this.obfuscateKey(this.keys.elevenlabs)
+					: 'NOT_SET'
+			}`
 		);
 		console.log(
-			`- Supabase URL: ${this.keys.supabaseUrl ? this.obfuscateKey(this.keys.supabaseUrl) : 'NOT_SET'}`
+			`- Supabase URL: ${
+				this.keys.supabaseUrl
+					? this.obfuscateKey(this.keys.supabaseUrl)
+					: 'NOT_SET'
+			}`
 		);
 		console.log(
-			`- Supabase Key: ${this.keys.supabaseAnonKey ? this.obfuscateKey(this.keys.supabaseAnonKey) : 'NOT_SET'}`
+			`- Supabase Key: ${
+				this.keys.supabaseAnonKey
+					? this.obfuscateKey(this.keys.supabaseAnonKey)
+					: 'NOT_SET'
+			}`
 		);
 	}
 }

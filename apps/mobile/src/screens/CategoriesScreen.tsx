@@ -285,7 +285,7 @@ export default function CategoriesScreen() {
 								</Text>
 							</View>
 							<Ionicons
-								name='chevron-forward'
+								name="chevron-forward"
 								size={20}
 								color={currentColors.mutedForeground}
 							/>
@@ -321,7 +321,7 @@ export default function CategoriesScreen() {
 						onPress={() => navigation.goBack()}
 					>
 						<Ionicons
-							name='arrow-back'
+							name="arrow-back"
 							size={24}
 							color={currentColors.foreground}
 						/>
@@ -387,7 +387,7 @@ export default function CategoriesScreen() {
 						onPress={() => navigation.goBack()}
 					>
 						<Ionicons
-							name='arrow-back'
+							name="arrow-back"
 							size={24}
 							color={currentColors.foreground}
 						/>
@@ -412,7 +412,7 @@ export default function CategoriesScreen() {
 							size: 64,
 							color: currentColors.mutedForeground,
 						}}
-						title='Unable to load categories'
+						title="Unable to load categories"
 						subtitle={error}
 						button={{
 							text: 'Try Again',
@@ -449,7 +449,7 @@ export default function CategoriesScreen() {
 					onPress={() => navigation.goBack()}
 				>
 					<Ionicons
-						name='arrow-back'
+						name="arrow-back"
 						size={24}
 						color={currentColors.foreground}
 					/>
@@ -507,7 +507,7 @@ export default function CategoriesScreen() {
 				<SearchBar
 					value={searchQuery}
 					onChangeText={setSearchQuery}
-					placeholder='Search categories...'
+					placeholder="Search categories..."
 					containerStyle={[
 						styles.searchContainer,
 						{ backgroundColor: currentColors.background },
@@ -533,7 +533,7 @@ export default function CategoriesScreen() {
 							size: 48,
 							color: currentColors.mutedForeground,
 						}}
-						title='No categories found'
+						title="No categories found"
 						subtitle={
 							searchQuery
 								? `No categories match "${searchQuery}"`
@@ -545,7 +545,7 @@ export default function CategoriesScreen() {
 										text: 'Clear Search',
 										onPress: () => setSearchQuery(''),
 										style: 'secondary',
-									}
+								  }
 								: undefined
 						}
 					/>
@@ -561,8 +561,12 @@ export default function CategoriesScreen() {
 							]}
 						>
 							{searchQuery
-								? `${filteredAndSortedCategories.length} result${filteredAndSortedCategories.length === 1 ? '' : 's'} for "${searchQuery}"`
-								: `${categories.length} categor${categories.length === 1 ? 'y' : 'ies'} available`}
+								? `${filteredAndSortedCategories.length} result${
+										filteredAndSortedCategories.length === 1 ? '' : 's'
+								  } for "${searchQuery}"`
+								: `${categories.length} categor${
+										categories.length === 1 ? 'y' : 'ies'
+								  } available`}
 						</Text>
 					</View>
 				)}
@@ -616,7 +620,7 @@ const styles = StyleSheet.create({
 		marginBottom: 8,
 	},
 	descriptionText: {
-		fontSize: 14
+		fontSize: 14,
 	},
 	searchContainer: {
 		paddingHorizontal: 16,

@@ -100,7 +100,7 @@ export class ErrorBoundary extends Component<Props, State> {
 				<View style={styles.container}>
 					<View style={styles.iconContainer}>
 						<Ionicons
-							name='warning-outline'
+							name="warning-outline"
 							size={64}
 							color={colors.light.destructive}
 						/>
@@ -118,7 +118,7 @@ export class ErrorBoundary extends Component<Props, State> {
 							onPress={this.handleRetry}
 						>
 							<Ionicons
-								name='refresh-outline'
+								name="refresh-outline"
 								size={20}
 								color={colors.light.primaryForeground}
 								style={styles.buttonIcon}
@@ -131,7 +131,7 @@ export class ErrorBoundary extends Component<Props, State> {
 							onPress={this.handleReportBug}
 						>
 							<Ionicons
-								name='bug-outline'
+								name="bug-outline"
 								size={20}
 								color={colors.light.primary}
 								style={styles.buttonIcon}
@@ -180,7 +180,7 @@ export class ChatErrorBoundary extends Component<Props, State> {
 			return (
 				<View style={styles.chatErrorContainer}>
 					<Ionicons
-						name='chatbubble-outline'
+						name="chatbubble-outline"
 						size={32}
 						color={colors.light.mutedForeground}
 					/>
@@ -221,7 +221,7 @@ export class VoiceErrorBoundary extends Component<Props, State> {
 			return (
 				<View style={styles.voiceErrorContainer}>
 					<Ionicons
-						name='mic-off-outline'
+						name="mic-off-outline"
 						size={32}
 						color={colors.light.mutedForeground}
 					/>

@@ -132,16 +132,13 @@ async function getPeriodStats(
 
 	// Get most active books
 	const bookActivity =
-		booksData?.reduce(
-			(acc, session) => {
-				const bookId = session.book_id;
-				if (bookId) {
-					acc[bookId] = (acc[bookId] || 0) + 1;
-				}
-				return acc;
-			},
-			{} as Record<string, number>
-		) || {};
+		booksData?.reduce((acc, session) => {
+			const bookId = session.book_id;
+			if (bookId) {
+				acc[bookId] = (acc[bookId] || 0) + 1;
+			}
+			return acc;
+		}, {} as Record<string, number>) || {};
 
 	const mostActiveBook = Object.entries(bookActivity).sort(
 		([, a], [, b]) => b - a
@@ -150,19 +147,16 @@ async function getPeriodStats(
 	// Get favorite genre
 	const allCategories =
 		booksData
-			?.flatMap(session => session.books?.categories || [])
+			?.flatMap(session => (session.books as any)?.categories || [])
 			.filter(Boolean) || [];
 
-	const categoryCounts = allCategories.reduce(
-		(acc, category) => {
-			acc[category] = (acc[category] || 0) + 1;
-			return acc;
-		},
-		{} as Record<string, number>
-	);
+	const categoryCounts = allCategories.reduce((acc, category) => {
+		acc[category] = (acc[category] || 0) + 1;
+		return acc;
+	}, {} as Record<string, number>);
 
 	const favoriteGenre = Object.entries(categoryCounts).sort(
-		([, a], [, b]) => b - a
+		([, a], [, b]) => (b as number) - (a as number)
 	)[0];
 
 	return {
@@ -173,18 +167,20 @@ async function getPeriodStats(
 					id: mostActiveBook[0],
 					count: mostActiveBook[1],
 					title:
-						booksData?.find(s => s.book_id === mostActiveBook[0])?.books
-							?.title || 'Unknown',
-				}
+						(
+							booksData?.find(s => s.book_id === mostActiveBook[0])
+								?.books as any
+						)?.title || 'Unknown',
+			  }
 			: null,
 		favoriteGenre: favoriteGenre
 			? {
 					name: favoriteGenre[0],
 					count: favoriteGenre[1],
 					percentage: Math.round(
-						(favoriteGenre[1] / allCategories.length) * 100
+						((favoriteGenre[1] as number) / allCategories.length) * 100
 					),
-				}
+			  }
 			: null,
 	};
 }
