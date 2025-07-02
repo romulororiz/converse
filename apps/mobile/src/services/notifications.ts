@@ -78,7 +78,7 @@ export class NotificationService {
 
 			// Use platform-specific configuration
 			const tokenConfig = {
-				projectId: '90bb907f-379f-4ca6-829a-b0d45fff7d06', // Your Expo project ID
+				projectId: 'b99dbb50-1f88-4251-9fe3-48b3534a313f', // Your Expo project ID
 			};
 
 			// Add Android-specific configuration
