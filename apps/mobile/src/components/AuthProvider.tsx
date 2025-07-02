@@ -205,17 +205,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			}
 		});
 
-		// Also listen for URL changes (for OAuth callbacks)
-		const handleURLChange = (url: string) => {
-			console.log('URL changed:', url);
-			if (url.includes('interactive-library://auth')) {
-				console.log('OAuth callback detected, refreshing session...');
-				// Small delay to let Supabase process the OAuth callback
-				setTimeout(() => {
-					getInitialSession();
-				}, 500);
-			}
-		};
+		// // Also listen for URL changes (for OAuth callbacks)
+		// const handleURLChange = (url: string) => {
+		// 	console.log('URL changed:', url);
+		// 	if (url.includes('interactive-library://auth')) {
+		// 		console.log('OAuth callback detected, refreshing session...');
+		// 		// Small delay to let Supabase process the OAuth callback
+		// 		setTimeout(() => {
+		// 			getInitialSession();
+		// 		}, 500);
+		// 	}
+		// };
 
 		// Note: In a real app, you'd use Linking.addEventListener
 		// For now, we'll rely on the manual refresh calls

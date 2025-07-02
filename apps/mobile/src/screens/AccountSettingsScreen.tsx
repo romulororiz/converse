@@ -19,17 +19,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
 import { useTheme } from '../contexts/ThemeContext';
 import { supabase } from '../lib/supabase';
-import { useNavigation } from '@react-navigation/native';
 import { updateUserProfile } from '../services/profile';
 import {
 	validateProfileUpdate,
 	validatePasswordChange,
 } from '../utils/validation';
-
-type NavigationProp = {
-	navigate: (screen: string, params?: any) => void;
-	goBack: () => void;
-};
 
 // Move ProfileField component outside to prevent recreation on every render
 const ProfileField = ({
@@ -96,7 +90,7 @@ const ProfileField = ({
 export default function AccountSettingsScreen() {
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
-	const [profile, setProfile] = useState(null);
+	const [, setProfile] = useState(null);
 	const [editingProfile, setEditingProfile] = useState(false);
 	const [changingPassword, setChangingPassword] = useState(false);
 
@@ -112,7 +106,6 @@ export default function AccountSettingsScreen() {
 	const [newPassword, setNewPassword] = useState('');
 	const [confirmPassword, setConfirmPassword] = useState('');
 
-	const navigation = useNavigation<NavigationProp>();
 	const { theme, isDark } = useTheme();
 	const currentColors = colors[theme];
 

@@ -21,7 +21,6 @@ import { supabase } from '../lib/supabase';
 import { useNavigation } from '@react-navigation/native';
 import { PremiumPaywallDrawer } from '../components/PremiumPaywallDrawer';
 import { SkeletonLoader } from '../components/SkeletonLoader';
-import { ElevenLabsTest } from '../components/ElevenLabsTest';
 import { useTheme } from '../contexts/ThemeContext';
 import {
 	NotificationService,
@@ -312,17 +311,6 @@ export default function ProfileScreen() {
 		} finally {
 			setUploading(false);
 			setImageLoading(false);
-		}
-	};
-
-	const handleSignOut = async () => {
-		try {
-			const { error } = await supabase.auth.signOut();
-			if (error) throw error;
-			// Navigation will be handled by the auth listener
-		} catch (error) {
-			console.error('Error signing out:', error);
-			Alert.alert('Error', 'Failed to sign out');
 		}
 	};
 

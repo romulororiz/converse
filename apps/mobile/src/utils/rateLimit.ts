@@ -29,7 +29,7 @@ const RATE_LIMIT_CONFIGS = {
 	// Chat message limits
 	chat_message: {
 		basic: { max: 20, window: 300 }, // 20 messages per 5 minutes for free users
-		premium: { max: 100, window: 300 }, // 100 messages per 5 minutes for premium
+		premium: { max: 2, window: 300 }, // 100 messages per 5 minutes for premium
 		admin: { max: 1000, window: 300 }, // Generous limits for admin
 	},
 	// Voice transcription limits (more restrictive due to processing cost)
@@ -107,7 +107,7 @@ export class ProfessionalRateLimit {
 					tier,
 					action,
 				};
-			} catch (consumeError) {
+			} catch {
 				// Rate limit exceeded by the underlying library
 				console.log(`Rate limit exceeded for key: ${key}`);
 
@@ -261,7 +261,6 @@ export async function checkVoiceRateLimit(
 		});
 	} catch (error: any) {
 		// Instead of throwing, return a rate limit exceeded result
-		const limits = RATE_LIMIT_CONFIGS.voice_transcription[userTier];
 		const retryAfter = error.retryAfter || 60;
 
 		const limiter = ProfessionalRateLimit.getInstance();
@@ -302,7 +301,6 @@ export async function checkAIRateLimit(
 		});
 	} catch (error: any) {
 		// Instead of throwing, return a rate limit exceeded result
-		const limits = RATE_LIMIT_CONFIGS.ai_request[userTier];
 		const retryAfter = error.retryAfter || 30;
 
 		const limiter = ProfessionalRateLimit.getInstance();

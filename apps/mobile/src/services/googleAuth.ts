@@ -2,16 +2,15 @@ import { makeRedirectUri } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 
 import { supabase } from '../lib/supabase';
-import { Alert } from 'react-native';
 
 // Configure WebBrowser for OAuth
 WebBrowser.maybeCompleteAuthSession();
 
 // Google OAuth configuration
-const GOOGLE_CLIENT_ID =
-	process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || 'your-google-client-id';
-const GOOGLE_CLIENT_SECRET =
-	process.env.EXPO_PUBLIC_GOOGLE_CLIENT_SECRET || 'your-google-client-secret';
+// const GOOGLE_CLIENT_ID =
+// 	process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || 'your-google-client-id';
+// const GOOGLE_CLIENT_SECRET =
+// 	process.env.EXPO_PUBLIC_GOOGLE_CLIENT_SECRET || 'your-google-client-secret';
 
 export interface GoogleAuthResult {
 	success: boolean;
@@ -58,7 +57,6 @@ export async function signInWithGoogleDirect(): Promise<GoogleAuthResult> {
 
 				const {
 					data: { session },
-					error,
 				} = await supabase.auth.getSession();
 
 				if (session?.user) {

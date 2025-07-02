@@ -1,10 +1,4 @@
-import React, {
-	useState,
-	useEffect,
-	useRef,
-	useCallback,
-	useMemo,
-} from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
 	View,
 	Text,
@@ -12,18 +6,15 @@ import {
 	FlatList,
 	TextInput,
 	TouchableOpacity,
-	Image,
 	KeyboardAvoidingView,
 	Platform,
 	ActivityIndicator,
 	Alert,
 	SafeAreaView,
 	Keyboard,
-	Dimensions,
 	NativeScrollEvent,
 	NativeSyntheticEvent,
 	ScrollView,
-	BackHandler,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
@@ -34,33 +25,22 @@ import { BookCover } from '../components/BookCover';
 import { ConversationalVoiceChat } from '../components/ConversationalVoiceChat';
 import { useAuth } from '../components/AuthProvider';
 import { ChatErrorBoundary } from '../components/ErrorBoundary';
-import {
-	validateChatMessage,
-	validateVoiceTranscription,
-} from '../utils/validation';
+import { validateChatMessage } from '../utils/validation';
 import {
 	useRoute,
 	useNavigation,
 	RouteProp,
 	useFocusEffect,
 } from '@react-navigation/native';
-import { captureRef, captureScreen } from 'react-native-view-shot';
+import { captureScreen } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import {
-	GestureHandlerRootView,
-	PanGestureHandler,
-	PanGestureHandlerGestureEvent,
-	State,
-} from 'react-native-gesture-handler';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
 	useSharedValue,
 	useAnimatedStyle,
 	withTiming,
-	withSpring,
 	runOnJS,
-	interpolate,
-	Extrapolate,
 } from 'react-native-reanimated';
 import {
 	getOrCreateChatSession,
@@ -89,8 +69,6 @@ type ChatDetailScreenNavigationProp = NativeStackNavigationProp<
 	'ChatDetail'
 >;
 type ChatDetailScreenRouteProp = RouteProp<RootStackParamList, 'ChatDetail'>;
-
-const { width } = Dimensions.get('window');
 
 // Helper function to format year as AD/BC
 const formatYear = (year: number | string | null | undefined): string => {
@@ -133,7 +111,6 @@ export default function ChatDetailScreen() {
 	const route = useRoute<ChatDetailScreenRouteProp>();
 	const navigation = useNavigation<ChatDetailScreenNavigationProp>();
 	const flatListRef = useRef<FlatList<ChatMessage>>(null);
-	const chatContainerRef = useRef<View>(null);
 	const textInputRef = useRef<TextInput>(null);
 	const scrollY = useRef(0);
 
@@ -434,20 +411,16 @@ export default function ChatDetailScreen() {
 						// User rate limit (message count limit)
 						if ((response as any).plan === 'free') {
 							setShowPaywall(true);
-						} else {
-							// NO TOAST - handled by UI only
-							const rateLimitMessage =
-								(response as any).message || 'Rate limit exceeded';
+						} else if ((response as any).isApiRateLimit) {
+							const waitTime = (response as any).waitTime || 60;
+							setNewMessage('');
+							textInputRef.current?.clear();
+							setApiRateLimited(true);
+							const resetTime = new Date(Date.now() + waitTime * 1000);
+							setApiRateLimitResetTime(resetTime);
+							setSending(false);
+							return;
 						}
-					} else if ((response as any).isApiRateLimit) {
-						const waitTime = (response as any).waitTime || 60;
-						setNewMessage('');
-						textInputRef.current?.clear();
-						setApiRateLimited(true);
-						const resetTime = new Date(Date.now() + waitTime * 1000);
-						setApiRateLimitResetTime(resetTime);
-						setSending(false);
-						return;
 					}
 					setSending(false);
 					return;
@@ -587,105 +560,105 @@ export default function ChatDetailScreen() {
 		}
 	};
 
-	const handleVoiceTranscriptionComplete = async (transcribedText: string) => {
-		setShowConversationalVoice(false);
+	// const handleVoiceTranscriptionComplete = async (transcribedText: string) => {
+	// 	setShowConversationalVoice(false);
 
-		// Validate transcription using Zod
-		try {
-			validateVoiceTranscription(transcribedText);
-		} catch (error) {
-			toast.error('Invalid Voice Message', error.message || 'Please try again');
-			return;
-		}
+	// 	// Validate transcription using Zod
+	// 	try {
+	// 		validateVoiceTranscription(transcribedText);
+	// 	} catch (error) {
+	// 		toast.error('Invalid Voice Message', error.message || 'Please try again');
+	// 		return;
+	// 	}
 
-		if (!transcribedText.trim()) {
-			toast.error('No speech detected', 'Please try again');
-			return;
-		}
+	// 	if (!transcribedText.trim()) {
+	// 		toast.error('No speech detected', 'Please try again');
+	// 		return;
+	// 	}
 
-		const userMessage = transcribedText.trim();
-		setNewMessage('');
-		setSending(true);
+	// 	const userMessage = transcribedText.trim();
+	// 	setNewMessage('');
+	// 	setSending(true);
 
-		try {
-			// Check message limit before sending
-			const messageLimit = await canSendMessage(user!.id);
-			if (!messageLimit.canSend) {
-				if (messageLimit.plan === 'free') {
-					// Show paywall for free users who reached their limit
-					setShowPaywall(true);
-					return;
-				} else {
-					// Don't throw, show error toast
-					toast.error('Unable to send message', 'Please try again');
-					setSending(false);
-					return;
-				}
-			}
+	// 	try {
+	// 		// Check message limit before sending
+	// 		const messageLimit = await canSendMessage(user!.id);
+	// 		if (!messageLimit.canSend) {
+	// 			if (messageLimit.plan === 'free') {
+	// 				// Show paywall for free users who reached their limit
+	// 				setShowPaywall(true);
+	// 				return;
+	// 			} else {
+	// 				// Don't throw, show error toast
+	// 				toast.error('Unable to send message', 'Please try again');
+	// 				setSending(false);
+	// 				return;
+	// 			}
+	// 		}
 
-			// Create session if it doesn't exist
-			let currentSessionId = sessionId;
-			if (!currentSessionId) {
-				const session = await getOrCreateChatSession(user!.id, bookId);
-				currentSessionId = session.id;
-				setSessionId(currentSessionId);
-			}
+	// 		// Create session if it doesn't exist
+	// 		let currentSessionId = sessionId;
+	// 		if (!currentSessionId) {
+	// 			const session = await getOrCreateChatSession(user!.id, bookId);
+	// 			currentSessionId = session.id;
+	// 			setSessionId(currentSessionId);
+	// 		}
 
-			// Create temporary user message for immediate UI display
-			const tempUserMessage: ChatMessage = {
-				id: `temp-${Date.now()}`,
-				content: userMessage,
-				role: 'user',
-				created_at: new Date().toISOString(),
-				session_id: currentSessionId,
-				metadata: {},
-			};
+	// 		// Create temporary user message for immediate UI display
+	// 		const tempUserMessage: ChatMessage = {
+	// 			id: `temp-${Date.now()}`,
+	// 			content: userMessage,
+	// 			role: 'user',
+	// 			created_at: new Date().toISOString(),
+	// 			session_id: currentSessionId,
+	// 			metadata: {},
+	// 		};
 
-			// Add user message to UI immediately
-			setMessages(prev => [...prev, tempUserMessage]);
+	// 		// Add user message to UI immediately
+	// 		setMessages(prev => [...prev, tempUserMessage]);
 
-			// Send message and get AI response in one call
-			const response = await sendMessageAndGetAIResponse(
-				currentSessionId,
-				userMessage
-			);
+	// 		// Send message and get AI response in one call
+	// 		const response = await sendMessageAndGetAIResponse(
+	// 			currentSessionId,
+	// 			userMessage
+	// 		);
 
-			// Check if response has error
-			if ((response as any).error) {
-				// Remove temp message
-				setMessages(prev => prev.slice(0, -1));
-				setNewMessage(userMessage); // Restore the message
+	// 		// Check if response has error
+	// 		if ((response as any).error) {
+	// 			// Remove temp message
+	// 			setMessages(prev => prev.slice(0, -1));
+	// 			setNewMessage(userMessage); // Restore the message
 
-				if ((response as any).isRateLimit) {
-					if ((response as any).plan === 'free') {
-						setShowPaywall(true);
-					}
-				} else if ((response as any).isApiRateLimit) {
-					const waitTime = (response as any).waitTime || 60;
-					setApiRateLimited(true);
-					const resetTime = new Date(Date.now() + waitTime * 1000);
-					setApiRateLimitResetTime(resetTime);
-					return;
-				}
-				setSending(false);
-				return;
-			}
+	// 			if ((response as any).isRateLimit) {
+	// 				if ((response as any).plan === 'free') {
+	// 					setShowPaywall(true);
+	// 				}
+	// 			} else if ((response as any).isApiRateLimit) {
+	// 				const waitTime = (response as any).waitTime || 60;
+	// 				setApiRateLimited(true);
+	// 				const resetTime = new Date(Date.now() + waitTime * 1000);
+	// 				setApiRateLimitResetTime(resetTime);
+	// 				return;
+	// 			}
+	// 			setSending(false);
+	// 			return;
+	// 		}
 
-			// Replace temp message with real user message and add AI response
-			const { userMessage: userMsg, aiMessage: aiMsg } = response as any;
-			setMessages(prev => [
-				...prev.slice(0, -1), // Remove temp message
-				userMsg as ChatMessage,
-				aiMsg as ChatMessage,
-			]);
-		} catch (error) {
-			console.log('Error sending transcribed message:', error);
-		} finally {
-			if (!apiRateLimited) {
-				setSending(false);
-			}
-		}
-	};
+	// 		// Replace temp message with real user message and add AI response
+	// 		const { userMessage: userMsg, aiMessage: aiMsg } = response as any;
+	// 		setMessages(prev => [
+	// 			...prev.slice(0, -1), // Remove temp message
+	// 			userMsg as ChatMessage,
+	// 			aiMsg as ChatMessage,
+	// 		]);
+	// 	} catch (error) {
+	// 		console.log('Error sending transcribed message:', error);
+	// 	} finally {
+	// 		if (!apiRateLimited) {
+	// 			setSending(false);
+	// 		}
+	// 	}
+	// };
 
 	const handleConversationalVoiceComplete = async (conversation: any[]) => {
 		setShowConversationalVoice(false);

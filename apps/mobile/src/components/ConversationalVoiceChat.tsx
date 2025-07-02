@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
 	View,
 	Text,
@@ -6,15 +6,12 @@ import {
 	TouchableOpacity,
 	Animated,
 	Modal,
-	Dimensions,
 	StatusBar,
 	Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
 import * as Speech from 'expo-speech';
-import { LinearGradient } from 'expo-linear-gradient';
-import { colors } from '../utils/colors';
 import { showAlert } from '../utils/alert';
 import { ModernVoiceVisualizer } from './ModernVoiceVisualizer';
 import {
@@ -45,8 +42,6 @@ interface ConversationMessage {
 	audioUri?: string;
 }
 
-const { width, height } = Dimensions.get('window');
-
 export const ConversationalVoiceChat = ({
 	onConversationComplete,
 	onClose,
@@ -66,7 +61,6 @@ export const ConversationalVoiceChat = ({
 
 	// Animation values
 	const orbScale = useRef(new Animated.Value(1)).current;
-	const orbOpacity = useRef(new Animated.Value(0.8)).current;
 	const pulseAnim = useRef(new Animated.Value(1)).current;
 	const backgroundOpacity = useRef(new Animated.Value(0)).current;
 

@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/supabase';
 import { secureApiRequest, apiKeyManager } from '../utils/apiSecurity';
-import { validateChatMessage, sanitizeInput } from '../utils/validation';
+import { sanitizeInput } from '../utils/validation';
 import { getCurrentUserProfile, getUserContextForAI } from './profile';
 import { canSendMessage, incrementMessageCount } from './subscription';
 
@@ -25,7 +25,7 @@ export async function getOrCreateChatSession(
 ): Promise<ChatSession> {
 	try {
 		// First, try to find an existing session
-		const { data: existingSession, error: findError } = await supabase
+		const { data: existingSession } = await supabase
 			.from('chat_sessions')
 			.select('*, books(title, cover_url, year, metadata)')
 			.eq('user_id', userId)
@@ -408,7 +408,7 @@ async function callOpenAI(
 export async function deleteChatSession(sessionId: string): Promise<void> {
 	try {
 		// Delete all messages first
-		const { error: messagesError, count: messagesCount } = await supabase
+		const { error: messagesError } = await supabase
 			.from('messages')
 			.delete()
 			.eq('session_id', sessionId);

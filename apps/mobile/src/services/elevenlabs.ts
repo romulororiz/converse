@@ -1,5 +1,5 @@
 import * as FileSystem from 'expo-file-system';
-import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
+import { Audio } from 'expo-av';
 
 // Polyfill for btoa if not available
 const btoaPolyfill = (str: string): string => {
@@ -281,7 +281,7 @@ function getApiKey(): string | null {
 	try {
 		const { apiKeyManager } = require('../utils/apiSecurity');
 		return apiKeyManager.getElevenLabsKey();
-	} catch (error) {
+	} catch {
 		console.warn('ElevenLabs API key not found, falling back to expo-speech');
 		return null;
 	}

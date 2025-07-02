@@ -8,12 +8,9 @@ import {
 	StatusBar,
 	SafeAreaView,
 	Dimensions,
-	Platform,
-	Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { BookCover } from '../components/BookCover';
 import { colors } from '../utils/colors';
 import { Book } from '../types/supabase';
@@ -21,7 +18,6 @@ import { getBookById } from '../services/books';
 import { LoadingState } from '../components/LoadingState';
 import { EmptyState } from '../components/EmptyState';
 import { useTheme } from '../contexts/ThemeContext';
-import { ScreenHeader } from '../components';
 import { getFlagsForLanguages } from '../utils/flags';
 
 type BookDetailRouteProp = RouteProp<{
@@ -33,7 +29,7 @@ type NavigationProp = {
 	goBack: () => void;
 };
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const { width: screenWidth } = Dimensions.get('window');
 
 export default function BookDetailScreen() {
 	const navigation = useNavigation<NavigationProp>();
@@ -87,11 +83,11 @@ export default function BookDetailScreen() {
 		return pages ? `${pages} pages` : 'Unknown pages';
 	};
 
-	const formatLanguage = (language: string | null) => {
-		if (!language) return 'Unknown';
-		// Show language code as fallback
-		return language;
-	};
+	// const formatLanguage = (language: string | null) => {
+	// 	if (!language) return 'Unknown';
+	// 	// Show language code as fallback
+	// 	return language;
+	// };
 
 	const renderStars = (rating: number | null) => {
 		if (!rating) return null;

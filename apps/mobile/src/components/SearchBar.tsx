@@ -1,7 +1,6 @@
 import React from 'react';
 import {
 	View,
-	Text,
 	StyleSheet,
 	TextInput,
 	TouchableOpacity,
@@ -49,7 +48,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 			try {
 				validateSearchQuery(text);
 				onChangeText(text);
-			} catch (error) {
+			} catch {
 				// Silently ignore validation errors for search input
 				// as users should be able to type freely
 				onChangeText(text);

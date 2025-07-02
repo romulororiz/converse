@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
 	View,
 	Text,
@@ -8,13 +8,12 @@ import {
 	TouchableOpacity,
 	Dimensions,
 	StatusBar,
-	ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../components/AuthProvider';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import { SkeletonLoader } from '../components/SkeletonLoader';
 import { EmptyState } from '../components/EmptyState';
 import {
@@ -22,23 +21,16 @@ import {
 	type InsightCard,
 	type ChatGoal,
 } from '../services/insights';
-import { ScreenHeader } from '../components';
 
 const { width } = Dimensions.get('window');
-
-type NavigationProp = {
-	navigate: (screen: string, params?: any) => void;
-	goBack: () => void;
-};
 
 export default function InsightsScreen() {
 	const { theme, isDark } = useTheme();
 	const { user } = useAuth();
-	const navigation = useNavigation<NavigationProp>();
 	const currentColors = colors[theme];
 	const [loading, setLoading] = useState(true);
 	const [insights, setInsights] = useState<InsightCard[]>([]);
-	const [goals, setGoals] = useState<ChatGoal[]>([]);
+	const [, setGoals] = useState<ChatGoal[]>([]);
 	const [selectedPeriod, setSelectedPeriod] = useState<
 		'week' | 'month' | 'year'
 	>('month');
@@ -165,57 +157,57 @@ export default function InsightsScreen() {
 		);
 	};
 
-	const renderGoalCard = (goal: ChatGoal) => {
-		const progress = Math.min((goal.current / goal.target) * 100, 100);
-		const isCompleted = goal.current >= goal.target;
+	// const renderGoalCard = (goal: ChatGoal) => {
+	// 	const progress = Math.min((goal.current / goal.target) * 100, 100);
+	// 	const isCompleted = goal.current >= goal.target;
 
-		return (
-			<View
-				key={goal.id}
-				style={[
-					styles.goalCard,
-					{
-						backgroundColor: currentColors.card,
-						borderColor: currentColors.border,
-					},
-				]}
-			>
-				<View style={styles.goalHeader}>
-					<Text style={[styles.goalTitle, { color: currentColors.foreground }]}>
-						{goal.title}
-					</Text>
-					<Text style={[styles.goalProgress, { color: currentColors.primary }]}>
-						{goal.current}/{goal.target} {goal.unit}
-					</Text>
-				</View>
+	// 	return (
+	// 		<View
+	// 			key={goal.id}
+	// 			style={[
+	// 				styles.goalCard,
+	// 				{
+	// 					backgroundColor: currentColors.card,
+	// 					borderColor: currentColors.border,
+	// 				},
+	// 			]}
+	// 		>
+	// 			<View style={styles.goalHeader}>
+	// 				<Text style={[styles.goalTitle, { color: currentColors.foreground }]}>
+	// 					{goal.title}
+	// 				</Text>
+	// 				<Text style={[styles.goalProgress, { color: currentColors.primary }]}>
+	// 					{goal.current}/{goal.target} {goal.unit}
+	// 				</Text>
+	// 			</View>
 
-				<View
-					style={[styles.progressBar, { backgroundColor: currentColors.muted }]}
-				>
-					<View
-						style={[
-							styles.progressFill,
-							{
-								backgroundColor: isCompleted
-									? '#10B981'
-									: currentColors.primary,
-								width: `${progress}%`,
-							},
-						]}
-					/>
-				</View>
+	// 			<View
+	// 				style={[styles.progressBar, { backgroundColor: currentColors.muted }]}
+	// 			>
+	// 				<View
+	// 					style={[
+	// 						styles.progressFill,
+	// 						{
+	// 							backgroundColor: isCompleted
+	// 								? '#10B981'
+	// 								: currentColors.primary,
+	// 							width: `${progress}%`,
+	// 						},
+	// 					]}
+	// 				/>
+	// 			</View>
 
-				<Text
-					style={[
-						styles.progressText,
-						{ color: currentColors.mutedForeground },
-					]}
-				>
-					{progress.toFixed(0)}% complete{isCompleted ? ' 🎉' : ''}
-				</Text>
-			</View>
-		);
-	};
+	// 			<Text
+	// 				style={[
+	// 					styles.progressText,
+	// 					{ color: currentColors.mutedForeground },
+	// 				]}
+	// 			>
+	// 				{progress.toFixed(0)}% complete{isCompleted ? ' 🎉' : ''}
+	// 			</Text>
+	// 		</View>
+	// 	);
+	// };
 
 	if (!user) {
 		return (

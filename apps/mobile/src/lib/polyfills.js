@@ -20,7 +20,7 @@ if (typeof global.EventTarget === 'undefined') {
 			this._listeners.get(type).push({ listener, options });
 		}
 
-		removeEventListener(type, listener, options = {}) {
+		removeEventListener(type, listener = {}) {
 			if (!this._listeners.has(type)) return;
 
 			const listeners = this._listeners.get(type);
@@ -115,11 +115,11 @@ if (typeof global.crypto === 'undefined') {
 					usages: keyUsages,
 				};
 			},
-			sign: async (algorithm, key, data) => {
+			sign: async () => {
 				// Mock signing
 				return new Uint8Array(32);
 			},
-			verify: async (algorithm, key, signature, data) => {
+			verify: async () => {
 				// Mock verification
 				return true;
 			},

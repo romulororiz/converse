@@ -5,9 +5,6 @@ import {
 	StyleSheet,
 	FlatList,
 	TouchableOpacity,
-	Image,
-	ActivityIndicator,
-	TextInput,
 	SafeAreaView,
 	StatusBar,
 	RefreshControl,
@@ -18,15 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
 import { useTheme } from '../contexts/ThemeContext';
 import { useFocusEffect } from '@react-navigation/native';
-import {
-	getAllBooks,
-	searchBooks,
-	searchBooksInCategory,
-} from '../services/books';
-import {
-	searchBooksByCategory,
-	searchBooksByCategorySimple,
-} from '../services/categories';
+import { getAllBooks } from '../services/books';
+import { searchBooksByCategorySimple } from '../services/categories';
 import { Book } from '../types/supabase';
 import { BookCover } from '../components/BookCover';
 import { EmptyState } from '../components/EmptyState';
@@ -34,9 +24,7 @@ import { SearchBar } from '../components/SearchBar';
 import { SkeletonLoader } from '../components/SkeletonLoader';
 import { MessageCounterBadge } from '../components/MessageCounterBadge';
 import { PremiumPaywallDrawer } from '../components/PremiumPaywallDrawer';
-import { ScreenHeader } from '../components';
 import { useSubscription } from '../contexts/SubscriptionContext';
-import { deviceType } from 'expo-device';
 
 const { width } = Dimensions.get('window');
 
@@ -54,14 +42,10 @@ export default function BooksListScreen({ navigation, route }: any) {
 
 	const { theme, isDark } = useTheme();
 	const currentColors = colors[theme];
-	const {
-		subscription,
-		loading: subLoading,
-		refreshSubscription,
-	} = useSubscription();
+	const { subscription, refreshSubscription } = useSubscription();
 
 	// Get route parameters
-	const { category, categoryId, categories, tags, title } = route?.params || {};
+	const { category, categories, tags, title } = route?.params || {};
 	const screenTitle = title || category || 'All Books';
 
 	// Filter and sort books based on search and sort options

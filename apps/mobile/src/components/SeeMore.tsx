@@ -2,7 +2,7 @@
 // be used as the last carousel item in the home screen for seeing all books / categories
 // will also have the color variation based on current theme
 
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { colors } from '../utils/colors';
@@ -13,7 +13,7 @@ export const SeeMore = ({
 }: {
 	variant?: 'books' | 'categories';
 }) => {
-	const { theme, isDark } = useTheme();
+	const { theme } = useTheme();
 	const currentColors = colors[theme];
 	const navigation = useNavigation<any>();
 

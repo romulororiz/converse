@@ -7,7 +7,6 @@ import {
 	ScrollView,
 	TouchableOpacity,
 	Dimensions,
-	ActivityIndicator,
 	StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +15,6 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import { SkeletonLoader } from '../components/SkeletonLoader';
 import { getCategoriesWithCounts, type Category } from '../services/categories';
-import { ScreenHeader } from '../components';
 
 const { width } = Dimensions.get('window');
 

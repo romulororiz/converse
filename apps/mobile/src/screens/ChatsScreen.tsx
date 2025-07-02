@@ -4,14 +4,11 @@ import {
 	Text,
 	StyleSheet,
 	FlatList,
-	ActivityIndicator,
 	RefreshControl,
 	SafeAreaView,
 	StatusBar,
 	Dimensions,
-	TouchableOpacity,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
 import { showAlert } from '../utils/alert';
 import { useAuth } from '../components/AuthProvider';
@@ -25,23 +22,9 @@ import { SkeletonLoader } from '../components/SkeletonLoader';
 import { MessageCounterBadge } from '../components/MessageCounterBadge';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PremiumPaywallDrawer } from '../components/PremiumPaywallDrawer';
-import { ScreenHeader } from '../components';
 import { useSubscription } from '../contexts/SubscriptionContext';
 
 const { width } = Dimensions.get('window');
-
-type ChatSession = {
-	id: string;
-	user_id: string;
-	book_id: string;
-	created_at: string;
-	updated_at: string;
-	books?: {
-		title: string;
-		author?: string;
-		cover_url: string | null;
-	};
-};
 
 type NavigationProp = {
 	navigate: (screen: string, params?: any) => void;
@@ -58,11 +41,7 @@ export default function ChatsScreen() {
 	const currentColors = colors[theme];
 	const navigation = useNavigation<NavigationProp>();
 	const [badgeRefreshKey, setBadgeRefreshKey] = useState(0);
-	const {
-		subscription,
-		loading: subLoading,
-		refreshSubscription,
-	} = useSubscription();
+	const { subscription, refreshSubscription } = useSubscription();
 	const [showPaywall, setShowPaywall] = useState(false);
 
 	useEffect(() => {

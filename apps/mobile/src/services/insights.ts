@@ -1,5 +1,4 @@
 import { supabase } from '../lib/supabase';
-import type { Database } from '../lib/supabase';
 
 export type InsightCard = {
 	id: string;
@@ -24,50 +23,6 @@ export type UserInsights = {
 	insights: InsightCard[];
 	goals: ChatGoal[];
 	period: 'week' | 'month' | 'year';
-};
-
-// Helper function to get date range for period
-const getDateRange = (period: 'week' | 'month' | 'year') => {
-	const now = new Date();
-	const start = new Date();
-
-	switch (period) {
-		case 'week':
-			start.setDate(now.getDate() - 7);
-			break;
-		case 'month':
-			start.setMonth(now.getMonth() - 1);
-			break;
-		case 'year':
-			start.setFullYear(now.getFullYear() - 1);
-			break;
-	}
-
-	return { start: start.toISOString(), end: now.toISOString() };
-};
-
-// Helper function to get previous period for comparison
-const getPreviousPeriod = (period: 'week' | 'month' | 'year') => {
-	const now = new Date();
-	const start = new Date();
-	const end = new Date();
-
-	switch (period) {
-		case 'week':
-			end.setDate(now.getDate() - 7);
-			start.setDate(now.getDate() - 14);
-			break;
-		case 'month':
-			end.setMonth(now.getMonth() - 1);
-			start.setMonth(now.getMonth() - 2);
-			break;
-		case 'year':
-			end.setFullYear(now.getFullYear() - 1);
-			start.setFullYear(now.getFullYear() - 2);
-			break;
-	}
-
-	return { start: start.toISOString(), end: end.toISOString() };
 };
 
 export async function getUserInsights(

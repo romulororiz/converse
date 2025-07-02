@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import LottieView from 'lottie-react-native';
 import Animated, {
 	useSharedValue,
@@ -8,9 +8,7 @@ import Animated, {
 	withTiming,
 	withRepeat,
 	interpolate,
-	runOnJS,
 } from 'react-native-reanimated';
-import { Audio } from 'expo-av';
 import { colors } from '../utils/colors';
 
 // Import the Lottie animation
@@ -23,8 +21,6 @@ interface ModernVoiceVisualizerProps {
 	color?: string;
 	isProcessing?: boolean;
 }
-
-const { width: screenWidth } = Dimensions.get('window');
 
 export const ModernVoiceVisualizer: React.FC<ModernVoiceVisualizerProps> = ({
 	isRecording,
@@ -241,46 +237,46 @@ export const ModernVoiceVisualizer: React.FC<ModernVoiceVisualizerProps> = ({
 	);
 };
 
-// Individual audio level bar component
-const AudioLevelBar: React.FC<{
-	level: Animated.SharedValue<number>;
-	index: number;
-	color: string;
-}> = ({ level, index, color }) => {
-	const animatedStyle = useAnimatedStyle(() => {
-		const threshold = index * 0.2; // 0, 0.2, 0.4, 0.6, 0.8
-		const isActive = level.value > threshold;
+// // Individual audio level bar component
+// const AudioLevelBar: React.FC<{
+// 	level: Animated.SharedValue<number>;
+// 	index: number;
+// 	color: string;
+// }> = ({ level, index, color }) => {
+// 	const animatedStyle = useAnimatedStyle(() => {
+// 		const threshold = index * 0.2; // 0, 0.2, 0.4, 0.6, 0.8
+// 		const isActive = level.value > threshold;
 
-		const height = interpolate(
-			level.value,
-			[threshold, threshold + 0.2],
-			[8, 24],
-			'clamp'
-		);
+// 		const height = interpolate(
+// 			level.value,
+// 			[threshold, threshold + 0.2],
+// 			[8, 24],
+// 			'clamp'
+// 		);
 
-		const opacity = withSpring(isActive ? 1 : 0.3, {
-			damping: 12,
-			stiffness: 150,
-		});
+// 		const opacity = withSpring(isActive ? 1 : 0.3, {
+// 			damping: 12,
+// 			stiffness: 150,
+// 		});
 
-		return {
-			height: withSpring(height, { damping: 8, stiffness: 120 }),
-			opacity,
-		};
-	});
+// 		return {
+// 			height: withSpring(height, { damping: 8, stiffness: 120 }),
+// 			opacity,
+// 		};
+// 	});
 
-	return (
-		<Animated.View
-			style={[
-				styles.audioBar,
-				{
-					backgroundColor: color,
-				},
-				animatedStyle,
-			]}
-		/>
-	);
-};
+// 	return (
+// 		<Animated.View
+// 			style={[
+// 				styles.audioBar,
+// 				{
+// 					backgroundColor: color,
+// 				},
+// 				animatedStyle,
+// 			]}
+// 		/>
+// 	);
+// };
 
 const styles = StyleSheet.create({
 	container: {

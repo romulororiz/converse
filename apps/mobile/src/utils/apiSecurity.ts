@@ -1,5 +1,3 @@
-import Constants from 'expo-constants';
-
 // API key validation and security utilities
 interface ApiKeys {
 	openai?: string;

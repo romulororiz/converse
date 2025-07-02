@@ -37,7 +37,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({
 		try {
 			const sub = await getUserSubscription();
 			setSubscription(sub);
-		} catch (e) {
+		} catch {
 			setSubscription(null);
 		} finally {
 			setLoading(false);

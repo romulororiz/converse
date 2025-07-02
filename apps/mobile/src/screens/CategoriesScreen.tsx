@@ -6,17 +6,14 @@ import {
 	ScrollView,
 	TouchableOpacity,
 	SafeAreaView,
-	ActivityIndicator,
 	Dimensions,
 	RefreshControl,
 	StatusBar,
-	Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { getCategoriesWithCounts, Category } from '../services/categories';
-import { showAlert } from '../utils/alert';
 import { useTheme } from '../contexts/ThemeContext';
 import { SearchBar } from '../components/SearchBar';
 import { SkeletonLoader } from '../components/SkeletonLoader';
@@ -106,10 +103,10 @@ export default function CategoriesScreen() {
 	};
 
 	const handleSortPress = () => {
-		const sortOptions = [
-			{ label: 'Most Books', value: 'count' },
-			{ label: 'Alphabetical', value: 'alphabetical' },
-		];
+		// const sortOptions = [
+		// 	{ label: 'Most Books', value: 'count' },
+		// 	{ label: 'Alphabetical', value: 'alphabetical' },
+		// ];
 
 		// Simple toggle between sort options for now
 		setSortBy(current => (current === 'count' ? 'alphabetical' : 'count'));

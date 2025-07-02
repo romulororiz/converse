@@ -5,10 +5,7 @@ import {
 	StyleSheet,
 	ScrollView,
 	TouchableOpacity,
-	Dimensions,
-	Image,
 	ActivityIndicator,
-	Platform,
 	SafeAreaView,
 	StatusBar,
 } from 'react-native';
@@ -27,8 +24,6 @@ import { SwipeableChatItem } from '../components/SwipeableChatItem';
 import { EmptyState } from '../components/EmptyState';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SeeMore } from '../components/SeeMore';
-
-const { width } = Dimensions.get('window');
 
 type NavigationProp = {
 	navigate: (screen: string, params?: any) => void;
