@@ -66,10 +66,6 @@ export default function BookDetailScreen() {
 		}
 	};
 
-	const handleGoBack = () => {
-		navigation.goBack();
-	};
-
 	const formatYear = (year: number | null) => {
 		return year ? year.toString() : 'Unknown';
 	};
@@ -144,10 +140,6 @@ export default function BookDetailScreen() {
 				}}
 				title="Book Not Found"
 				subtitle={error || "We couldn't find the book you're looking for"}
-				button={{
-					text: 'Go Back',
-					onPress: handleGoBack,
-				}}
 			/>
 		);
 	}
@@ -162,12 +154,16 @@ export default function BookDetailScreen() {
 				translucent
 			/>
 
-			{/* Header */}
-
 			<ScrollView
-				style={styles.container}
+				style={[
+					styles.container,
+					{ backgroundColor: currentColors.background },
+				]}
 				showsVerticalScrollIndicator={false}
-				contentContainerStyle={styles.contentContainer}
+				contentContainerStyle={[
+					styles.contentContainer,
+					{ backgroundColor: currentColors.background },
+				]}
 			>
 				{/* Hero Section */}
 				<View
@@ -294,7 +290,7 @@ export default function BookDetailScreen() {
 				)}
 
 				{/* Book Details Section */}
-				<View style={styles.section}>
+				<View style={[styles.section, { backgroundColor: currentColors.card }]}>
 					<Text
 						style={[styles.sectionTitle, { color: currentColors.foreground }]}
 					>
@@ -409,7 +405,12 @@ export default function BookDetailScreen() {
 				</View>
 
 				{/* Spacer for bottom padding */}
-				<View style={styles.bottomSpacer} />
+				<View
+					style={[
+						styles.bottomSpacer,
+						{ backgroundColor: currentColors.background },
+					]}
+				/>
 			</ScrollView>
 
 			{/* Chat Button */}
@@ -451,35 +452,6 @@ export default function BookDetailScreen() {
 const styles = StyleSheet.create({
 	safeArea: {
 		flex: 1,
-	},
-	header: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		paddingHorizontal: 16,
-		paddingVertical: 12,
-		borderBottomWidth: 1,
-	},
-	backButton: {
-		width: 36,
-		height: 36,
-		borderRadius: 18,
-		justifyContent: 'center',
-		alignItems: 'center',
-		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 1 },
-		shadowOpacity: 0.1,
-		shadowRadius: 2,
-		elevation: 2,
-	},
-	headerTitle: {
-		flex: 1,
-		fontSize: 16,
-		fontWeight: '600',
-		textAlign: 'center',
-		marginHorizontal: 16,
-	},
-	headerSpacer: {
-		width: 36,
 	},
 	container: {
 		flex: 1,

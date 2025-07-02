@@ -18,6 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 import { signInWithGoogleDirect } from '../../services/googleAuth';
 import { useAuth } from '../../components/AuthProvider';
 import { validateSignUp } from '../../utils/validation';
+import { useTheme } from '../../contexts/ThemeContext';
 
 type AuthNavigationProp = {
 	navigate: (screen: 'Login' | 'SignUp' | 'ForgotPassword') => void;
@@ -33,6 +34,8 @@ export default function SignUpScreen() {
 	const [loading, setLoading] = useState(false);
 	const navigation = useNavigation<AuthNavigationProp>();
 	const { refreshSession } = useAuth();
+	const { theme } = useTheme();
+	const currentColors = colors[theme];
 
 	const handleSignUp = async () => {
 		if (!email || !password || !confirmPassword || !fullName) {
@@ -130,45 +133,70 @@ export default function SignUpScreen() {
 	return (
 		<KeyboardAvoidingView
 			behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-			style={styles.container}
+			style={[styles.container, { backgroundColor: currentColors.background }]}
 		>
 			<ScrollView
-				contentContainerStyle={styles.scrollContent}
+				contentContainerStyle={[
+					styles.scrollContent,
+					{ backgroundColor: currentColors.background },
+				]}
 				keyboardShouldPersistTaps="handled"
 			>
 				<View style={styles.header}>
-					<Text style={styles.title}>Create Account</Text>
-					<Text style={styles.subtitle}>Join our community of book lovers</Text>
+					<Text style={[styles.title, { color: currentColors.foreground }]}>
+						Create Account
+					</Text>
+					<Text
+						style={[styles.subtitle, { color: currentColors.mutedForeground }]}
+					>
+						Join our community of book lovers
+					</Text>
 				</View>
 
 				<View style={styles.form}>
-					<View style={styles.inputContainer}>
+					<View
+						style={[
+							styles.inputContainer,
+							{
+								backgroundColor: currentColors.card,
+								borderColor: currentColors.border,
+							},
+						]}
+					>
 						<Ionicons
 							name="person-outline"
 							size={20}
-							color={colors.light.mutedForeground}
+							color={currentColors.mutedForeground}
 							style={styles.inputIcon}
 						/>
 						<TextInput
-							style={styles.input}
+							style={[styles.input, { color: currentColors.foreground }]}
 							placeholder="Full Name"
-							placeholderTextColor={colors.light.mutedForeground}
+							placeholderTextColor={currentColors.mutedForeground}
 							value={fullName}
 							onChangeText={setFullName}
 						/>
 					</View>
 
-					<View style={styles.inputContainer}>
+					<View
+						style={[
+							styles.inputContainer,
+							{
+								backgroundColor: currentColors.card,
+								borderColor: currentColors.border,
+							},
+						]}
+					>
 						<Ionicons
 							name="mail-outline"
 							size={20}
-							color={colors.light.mutedForeground}
+							color={currentColors.mutedForeground}
 							style={styles.inputIcon}
 						/>
 						<TextInput
-							style={styles.input}
+							style={[styles.input, { color: currentColors.foreground }]}
 							placeholder="Email"
-							placeholderTextColor={colors.light.mutedForeground}
+							placeholderTextColor={currentColors.mutedForeground}
 							keyboardType="email-address"
 							autoCapitalize="none"
 							value={email}
@@ -176,17 +204,25 @@ export default function SignUpScreen() {
 						/>
 					</View>
 
-					<View style={styles.inputContainer}>
+					<View
+						style={[
+							styles.inputContainer,
+							{
+								backgroundColor: currentColors.card,
+								borderColor: currentColors.border,
+							},
+						]}
+					>
 						<Ionicons
 							name="lock-closed-outline"
 							size={20}
-							color={colors.light.mutedForeground}
+							color={currentColors.mutedForeground}
 							style={styles.inputIcon}
 						/>
 						<TextInput
-							style={styles.input}
+							style={[styles.input, { color: currentColors.foreground }]}
 							placeholder="Password"
-							placeholderTextColor={colors.light.mutedForeground}
+							placeholderTextColor={currentColors.mutedForeground}
 							secureTextEntry={!showPassword}
 							value={password}
 							onChangeText={setPassword}
@@ -198,22 +234,30 @@ export default function SignUpScreen() {
 							<Ionicons
 								name={showPassword ? 'eye-off-outline' : 'eye-outline'}
 								size={20}
-								color={colors.light.mutedForeground}
+								color={currentColors.mutedForeground}
 							/>
 						</TouchableOpacity>
 					</View>
 
-					<View style={styles.inputContainer}>
+					<View
+						style={[
+							styles.inputContainer,
+							{
+								backgroundColor: currentColors.card,
+								borderColor: currentColors.border,
+							},
+						]}
+					>
 						<Ionicons
 							name="lock-closed-outline"
 							size={20}
-							color={colors.light.mutedForeground}
+							color={currentColors.mutedForeground}
 							style={styles.inputIcon}
 						/>
 						<TextInput
-							style={styles.input}
+							style={[styles.input, { color: currentColors.foreground }]}
 							placeholder="Confirm Password"
-							placeholderTextColor={colors.light.mutedForeground}
+							placeholderTextColor={currentColors.mutedForeground}
 							secureTextEntry={!showConfirmPassword}
 							value={confirmPassword}
 							onChangeText={setConfirmPassword}
@@ -225,20 +269,31 @@ export default function SignUpScreen() {
 							<Ionicons
 								name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
 								size={20}
-								color={colors.light.mutedForeground}
+								color={currentColors.mutedForeground}
 							/>
 						</TouchableOpacity>
 					</View>
 
 					<TouchableOpacity
-						style={[styles.button, loading && styles.buttonDisabled]}
+						style={[
+							styles.button,
+							loading && styles.buttonDisabled,
+							{ backgroundColor: currentColors.primary },
+						]}
 						onPress={handleSignUp}
 						disabled={loading}
 					>
 						{loading ? (
-							<ActivityIndicator color={colors.light.primaryForeground} />
+							<ActivityIndicator color={currentColors.primaryForeground} />
 						) : (
-							<Text style={styles.buttonText}>Create Account</Text>
+							<Text
+								style={[
+									styles.buttonText,
+									{ color: currentColors.primaryForeground },
+								]}
+							>
+								Create Account
+							</Text>
 						)}
 					</TouchableOpacity>
 
@@ -249,16 +304,30 @@ export default function SignUpScreen() {
 					</View>
 
 					<TouchableOpacity
-						style={[styles.socialButton, loading && styles.buttonDisabled]}
+						style={[
+							styles.socialButton,
+							loading && styles.buttonDisabled,
+							{
+								backgroundColor: currentColors.card,
+								borderColor: currentColors.border,
+							},
+						]}
 						onPress={handleGoogleSignUp}
 						disabled={loading}
 					>
 						<Ionicons
 							name="logo-google"
 							size={20}
-							color={colors.light.foreground}
+							color={currentColors.foreground}
 						/>
-						<Text style={styles.socialButtonText}>Continue with Google</Text>
+						<Text
+							style={[
+								styles.socialButtonText,
+								{ color: currentColors.foreground },
+							]}
+						>
+							Continue with Google
+						</Text>
 					</TouchableOpacity>
 				</View>
 
@@ -360,7 +429,6 @@ const styles = StyleSheet.create({
 		height: 50,
 		borderRadius: 12,
 		borderWidth: 1,
-		borderColor: colors.light.border,
 		gap: 12,
 	},
 	socialButtonText: {

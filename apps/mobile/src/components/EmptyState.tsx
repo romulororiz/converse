@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
+import { useTheme } from '../contexts/ThemeContext';
 
 type EmptyStateProps = {
 	icon: {
@@ -26,19 +27,41 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 	button,
 	containerStyle,
 }) => {
+	const { theme } = useTheme();
+	const currentColors = colors[theme];
+
 	return (
-		<View style={[styles.container, containerStyle]}>
+		<View
+			style={[
+				styles.container,
+				{ backgroundColor: currentColors.background },
+				containerStyle,
+			]}
+		>
 			<Ionicons name={icon.name} size={icon.size} color={icon.color} />
-			<Text style={styles.title}>{title}</Text>
-			<Text style={styles.subtitle}>{subtitle}</Text>
+			<Text style={[styles.title, { color: currentColors.foreground }]}>
+				{title}
+			</Text>
+			<Text style={[styles.subtitle, { color: currentColors.mutedForeground }]}>
+				{subtitle}
+			</Text>
 
 			{button && (
 				<TouchableOpacity
 					style={[
 						styles.button,
 						button.style === 'secondary'
-							? styles.buttonSecondary
-							: styles.buttonPrimary,
+							? [
+									styles.buttonSecondary,
+									{
+										backgroundColor: currentColors.secondary,
+										borderColor: currentColors.border,
+									},
+								]
+							: [
+									styles.buttonPrimary,
+									{ backgroundColor: currentColors.primary },
+								],
 					]}
 					onPress={button.onPress}
 				>
@@ -46,8 +69,14 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 						style={[
 							styles.buttonText,
 							button.style === 'secondary'
-								? styles.buttonTextSecondary
-								: styles.buttonTextPrimary,
+								? [
+										styles.buttonTextSecondary,
+										{ color: currentColors.foreground },
+									]
+								: [
+										styles.buttonTextPrimary,
+										{ color: currentColors.primaryForeground },
+									],
 						]}
 					>
 						{button.text}

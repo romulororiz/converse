@@ -39,38 +39,32 @@ function AuthNavigator() {
 					open: {
 						animation: 'timing',
 						config: {
-							duration: 300,
-							easing: Easing.out(Easing.poly(4)),
+							duration: 1,
+							easing: Easing.linear,
 						},
 					},
 					close: {
 						animation: 'timing',
 						config: {
-							duration: 250,
-							easing: Easing.in(Easing.poly(4)),
+							duration: 1,
+							easing: Easing.linear,
 						},
 					},
 				},
-				cardStyleInterpolator: ({ current, layouts }) => {
-					return {
-						cardStyle: {
-							transform: [
-								{
-									translateX: current.progress.interpolate({
-										inputRange: [0, 1],
-										outputRange: [layouts.screen.width, 0],
-									}),
-								},
-							],
-						},
-						overlayStyle: {
-							opacity: current.progress.interpolate({
-								inputRange: [0, 1],
-								outputRange: [0, 0.5],
-							}),
-						},
-					};
-				},
+				cardStyleInterpolator: ({ current, layouts }) => ({
+					cardStyle: {
+						transform: [
+							{
+								translateX: current.progress.interpolate({
+									inputRange: [0, 1],
+									outputRange: [layouts.screen.width, 0],
+								}),
+							},
+						],
+						backgroundColor: colors.light.background,
+					},
+					overlayStyle: { opacity: 0 },
+				}),
 			}}
 		>
 			<AuthStack.Screen name="Login" component={LoginScreen} />
@@ -95,38 +89,32 @@ function HomeStack() {
 					open: {
 						animation: 'timing',
 						config: {
-							duration: 300,
+							duration: 150,
 							easing: Easing.out(Easing.poly(4)),
 						},
 					},
 					close: {
 						animation: 'timing',
 						config: {
-							duration: 250,
-							easing: Easing.in(Easing.poly(4)),
+							duration: 150,
+							easing: Easing.out(Easing.poly(4)),
 						},
 					},
 				},
-				cardStyleInterpolator: ({ current, layouts }) => {
-					return {
-						cardStyle: {
-							transform: [
-								{
-									translateX: current.progress.interpolate({
-										inputRange: [0, 1],
-										outputRange: [layouts.screen.width, 0],
-									}),
-								},
-							],
-						},
-						overlayStyle: {
-							opacity: current.progress.interpolate({
-								inputRange: [0, 1],
-								outputRange: [0, 0.5],
-							}),
-						},
-					};
-				},
+				cardStyleInterpolator: ({ current, layouts }) => ({
+					cardStyle: {
+						transform: [
+							{
+								translateX: current.progress.interpolate({
+									inputRange: [0, 1],
+									outputRange: [layouts.screen.width, 0],
+								}),
+							},
+						],
+						backgroundColor: colors.light.background,
+					},
+					overlayStyle: { opacity: 0 },
+				}),
 			}}
 		>
 			<Stack.Screen name="HomeMain" component={HomeScreen} />
@@ -150,38 +138,32 @@ function ChatsStack() {
 					open: {
 						animation: 'timing',
 						config: {
-							duration: 300,
-							easing: Easing.out(Easing.poly(4)),
+							duration: 1,
+							easing: Easing.linear,
 						},
 					},
 					close: {
 						animation: 'timing',
 						config: {
-							duration: 250,
-							easing: Easing.in(Easing.poly(4)),
+							duration: 1,
+							easing: Easing.linear,
 						},
 					},
 				},
-				cardStyleInterpolator: ({ current, layouts }) => {
-					return {
-						cardStyle: {
-							transform: [
-								{
-									translateX: current.progress.interpolate({
-										inputRange: [0, 1],
-										outputRange: [layouts.screen.width, 0],
-									}),
-								},
-							],
-						},
-						overlayStyle: {
-							opacity: current.progress.interpolate({
-								inputRange: [0, 1],
-								outputRange: [0, 0.5],
-							}),
-						},
-					};
-				},
+				cardStyleInterpolator: ({ current, layouts }) => ({
+					cardStyle: {
+						transform: [
+							{
+								translateX: current.progress.interpolate({
+									inputRange: [0, 1],
+									outputRange: [layouts.screen.width, 0],
+								}),
+							},
+						],
+						backgroundColor: colors.light.background,
+					},
+					overlayStyle: { opacity: 0 },
+				}),
 			}}
 		>
 			<Stack.Screen name="ChatsMain" component={ChatsScreen} />
@@ -203,38 +185,32 @@ function ProfileStack() {
 					open: {
 						animation: 'timing',
 						config: {
-							duration: 300,
-							easing: Easing.out(Easing.poly(4)),
+							duration: 1,
+							easing: Easing.linear,
 						},
 					},
 					close: {
 						animation: 'timing',
 						config: {
-							duration: 250,
-							easing: Easing.in(Easing.poly(4)),
+							duration: 1,
+							easing: Easing.linear,
 						},
 					},
 				},
-				cardStyleInterpolator: ({ current, layouts }) => {
-					return {
-						cardStyle: {
-							transform: [
-								{
-									translateX: current.progress.interpolate({
-										inputRange: [0, 1],
-										outputRange: [layouts.screen.width, 0],
-									}),
-								},
-							],
-						},
-						overlayStyle: {
-							opacity: current.progress.interpolate({
-								inputRange: [0, 1],
-								outputRange: [0, 0.5],
-							}),
-						},
-					};
-				},
+				cardStyleInterpolator: ({ current, layouts }) => ({
+					cardStyle: {
+						transform: [
+							{
+								translateX: current.progress.interpolate({
+									inputRange: [0, 1],
+									outputRange: [layouts.screen.width, 0],
+								}),
+							},
+						],
+						backgroundColor: colors.light.background,
+					},
+					overlayStyle: { opacity: 0 },
+				}),
 			}}
 		>
 			<Stack.Screen name="ProfileMain" component={ProfileScreen} />
@@ -334,38 +310,32 @@ export default function AppNavigator() {
 							open: {
 								animation: 'timing',
 								config: {
-									duration: 300,
-									easing: Easing.out(Easing.poly(4)),
+									duration: 1,
+									easing: Easing.linear,
 								},
 							},
 							close: {
 								animation: 'timing',
 								config: {
-									duration: 250,
-									easing: Easing.in(Easing.poly(4)),
+									duration: 1,
+									easing: Easing.linear,
 								},
 							},
 						},
-						cardStyleInterpolator: ({ current, layouts }) => {
-							return {
-								cardStyle: {
-									transform: [
-										{
-											translateX: current.progress.interpolate({
-												inputRange: [0, 1],
-												outputRange: [layouts.screen.width, 0],
-											}),
-										},
-									],
-								},
-								overlayStyle: {
-									opacity: current.progress.interpolate({
-										inputRange: [0, 1],
-										outputRange: [0, 0.5],
-									}),
-								},
-							};
-						},
+						cardStyleInterpolator: ({ current, layouts }) => ({
+							cardStyle: {
+								transform: [
+									{
+										translateX: current.progress.interpolate({
+											inputRange: [0, 1],
+											outputRange: [layouts.screen.width, 0],
+										}),
+									},
+								],
+								backgroundColor: colors.light.background,
+							},
+							overlayStyle: { opacity: 0 },
+						}),
 					}}
 				>
 					{user ? (

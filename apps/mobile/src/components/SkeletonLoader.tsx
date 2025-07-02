@@ -28,7 +28,7 @@ export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
 
 	useEffect(() => {
 		opacity.value = withRepeat(withTiming(0.7, { duration: 1000 }), -1, true);
-	}, []);
+	}, [opacity]);
 
 	const animatedStyle = useAnimatedStyle(() => ({
 		opacity: opacity.value,

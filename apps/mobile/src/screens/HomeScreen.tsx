@@ -33,7 +33,7 @@ export default function HomeScreen() {
 	const [featuredBooks, setFeaturedBooks] = useState<Book[]>([]);
 	const [recentChats, setRecentChats] = useState<any[]>([]);
 	const [loading, setLoading] = useState(true);
-	const [chatsLoading, setChatsLoading] = useState(true);
+	const [, setChatsLoading] = useState(false);
 	const navigation = useNavigation<NavigationProp>();
 	const { user } = useAuth();
 	const { theme, isDark } = useTheme();
@@ -305,19 +305,8 @@ export default function HomeScreen() {
 							</TouchableOpacity>
 						</View>
 
-						{chatsLoading ? (
-							<View style={styles.loadingContainer}>
-								<ActivityIndicator size="small" color={currentColors.primary} />
-								<Text
-									style={[
-										styles.loadingText,
-										{ color: currentColors.mutedForeground },
-									]}
-								>
-									Loading conversations...
-								</Text>
-							</View>
-						) : recentChats.length > 0 ? (
+						{/* I dont want loading state, just render the chats if theres any or show the emptystate */}
+						{recentChats.length > 0 ? (
 							recentChats.map((chat, index) =>
 								renderRecentChatCard(chat, index)
 							)

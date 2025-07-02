@@ -99,33 +99,33 @@ export default function ChatsScreen() {
 		);
 	});
 
-	const renderSkeletonList = () => (
-		<View style={styles.skeletonContainer}>
-			{Array.from({ length: 5 }).map((_, index) => (
-				<View key={index} style={styles.skeletonItem}>
-					<SkeletonLoader
-						width={60}
-						height={80}
-						borderRadius={4}
-						style={{ marginRight: 12 }}
-					/>
-					<View style={styles.skeletonInfo}>
-						<SkeletonLoader
-							width={180}
-							height={18}
-							style={{ marginBottom: 8 }}
-						/>
-						<SkeletonLoader
-							width={120}
-							height={14}
-							style={{ marginBottom: 12 }}
-						/>
-						<SkeletonLoader width={200} height={16} />
-					</View>
-				</View>
-			))}
-		</View>
-	);
+	// const renderSkeletonList = () => (
+	// 	<View style={styles.skeletonContainer}>
+	// 		{Array.from({ length: 5 }).map((_, index) => (
+	// 			<View key={index} style={styles.skeletonItem}>
+	// 				<SkeletonLoader
+	// 					width={60}
+	// 					height={80}
+	// 					borderRadius={4}
+	// 					style={{ marginRight: 12 }}
+	// 				/>
+	// 				<View style={styles.skeletonInfo}>
+	// 					<SkeletonLoader
+	// 						width={180}
+	// 						height={18}
+	// 						style={{ marginBottom: 8 }}
+	// 					/>
+	// 					<SkeletonLoader
+	// 						width={120}
+	// 						height={14}
+	// 						style={{ marginBottom: 12 }}
+	// 					/>
+	// 					<SkeletonLoader width={200} height={16} />
+	// 				</View>
+	// 			</View>
+	// 		))}
+	// 	</View>
+	// );
 
 	const renderChatItem = ({ item }: { item: any }) => (
 		<SwipeableChatItem
@@ -211,7 +211,7 @@ export default function ChatsScreen() {
 				</View>
 
 				{/* Scrollable Content Skeleton */}
-				<View style={styles.scrollableContent}>{renderSkeletonList()}</View>
+				{/* <View style={styles.scrollableContent}>{renderSkeletonList()}</View> */}
 			</SafeAreaView>
 		);
 	}

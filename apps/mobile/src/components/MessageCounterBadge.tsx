@@ -67,6 +67,7 @@ export const MessageCounterBadge: React.FC<MessageCounterBadgeProps> = ({
 				? 'UNLIMITED'
 				: `${messageInfo?.remainingMessages ?? ''} ${label}`;
 		return (
+			//loading state
 			<TouchableOpacity
 				onPress={onPress}
 				activeOpacity={onPress ? 0.7 : 1}
@@ -76,7 +77,7 @@ export const MessageCounterBadge: React.FC<MessageCounterBadgeProps> = ({
 					messageInfo && !messageInfo.canSend && styles.pillContainerDisabled,
 				]}
 			>
-				<Text style={styles.pillText}>{pillText}</Text>
+				<Text style={styles.pillText}>{loading ? '' : pillText}</Text>
 			</TouchableOpacity>
 		);
 	}
@@ -103,7 +104,7 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		justifyContent: 'center',
 		alignSelf: 'flex-start',
-		minWidth: 120, // fixed min width for both skeleton and badge
+		minWidth: 140, // fixed min width for both skeleton and badge
 		minHeight: 32,
 		elevation: 2,
 	},
@@ -118,7 +119,6 @@ const styles = StyleSheet.create({
 	},
 	skeleton: {
 		backgroundColor: SKELETON_BG,
-		flex: 0.55,
 	},
 	circleContainer: {
 		width: 28,

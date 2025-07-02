@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { colors } from '../utils/colors';
+import { useTheme } from '../contexts/ThemeContext';
 
 type LoadingStateProps = {
 	size?: 'small' | 'large';
@@ -17,24 +18,31 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
 	text = 'Loading...',
 	style = 'centered',
 	containerStyle,
-	color = colors.light.primary,
+	color,
 	textStyle,
 	hideText = false,
 }) => {
+	const { theme } = useTheme();
+	const currentColors = colors[theme];
 	const isInline = style === 'inline';
+
+	// Use theme color if not explicitly provided
+	const indicatorColor = color || currentColors.primary;
 
 	return (
 		<View
 			style={[
 				isInline ? styles.inlineContainer : styles.centeredContainer,
+				{ backgroundColor: currentColors.background },
 				containerStyle,
 			]}
 		>
-			<ActivityIndicator size={size} color={color} />
+			<ActivityIndicator size={size} color={indicatorColor} />
 			{!hideText && text && (
 				<Text
 					style={[
 						isInline ? styles.inlineText : styles.centeredText,
+						{ color: currentColors.mutedForeground },
 						textStyle,
 					]}
 				>
