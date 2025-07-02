@@ -979,14 +979,14 @@ export default function ChatDetailScreen() {
 									? [
 											styles.userBubble,
 											{ backgroundColor: currentColors.primary },
-									  ]
+										]
 									: [
 											styles.aiBubble,
 											{
 												backgroundColor: currentColors.card,
 												borderColor: currentColors.border,
 											},
-									  ],
+										],
 							]}
 						>
 							<Text
@@ -996,7 +996,7 @@ export default function ChatDetailScreen() {
 										? [
 												styles.userText,
 												{ color: currentColors.primaryForeground },
-										  ]
+											]
 										: [styles.aiText, { color: currentColors.foreground }],
 								]}
 							>
@@ -1113,7 +1113,10 @@ export default function ChatDetailScreen() {
 			currentScrollY + scrollViewHeight + 100 >= contentHeight;
 		const hasScrolledUp = currentScrollY > 200; // Scrolled up more than 200px
 
-		setShowScrollDown(hasScrolledUp && !isNearBottom);
+		// Use requestAnimationFrame for smoother UI updates
+		requestAnimationFrame(() => {
+			setShowScrollDown(hasScrolledUp && !isNearBottom);
+		});
 
 		scrollY.current = currentScrollY;
 	};
@@ -1412,12 +1415,14 @@ export default function ChatDetailScreen() {
 												showsVerticalScrollIndicator={false}
 												keyboardShouldPersistTaps="always"
 												onScroll={handleScroll}
-												scrollEventThrottle={32}
+												scrollEventThrottle={16}
 												removeClippedSubviews={true}
-												maxToRenderPerBatch={10}
-												windowSize={10}
-												initialNumToRender={15}
+												maxToRenderPerBatch={5}
+												windowSize={5}
+												initialNumToRender={10}
 												getItemLayout={null}
+												updateCellsBatchingPeriod={50}
+												disableVirtualization={false}
 												maintainVisibleContentPosition={{
 													minIndexForVisible: 0,
 													autoscrollToTopThreshold: 10,
@@ -1537,7 +1542,7 @@ export default function ChatDetailScreen() {
 															: [
 																	currentColors.primary,
 																	currentColors.cardForeground,
-															  ]
+																]
 													}
 													style={styles.voiceButtonGradient}
 												>

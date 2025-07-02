@@ -7,6 +7,8 @@ import { colors } from '../utils/colors';
 import { useAuth } from '../components/AuthProvider';
 import { ActivityIndicator, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Easing } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import HomeScreen from '../screens/HomeScreen';
 import ChatsScreen from '../screens/ChatsScreen';
@@ -28,7 +30,49 @@ const AuthStack = createStackNavigator();
 
 function AuthNavigator() {
 	return (
-		<AuthStack.Navigator screenOptions={{ headerShown: false }}>
+		<AuthStack.Navigator
+			screenOptions={{
+				headerShown: false,
+				gestureEnabled: true,
+				gestureDirection: 'horizontal',
+				transitionSpec: {
+					open: {
+						animation: 'timing',
+						config: {
+							duration: 300,
+							easing: Easing.out(Easing.poly(4)),
+						},
+					},
+					close: {
+						animation: 'timing',
+						config: {
+							duration: 250,
+							easing: Easing.in(Easing.poly(4)),
+						},
+					},
+				},
+				cardStyleInterpolator: ({ current, layouts }) => {
+					return {
+						cardStyle: {
+							transform: [
+								{
+									translateX: current.progress.interpolate({
+										inputRange: [0, 1],
+										outputRange: [layouts.screen.width, 0],
+									}),
+								},
+							],
+						},
+						overlayStyle: {
+							opacity: current.progress.interpolate({
+								inputRange: [0, 1],
+								outputRange: [0, 0.5],
+							}),
+						},
+					};
+				},
+			}}
+		>
 			<AuthStack.Screen name="Login" component={LoginScreen} />
 			<AuthStack.Screen name="SignUp" component={SignUpScreen} />
 			<AuthStack.Screen
@@ -41,7 +85,50 @@ function AuthNavigator() {
 
 function HomeStack() {
 	return (
-		<Stack.Navigator screenOptions={{ headerShown: false }}>
+		<Stack.Navigator
+			screenOptions={{
+				headerShown: false,
+				gestureEnabled: true,
+				gestureDirection: 'horizontal',
+				gestureResponseDistance: 50,
+				transitionSpec: {
+					open: {
+						animation: 'timing',
+						config: {
+							duration: 300,
+							easing: Easing.out(Easing.poly(4)),
+						},
+					},
+					close: {
+						animation: 'timing',
+						config: {
+							duration: 250,
+							easing: Easing.in(Easing.poly(4)),
+						},
+					},
+				},
+				cardStyleInterpolator: ({ current, layouts }) => {
+					return {
+						cardStyle: {
+							transform: [
+								{
+									translateX: current.progress.interpolate({
+										inputRange: [0, 1],
+										outputRange: [layouts.screen.width, 0],
+									}),
+								},
+							],
+						},
+						overlayStyle: {
+							opacity: current.progress.interpolate({
+								inputRange: [0, 1],
+								outputRange: [0, 0.5],
+							}),
+						},
+					};
+				},
+			}}
+		>
 			<Stack.Screen name="HomeMain" component={HomeScreen} />
 			<Stack.Screen name="BooksList" component={BooksListScreen} />
 			<Stack.Screen name="Categories" component={CategoriesScreen} />
@@ -53,7 +140,50 @@ function HomeStack() {
 
 function ChatsStack() {
 	return (
-		<Stack.Navigator screenOptions={{ headerShown: false }}>
+		<Stack.Navigator
+			screenOptions={{
+				headerShown: false,
+				gestureEnabled: true,
+				gestureDirection: 'horizontal',
+				gestureResponseDistance: 50,
+				transitionSpec: {
+					open: {
+						animation: 'timing',
+						config: {
+							duration: 300,
+							easing: Easing.out(Easing.poly(4)),
+						},
+					},
+					close: {
+						animation: 'timing',
+						config: {
+							duration: 250,
+							easing: Easing.in(Easing.poly(4)),
+						},
+					},
+				},
+				cardStyleInterpolator: ({ current, layouts }) => {
+					return {
+						cardStyle: {
+							transform: [
+								{
+									translateX: current.progress.interpolate({
+										inputRange: [0, 1],
+										outputRange: [layouts.screen.width, 0],
+									}),
+								},
+							],
+						},
+						overlayStyle: {
+							opacity: current.progress.interpolate({
+								inputRange: [0, 1],
+								outputRange: [0, 0.5],
+							}),
+						},
+					};
+				},
+			}}
+		>
 			<Stack.Screen name="ChatsMain" component={ChatsScreen} />
 			<Stack.Screen name="BookDetail" component={BookDetailScreen} />
 			<Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
@@ -63,7 +193,50 @@ function ChatsStack() {
 
 function ProfileStack() {
 	return (
-		<Stack.Navigator screenOptions={{ headerShown: false }}>
+		<Stack.Navigator
+			screenOptions={{
+				headerShown: false,
+				gestureEnabled: true,
+				gestureDirection: 'horizontal',
+				gestureResponseDistance: 50,
+				transitionSpec: {
+					open: {
+						animation: 'timing',
+						config: {
+							duration: 300,
+							easing: Easing.out(Easing.poly(4)),
+						},
+					},
+					close: {
+						animation: 'timing',
+						config: {
+							duration: 250,
+							easing: Easing.in(Easing.poly(4)),
+						},
+					},
+				},
+				cardStyleInterpolator: ({ current, layouts }) => {
+					return {
+						cardStyle: {
+							transform: [
+								{
+									translateX: current.progress.interpolate({
+										inputRange: [0, 1],
+										outputRange: [layouts.screen.width, 0],
+									}),
+								},
+							],
+						},
+						overlayStyle: {
+							opacity: current.progress.interpolate({
+								inputRange: [0, 1],
+								outputRange: [0, 0.5],
+							}),
+						},
+					};
+				},
+			}}
+		>
 			<Stack.Screen name="ProfileMain" component={ProfileScreen} />
 			<Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
 		</Stack.Navigator>
@@ -137,14 +310,71 @@ export default function AppNavigator() {
 	}
 
 	return (
-		<NavigationContainer>
-			<Stack.Navigator screenOptions={{ headerShown: false }}>
-				{user ? (
-					<Stack.Screen name="Main" component={TabNavigator} />
-				) : (
-					<Stack.Screen name="Auth" component={AuthNavigator} />
-				)}
-			</Stack.Navigator>
-		</NavigationContainer>
+		<GestureHandlerRootView style={{ flex: 1 }}>
+			<NavigationContainer
+				theme={{
+					dark: false,
+					colors: {
+						primary: colors.light.primary,
+						background: colors.light.background,
+						card: colors.light.card,
+						text: colors.light.foreground,
+						border: colors.light.border,
+						notification: colors.light.primary,
+					},
+				}}
+			>
+				<Stack.Navigator
+					screenOptions={{
+						headerShown: false,
+						gestureEnabled: true,
+						gestureDirection: 'horizontal',
+						gestureResponseDistance: 50,
+						transitionSpec: {
+							open: {
+								animation: 'timing',
+								config: {
+									duration: 300,
+									easing: Easing.out(Easing.poly(4)),
+								},
+							},
+							close: {
+								animation: 'timing',
+								config: {
+									duration: 250,
+									easing: Easing.in(Easing.poly(4)),
+								},
+							},
+						},
+						cardStyleInterpolator: ({ current, layouts }) => {
+							return {
+								cardStyle: {
+									transform: [
+										{
+											translateX: current.progress.interpolate({
+												inputRange: [0, 1],
+												outputRange: [layouts.screen.width, 0],
+											}),
+										},
+									],
+								},
+								overlayStyle: {
+									opacity: current.progress.interpolate({
+										inputRange: [0, 1],
+										outputRange: [0, 0.5],
+									}),
+								},
+							};
+						},
+					}}
+				>
+					{user ? (
+						<Stack.Screen name="Main" component={TabNavigator} />
+					) : (
+						<Stack.Screen name="Auth" component={AuthNavigator} />
+					)}
+				</Stack.Navigator>
+			</NavigationContainer>
+		</GestureHandlerRootView>
 	);
 }
