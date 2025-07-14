@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import React, { useEffect, useRef } from 'react';
 import {
 	View,
@@ -111,7 +112,7 @@ export const PremiumPaywallDrawer: React.FC<PremiumPaywallDrawerProps> = ({
 						</ScrollView>
 
 						{/* Title and features */}
-						<Text style={styles.title}>Hello History - Unlimited</Text>
+						<Text style={styles.title}>ConversAI - Unlimited</Text>
 						<View style={styles.featuresList}>
 							<FeatureItem text="Use advanced text AI models" />
 							<FeatureItem text="Generate realistic voice messages" />

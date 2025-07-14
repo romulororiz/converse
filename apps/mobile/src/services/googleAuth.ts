@@ -7,10 +7,10 @@ import { supabase } from '../lib/supabase';
 WebBrowser.maybeCompleteAuthSession();
 
 // Google OAuth configuration
-// const GOOGLE_CLIENT_ID =
-// 	process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || 'your-google-client-id';
-// const GOOGLE_CLIENT_SECRET =
-// 	process.env.EXPO_PUBLIC_GOOGLE_CLIENT_SECRET || 'your-google-client-secret';
+const GOOGLE_CLIENT_ID =
+	process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || 'your-google-client-id';
+const GOOGLE_CLIENT_SECRET =
+	process.env.EXPO_PUBLIC_GOOGLE_CLIENT_SECRET || 'your-google-client-secret';
 
 export interface GoogleAuthResult {
 	success: boolean;
@@ -18,11 +18,10 @@ export interface GoogleAuthResult {
 	user?: any;
 }
 
-// Direct OAuth approach without relying on Supabase's OAuth URL generation
+// Direct OAuth approach wiathout relying on Supabase's OAuth URL generation
 export async function signInWithGoogleDirect(): Promise<GoogleAuthResult> {
 	try {
 		console.log('Starting direct Google OAuth...');
-
 		// Get Supabase URL
 		const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 		if (!supabaseUrl) {
